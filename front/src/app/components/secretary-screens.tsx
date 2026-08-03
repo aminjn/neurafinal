@@ -1985,7 +1985,7 @@ export function SecDailyFinanceScreen() {
     return toFa(String(n));
   };
 
-  const todayReceipts = receipts.filter(r => r.date.startsWith('امروز'));
+  const todayReceipts = receipts.filter(r => String(r.date || '').startsWith('امروز'));
   const todayPayments = payments.filter(p => p.date === 'امروز');
   const todayReceiptsCount = todayReceipts.length;
   const todayPaymentsCount = todayPayments.length;
