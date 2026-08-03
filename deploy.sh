@@ -61,6 +61,26 @@ log "۳) سرورِ Node — به‌روزرسانیِ کد (‏.env و node_mod
 rsync -a --exclude='.env' --exclude='.env.*' --exclude='node_modules' --exclude='.git' \
   "$REPO/server/" "$SRV/"
 ( cd "$SRV" && npm install --no-audit --no-fund >/dev/null 2>&1 )
+
+# ── تماسِ صوتی/تصویری (mediasoup): متغیرهای .env و بازکردنِ پورتِ مدیا (یک‌بار، idempotent) ──
+log "۳.۵) پیکربندیِ تماس (mediasoup)"
+ENVF="$SRV/.env"; touch "$ENVF"
+# IP عمومیِ سرور را خودکار تشخیص بده (اگر در .env نباشد)
+PUBIP="$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || true)"; [ -z "$PUBIP" ] && PUBIP="94.101.177.196"
+add_env(){ grep -q "^$1=" "$ENVF" 2>/dev/null || { echo "$1=$2" >> "$ENVF"; echo "  + $1"; }; }
+add_env RTC_PORT 4001
+add_env MEDIASOUP_ANNOUNCED_IP "$PUBIP"
+add_env MEDIASOUP_MIN_PORT 40000
+add_env MEDIASOUP_MAX_PORT 40200
+# بازکردنِ پورت‌های مدیا (UDP/TCP 40000-40200) روی فایروال — بی‌خطر و بی‌اثر اگر قبلاً باز باشد.
+if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -qi active; then
+  ufw allow 40000:40200/udp >/dev/null 2>&1 || true; ufw allow 40000:40200/tcp >/dev/null 2>&1 || true; echo "  ✅ ufw: 40000-40200 باز شد"
+elif command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --state >/dev/null 2>&1; then
+  firewall-cmd --permanent --add-port=40000-40200/udp >/dev/null 2>&1 || true; firewall-cmd --permanent --add-port=40000-40200/tcp >/dev/null 2>&1 || true; firewall-cmd --reload >/dev/null 2>&1 || true; echo "  ✅ firewalld: 40000-40200 باز شد"
+else
+  echo "  ⚠️ فایروال شناسایی نشد — اگر تماس وصل نشد، پورت UDP/TCP 40000-40200 را در پنلِ سرور/آروان باز کنید"
+fi
+
 # مایگریشنِ شِما (بی‌خطر؛ دادهٔ کاربر پاک نمی‌شود)
 if [ -f "$SRV/.env" ]; then
   ( cd "$SRV" && set -a && . ./.env && set +a && node src/migrate.js ) && echo "  ✅ migrate" || echo "  ⚠️ migrate دستی لازم است"

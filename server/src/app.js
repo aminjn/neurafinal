@@ -16,6 +16,7 @@ import analyticsRoutes from './routes/analytics.js';
 import remindersRoutes from './routes/reminders.js';
 import mapRoutes from './routes/map.js';
 import peerRoutes from './routes/peer.js';
+import { attachRtcHttpProxy } from './rtc/proxy-to-rtc.js';
 import { auditMiddleware } from './audit.js';
 import { agents as SEED_AGENTS } from './seed-data.js';
 import { query } from './db.js';
@@ -42,6 +43,8 @@ async function ensureAgents() {
 export function createApp() {
   const app = express();
   app.use(cors());
+  // پراکسیِ سیگنالینگِ تماس (socket.io) → پروسهٔ mediasoup. باید پیش از body-parser باشد تا بدنه مصرف نشود.
+  attachRtcHttpProxy(app);
   app.use(express.json({ limit: '30mb' })); // صوت (STT base64) ممکن است بزرگ باشد
 
   ensureAgents(); // در پس‌زمینه: ایجنت‌های تازه (داین) را تضمین کن

@@ -16,7 +16,9 @@
     "dotenv": "16.4.5",
     "express": "4.21.2",
     "jsonwebtoken": "9.0.2",
+    "mediasoup": "^3.24.0",
     "pg": "8.13.1",
+    "socket.io": "^4.8.3",
     "undici": "6.21.1"
   }
 }

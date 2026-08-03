@@ -6,6 +6,7 @@ const EndUserPanel = React.lazy(() => import('./components/end-user-panel'));
 import ChatOverlay from './components/chat-overlay';
 import { ModalOverlay, CallOverlay, UnifiedCallModal, Toast } from './components/overlays';
 import FloatingMicFAB from './components/floating-mic-fab';
+import { NeuraCallLayer } from './components/rtc-call';
 import { SplashScreen, HomeScreen, AuthScreen } from './components/auth-flow';
 import { MarketingProvider } from './components/marketing-context';
 
@@ -335,6 +336,7 @@ function AppContent() {
       <Toast />
       <OfferBanner />
       <FloatingMicFAB />
+      <NeuraCallLayer />
     </div>
   );
 }

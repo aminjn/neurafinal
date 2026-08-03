@@ -25,6 +25,7 @@ import { LetterAvatar } from './letter-avatar';
 import { useApp } from './app-context';
 import { toFa } from './data';
 import { api } from '../services/api';
+import { startPeerCall } from './rtc-call';
 import svgChatIcons from '../../imports/Frame2147223516/svg-6y73huub0v';
 
 export default function ChatOverlay() {
@@ -288,6 +289,10 @@ export default function ChatOverlay() {
     }
   }
 
+  // گفتگوی مخاطبِ نورا (کاربر-به-کاربر): شناسهٔ طرفِ مقابل از id استخراج می‌شود → تماسِ اینترنتی.
+  const isPeerChat = chat.type === 'contact' && typeof chat.id === 'string' && chat.id.startsWith('peer_');
+  const peerSub = isPeerChat ? String(chat.id).slice('peer_'.length) : '';
+
   const topics = chat.type === 'agent' && chat.id ? getTopics(chat.id) : [];
 
   const handleSend = () => {
@@ -434,7 +439,27 @@ export default function ChatOverlay() {
 
         {/* Action icons */}
         <div className="flex gap-1 flex-shrink-0" onPointerDown={e => e.stopPropagation()} onPointerMove={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()}>
-          {headerName && !isEuAgentChat && (
+          {/* تماسِ کاربر-به-کاربر از طریقِ اینترنت (mediasoup): در گفتگوی مخاطبِ نورا، صوتی + تصویری */}
+          {isPeerChat ? (
+            <>
+              <button
+                className="w-8 h-8 rounded-[10px] border-none cursor-pointer flex items-center justify-center"
+                style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', fontSize: 14 }}
+                title="تماس صوتی"
+                onClick={() => peerSub && startPeerCall({ toSubs: [peerSub], peerName: headerName, kind: 'audio' })}
+              >
+                <i className="fa-solid fa-phone" />
+              </button>
+              <button
+                className="w-8 h-8 rounded-[10px] border-none cursor-pointer flex items-center justify-center"
+                style={{ background: 'rgba(123,98,252,0.15)', color: '#7b62fc', fontSize: 14 }}
+                title="تماس تصویری"
+                onClick={() => peerSub && startPeerCall({ toSubs: [peerSub], peerName: headerName, kind: 'video' })}
+              >
+                <i className="fa-solid fa-video" />
+              </button>
+            </>
+          ) : headerName && !isEuAgentChat && (
             <button
               className="w-8 h-8 rounded-[10px] border-none cursor-pointer flex items-center justify-center"
               style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', fontSize: 14 }}
