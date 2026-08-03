@@ -1184,7 +1184,7 @@ const FOLLOWUP_TYPE_LABELS: Record<string, string> = {
 const leadStatusColors: Record<string, string> = { 'جدید': '#3B82F6', 'تماس اول': '#F59E0B', 'پیگیری': '#8B5CF6', 'ارجاع به فروش': '#10B981', 'برنده': '#22C55E', 'بسته‌شده': '#6B7280' };
 const typeIcons: Record<string, string> = { call: 'fa-solid fa-phone', email: 'fa-solid fa-envelope', meeting: 'fa-solid fa-users', task: 'fa-solid fa-list-check' };
 
-function FollowupCard({ item, variant }: { item: FollowupItem; variant: 'overdue' | 'upcoming' }) {
+function FollowupCard({ item, variant, onUpdate, onAct }: { item: FollowupItem; variant: 'overdue' | 'upcoming'; onUpdate?: (patch: any) => void; onAct?: (label: string) => void }) {
   const { showToast } = useApp();
   const isOverdue = variant === 'overdue';
   const accent = isOverdue ? '#EF4444' : '#3B82F6';
@@ -1227,17 +1227,17 @@ function FollowupCard({ item, variant }: { item: FollowupItem; variant: 'overdue
       </div>
       <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-[var(--aw-border)]">
         {primaryActions.map(a => (
-          <button key={a.id} onClick={() => { (api as any).myCreate('sec_todos', { label: a.label, itemId: item.id, status: 'done', at: new Date().toISOString() }); showToast(a.label + ' انجام شد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-lg border-none cursor-pointer text-white" style={{ background: 'linear-gradient(135deg, var(--aw-primary-light), var(--aw-primary-dark))' }}>
+          <button key={a.id} onClick={() => { onAct ? onAct(a.label) : showToast(a.label + ' ثبت شد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-lg border-none cursor-pointer text-white" style={{ background: 'linear-gradient(135deg, var(--aw-primary-light), var(--aw-primary-dark))' }}>
             <i className={`${a.icon} text-[9px] ml-1`} />{a.label}
           </button>
         ))}
-        <button onClick={() => { (api as any).myCreate('sec_followups', { ...item, status: 'done' }); showToast('پیگیری به‌عنوان «انجام‌شده» ثبت شد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--aw-border)] cursor-pointer bg-transparent text-[var(--aw-text-secondary)]">
+        <button onClick={() => { onUpdate ? onUpdate({ status: 'done' }) : showToast('انجام شد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--aw-border)] cursor-pointer bg-transparent text-[var(--aw-text-secondary)]">
           <i className="fa-solid fa-check text-[9px] ml-1" />انجام شد
         </button>
-        <button onClick={() => { (api as any).myCreate('sec_followups', { ...item, status: 'referred' }); showToast('پیگیری ارجاع داده شد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--aw-border)] cursor-pointer bg-transparent text-[var(--aw-text-secondary)]">
+        <button onClick={() => { onUpdate ? onUpdate({ status: 'referred' }) : showToast('ارجاع شد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--aw-border)] cursor-pointer bg-transparent text-[var(--aw-text-secondary)]">
           <i className="fa-solid fa-share text-[9px] ml-1" />ارجاع
         </button>
-        <button onClick={() => { (api as any).myCreate('sec_followups', { ...item, rescheduled: true }); showToast('زمان پیگیری تغییر کرد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--aw-border)] cursor-pointer bg-transparent text-[var(--aw-text-secondary)]">
+        <button onClick={() => { onUpdate ? onUpdate({ rescheduled: true }) : showToast('زمان تغییر کرد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--aw-border)] cursor-pointer bg-transparent text-[var(--aw-text-secondary)]">
           <i className="fa-solid fa-calendar text-[9px] ml-1" />تغییر زمان
         </button>
       </div>
@@ -1475,11 +1475,11 @@ export function SecCrmLiteScreen() {
             <motion.div key="followup" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-2 pt-2">
               <SectionHeader title="عقب‌افتاده‌ها" icon="fa-solid fa-exclamation-triangle" count={followups.filter((f: any) => f.status === 'overdue').length} />
               {followups.filter((f: any) => f.status === 'overdue').map(f => (
-                <FollowupCard key={f.id} item={f} variant="overdue" />
+                <FollowupCard key={f.id} item={f} variant="overdue" onUpdate={(patch) => { setFollowups((prev: any[]) => prev.map((x: any) => x.id === f.id ? { ...x, ...patch } : x)); logActivity('note', 'پیگیری: ' + (f.title || '') + (patch.status === 'done' ? ' (انجام‌شد)' : patch.status === 'referred' ? ' (ارجاع)' : ' (تغییر زمان)'), (f as any).contact || ''); showToast('پیگیری به‌روزرسانی شد ✅'); }} onAct={(label) => { logActivity('call', label + ' — ' + (f.title || ''), (f as any).contact || ''); showToast(label + ' ثبت شد ✅'); }} />
               ))}
               <SectionHeader title="پیش رو" icon="fa-solid fa-clock" count={followups.filter((f: any) => f.status === 'upcoming').length} />
               {followups.filter((f: any) => f.status === 'upcoming').map(f => (
-                <FollowupCard key={f.id} item={f} variant="upcoming" />
+                <FollowupCard key={f.id} item={f} variant="upcoming" onUpdate={(patch) => { setFollowups((prev: any[]) => prev.map((x: any) => x.id === f.id ? { ...x, ...patch } : x)); logActivity('note', 'پیگیری: ' + (f.title || '') + (patch.status === 'done' ? ' (انجام‌شد)' : patch.status === 'referred' ? ' (ارجاع)' : ' (تغییر زمان)'), (f as any).contact || ''); showToast('پیگیری به‌روزرسانی شد ✅'); }} onAct={(label) => { logActivity('call', label + ' — ' + (f.title || ''), (f as any).contact || ''); showToast(label + ' ثبت شد ✅'); }} />
               ))}
             </motion.div>
           )}
