@@ -297,8 +297,15 @@ function MarketAccountTab() {
 
   const ADDRESSES: any[] = [];
   const [__wishItems, setWishItems] = useState<any[]>([]);
-  useEffect(() => { if (!getToken()) return; (async () => { try { const w: any = await (api as any).myList('wishlist'); if (Array.isArray(w)) setWishItems(w.map((x: any) => ({ t: x.t || x.name || '', s: x.s || x.shop || '', p: x.p || '', icon: x.icon || 'fa-solid fa-box' }))); } catch (_) {} })(); }, []);
+  const __loadWish = () => { if (!getToken()) return; (api as any).myList('wishlist').then((w: any) => { if (Array.isArray(w)) setWishItems(w.map((x: any) => ({ t: x.t || x.name || '', s: x.s || x.shop || '', p: x.p || '', icon: x.icon || 'fa-solid fa-box' }))); }).catch(() => {}); };
+  // با هر تغییرِ داده (افزودن/حذفِ علاقه‌مندی از هر جای اپ) فهرست تازه می‌شود؛ قبلاً فقط یک‌بار موقعِ مانت لود می‌شد و کهنه می‌ماند.
+  useEffect(() => { __loadWish(); const h = () => __loadWish(); window.addEventListener('neura:data-changed', h); return () => window.removeEventListener('neura:data-changed', h); }, []);
   const __cashbackItems = (walletTx || []).filter((t: any) => t.type === 'cashback').map((t: any) => ({ t: t.title || 'کش‌بک', s: t.date || 'اخیر', p: (t.amount || 0).toLocaleString('fa-IR'), icon: 'fa-solid fa-coins' }));
+  // امتیاز/سطحِ واقعی از دادهٔ واقعی: مجموعِ کش‌بکِ کسب‌شده و سطحِ باشگاه، دقیقاً هم‌راستا با نرخِ پله‌ایِ سرور
+  // (۵M↑ طلایی۵٪ / ۱M↑ نقره‌ای۳٫۵٪ / بالای صفر برنزی۲٪). دیگر «—»یِ فیک نیست.
+  const __cashbackTotal = (walletTx || []).filter((t: any) => t.type === 'cashback').reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0);
+  const __tier = __cashbackTotal >= 5000000 ? 'طلایی' : __cashbackTotal >= 1000000 ? 'نقره‌ای' : __cashbackTotal > 0 ? 'برنزی' : 'تازه‌وارد';
+  const __tierColor = __cashbackTotal >= 5000000 ? '#F59E0B' : __cashbackTotal >= 1000000 ? '#94A3B8' : __cashbackTotal > 0 ? '#B45309' : '#8B5CF6';
   const PAYMENTS = [
     { id: 1, title: 'کیف پول Neura', balance: (walletBalance || 0).toLocaleString('fa-IR') + ' تومان', icon: 'fa-solid fa-wallet', color: '#8B5CF6', isDefault: true },
     ...__payM.map((m: any, i: number) => ({ id: 'pm_' + (m.id || i), title: m.title || m.bank || 'کارت بانکی', last4: m.last4 || (m.number ? '****' + String(m.number).replace(/\D/g, '').slice(-4) : ''), icon: 'fa-solid fa-credit-card', color: '#3B82F6', isDefault: !!m.isDefault })),
@@ -346,13 +353,13 @@ function MarketAccountTab() {
           </div>
           <div className="w-px h-8" style={{ background: 'var(--aw-border)' }} />
           <div className="flex-1 text-center">
-            <div className="text-[16px] text-[var(--aw-text-primary)]" style={{ fontWeight: 800 }}>—</div>
-            <div className="text-[9px] text-[var(--aw-text-muted)]">امتیاز</div>
+            <div className="text-[16px] text-[var(--aw-text-primary)]" style={{ fontWeight: 800 }}>{__cashbackTotal.toLocaleString('fa-IR')}</div>
+            <div className="text-[9px] text-[var(--aw-text-muted)]">کش‌بک (تومان)</div>
           </div>
           <div className="w-px h-8" style={{ background: 'var(--aw-border)' }} />
           <div className="flex-1 text-center">
             <div className="flex items-center justify-center gap-0.5">
-              <StatusPill label="—" color="#8B5CF6" />
+              <StatusPill label={__tier} color={__tierColor} />
             </div>
             <div className="text-[9px] mt-0.5 text-[var(--aw-text-muted)]">سطح</div>
           </div>
@@ -477,6 +484,11 @@ function MarketAccountTab() {
               {expandedSection === item.id && (
                 <motion.div className="mt-1 space-y-1"
                   initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
+                  {item.items && item.items.length === 0 && (
+                    <div className="p-3 mr-3 rounded-xl text-[11px] text-[var(--aw-text-muted)] text-center" style={euCardStyle}>
+                      {item.id === 'wishlist' ? 'هنوز محصولی به علاقه‌مندی‌ها اضافه نکرده‌ای. روی قلبِ محصولات بزن.' : 'هنوز کش‌بکی ثبت نشده؛ با هر خرید به‌صورت خودکار کش‌بک می‌گیری.'}
+                    </div>
+                  )}
                   {item.items && item.items.map((f, i) => (
                     <div key={i} className="p-3 mr-3 rounded-xl flex items-center gap-2.5" style={euCardStyle}>
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: item.color + '18' }}>
