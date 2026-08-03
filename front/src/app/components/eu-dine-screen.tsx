@@ -799,6 +799,9 @@ function DineRestaurantsTab({ onSelectRestaurant, onBack }: { onSelectRestaurant
   const [filter, setFilter] = useState<'all' | 'nearest' | 'popular' | 'discount'>('all');
   const [cuisine, setCuisine] = useState('all');
   const [search, setSearch] = useState('');
+  // دسته‌بندیِ نوعِ آشپزی از تنظیماتِ سوپرادمین (قابلِ ویرایش)؛ «همه» را خودمان جلو می‌گذاریم.
+  const [cuisineCats, setCuisineCats] = useState<any[]>(CUISINE_CATEGORIES);
+  useEffect(() => { (api as any).getSettings().then((st: any) => { if (st && Array.isArray(st.cuisineCategories) && st.cuisineCategories.length) setCuisineCats([{ id: 'all', label: 'همه', icon: 'fa-solid fa-utensils' }, ...st.cuisineCategories]); }).catch(() => {}); }, []);
 
   let filtered = __DINE.restaurants.filter((r: any) => (cuisine === 'all' || r.cuisine === cuisine) && (!search || r.name.includes(search) || r.type.includes(search)));
   if (filter === 'nearest') filtered = [...filtered].sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
@@ -828,7 +831,7 @@ function DineRestaurantsTab({ onSelectRestaurant, onBack }: { onSelectRestaurant
 
       {/* Cuisine categories */}
       <div className="flex gap-2 px-4 pb-2 overflow-x-auto aw-scroll-x" style={{ scrollbarWidth: 'none' }}>
-        {CUISINE_CATEGORIES.map(c => {
+        {cuisineCats.map(c => {
           const on = cuisine === c.id;
           return (
             <button key={c.id} onClick={() => setCuisine(c.id)}

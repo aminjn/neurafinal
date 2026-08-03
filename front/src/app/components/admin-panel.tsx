@@ -5236,7 +5236,10 @@ function SinglePersonnelSettings({ personnelId }: { personnelId: string }) {
 }
 
 export function ProfileContent() {
-  const { role, agentTeam, userProfile, euProfile, setUserProfile, setEuProfile, closeModal, showToast, agents, customers, ownedAgents } = useApp();
+  const { role, agentTeam, userProfile, euProfile, setUserProfile, setEuProfile, closeModal, showToast, agents, customers, isAgentOwned } = useApp();
+  // «عامل فعال» = ایجنت‌هایی که کاربر واقعاً مالکشان است (طبقِ منطقِ مالکیتِ اپ)، نه طولِ خامِ ownedAgents
+  // که بذرِ دمو همهٔ ۱۲ ایجنت را شاملش می‌کرد و «۱۲»یِ فیک نشان می‌داد.
+  const activeAgentCount = (agents || []).filter((a: any) => isAgentOwned(a.id)).length;
   const useEu = role === 'user' || agentTeam === 'assistant';
   const prof = useEu ? euProfile : userProfile;
   const setProfFn = useEu ? setEuProfile : setUserProfile;
@@ -5342,7 +5345,7 @@ export function ProfileContent() {
         </div>
         <div className="text-[12px] text-[var(--aw-text-secondary)] mt-1">{prof.role}</div>
         <div className="flex justify-center gap-8 mt-4">
-          <div className="text-center"><div className="text-xl text-[var(--aw-secondary)]" style={{ fontWeight: 800 }}>{toFa((ownedAgents || []).length)}</div><div className="text-[10px] text-[var(--aw-text-muted)]">عامل فعال</div></div>
+          <div className="text-center"><div className="text-xl text-[var(--aw-secondary)]" style={{ fontWeight: 800 }}>{toFa(activeAgentCount)}</div><div className="text-[10px] text-[var(--aw-text-muted)]">عامل فعال</div></div>
           <div className="text-center"><div className="text-xl text-[var(--aw-primary)]" style={{ fontWeight: 800 }}>{toFa(customers.length)}</div><div className="text-[10px] text-[var(--aw-text-muted)]">مشتری</div></div>
         </div>
       </div>

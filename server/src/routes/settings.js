@@ -27,6 +27,18 @@ const DEFAULTS = {
     { id: 'beauty', label: 'آرایشی', icon: 'fa-solid fa-spa' },
     { id: 'books', label: 'کتاب', icon: 'fa-solid fa-book' },
   ],
+  // نکته: دسته‌بندیِ «منویِ» داین عمداً اینجا نیست — بخش‌های منو از دادهٔ واقعیِ منوی هر رستوران
+  // ساخته می‌شوند (per-restaurant)، نه تاکسونومیِ سوپرادمین. فقط «نوعِ آشپزیِ رستوران» تاکسونومیِ سراسری است:
+  // دسته‌بندیِ نوعِ آشپزیِ رستوران‌ها (فیلترِ رستوران در داین) — سوپرادمین کنترل می‌کند.
+  cuisineCategories: [
+    { id: 'iranian', label: 'ایرانی', icon: 'fa-solid fa-bowl-rice' },
+    { id: 'fastfood', label: 'فست‌فود', icon: 'fa-solid fa-burger' },
+    { id: 'italian', label: 'ایتالیایی', icon: 'fa-solid fa-pizza-slice' },
+    { id: 'diet', label: 'سالاد و رژیمی', icon: 'fa-solid fa-leaf' },
+    { id: 'kabab', label: 'کبابی', icon: 'fa-solid fa-fire-burner' },
+    { id: 'seafood', label: 'دریایی', icon: 'fa-solid fa-fish' },
+    { id: 'cafe', label: 'کافه و صبحانه', icon: 'fa-solid fa-mug-hot' },
+  ],
   // خطوطِ تماسِ پشتیبانی (هر واحد شمارهٔ واقعی خودش؛ پیش‌فرض = supportPhone). سوپرادمین ویرایش می‌کند.
   supportLines: [
     { icon: 'fa-solid fa-headset', label: 'پشتیبانی عمومی', desc: 'پاسخگویی ۲۴ ساعته', phone: '۰۲۱-۱۲۳۴۵۶۷۸', color: '#3B82F6', available: true },

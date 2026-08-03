@@ -443,10 +443,13 @@ function EuHomeScreenGlass() {
 // ── Non-glass Home Screen (preserved from before) ──────────────
 
 function EuHomeScreenDefault() {
-  const { openModal, setEuScreen, agents, euPlacedOrders, walletBalance, ownedAgents } = useApp();
+  const { openModal, setEuScreen, agents, euPlacedOrders, walletBalance, isAgentOwned } = useApp();
   const orders = (euPlacedOrders || []) as any[]; // euorders: سفارش‌های واقعیِ کاربر
   const activeOrders = orders.filter(o => o.status === 'preparing' || o.status === 'pending' || o.status === 'shipping' || o.status === 'confirmed');
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
+  // «ایجنت فعال» = ایجنت‌هایی که کاربر واقعاً در همین شرکت مالکشان است (طبقِ همان منطقِ مالکیتِ کلِ اپ)،
+  // نه طولِ خامِ ownedAgents که بذرِ دمو همهٔ ۱۲ ایجنت را شاملش می‌کرد و «۱۲»یِ فیک نشان می‌داد.
+  const activeAgentCount = (agents || []).filter((a: any) => isAgentOwned(a.id)).length;
 
   const quickActions = [
     { icon: 'fa-solid fa-utensils', label: 'سفارش غذا', action: () => setEuScreen('euDineScreen') },
@@ -528,7 +531,7 @@ function EuHomeScreenDefault() {
         {[
           { value: toFa(orders.length), label: 'کل سفارشات' },
           { value: toFa(deliveredOrders), label: 'تحویل شده' },
-          { value: toFa((ownedAgents || []).length), label: 'ایجنت فعال' },
+          { value: toFa(activeAgentCount), label: 'ایجنت فعال' },
         ].map((s, i) => (
           <div key={i} className="flex flex-col items-center p-3 rounded-xl border"
             style={{ background: 'var(--aw-eu-card)', borderColor: 'rgba(126,95,170,0.15)' }}>

@@ -149,6 +149,26 @@ export function SettingsPage() {
 
   const f = (k: string) => ({ value: s[k], onChange: (e: any) => set(k, e.target.value) });
 
+  // ویرایشگرِ فهرستِ دسته‌بندی {id,label,icon} — برای مارکت/منویِ داین/نوعِ آشپزی
+  const catRows = (key: string) => (
+    <>
+      {(Array.isArray(s[key]) ? s[key] : []).map((c: any, i: number) => {
+        const upd = (patch: any) => set(key, (s[key] || []).map((x: any, j: number) => (j === i ? { ...x, ...patch } : x)));
+        return (
+          <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] items-end rounded-lg border border-border p-3">
+            <Field label="شناسه (انگلیسی)" value={c.id || ""} onChange={(e: any) => upd({ id: e.target.value })} />
+            <Field label="عنوان" value={c.label || ""} onChange={(e: any) => upd({ label: e.target.value })} />
+            <Field label="آیکون (FontAwesome)" value={c.icon || ""} onChange={(e: any) => upd({ icon: e.target.value })} />
+            <Button variant="destructive" onClick={() => set(key, (s[key] || []).filter((_: any, j: number) => j !== i))}>حذف</Button>
+          </div>
+        );
+      })}
+      <div>
+        <Button variant="outline" onClick={() => set(key, [...(Array.isArray(s[key]) ? s[key] : []), { id: "", label: "", icon: "fa-solid fa-tag" }])}>+ افزودن دسته</Button>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
@@ -211,6 +231,23 @@ export function SettingsPage() {
           })}
           <div>
             <Button variant="outline" onClick={() => set("marketOffers", [...(Array.isArray(s.marketOffers) ? s.marketOffers : []), { id: Date.now(), title: "", desc: "", discount: 0, code: "", shop: "همه فروشگاه‌ها", validUntil: "", color: "#F59E0B", icon: "fa-solid fa-gift" }])}>+ افزودن پیشنهاد</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>دسته‌بندی‌ها</CardTitle>
+          <CardDescription>دسته‌بندیِ فروشگاه‌های مارکت و منو/نوعِ رستورانِ داین. بلافاصله در اپِ کاربران اعمال می‌شود. «شناسه» باید انگلیسی و یکتا باشد (به داده گره می‌خورد؛ تغییرش انتساب‌های قبلی را می‌شکند).</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          <div>
+            <div className="mb-2 text-sm font-semibold">دسته‌بندیِ فروشگاه‌های مارکت</div>
+            <div className="grid gap-2">{catRows("marketCategories")}</div>
+          </div>
+          <div>
+            <div className="mb-2 text-sm font-semibold">نوعِ آشپزیِ رستوران‌ها (فیلترِ رستورانِ داین)</div>
+            <div className="grid gap-2">{catRows("cuisineCategories")}</div>
           </div>
         </CardContent>
       </Card>
