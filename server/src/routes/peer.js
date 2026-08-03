@@ -4,6 +4,7 @@
 import express from 'express';
 import { query } from '../db.js';
 import { authRequired } from '../auth.js';
+import { sendPush } from '../push.js';
 
 const router = express.Router();
 
@@ -49,6 +50,8 @@ router.post('/send', authRequired, async (req, res) => {
     "INSERT INTO documents (collection, id, company, data) VALUES ('peer_msgs', $1, $2, $3::jsonb)",
     [id, conv, JSON.stringify(data)]
   );
+  // نوتیفیکیشنِ push به گیرنده (حتی اگر اپش بسته باشد).
+  sendPush(to, { title: String(req.user.name || 'پیام جدید'), body: text.slice(0, 120), kind: 'message', tag: 'peer_' + req.user.sub, url: '/', data: { peer: String(req.user.sub) } }).catch(() => {});
   res.status(201).json({ ok: true, message: data });
 });
 

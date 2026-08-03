@@ -785,6 +785,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => { try { const w: any = await (api as any).getWallet(); if (w) { if (typeof w.balance === 'number') setWalletBalance(w.balance); if (Array.isArray(w.tx)) setWalletTx(w.tx); if (Array.isArray(w.ownedAgents)) setOwnedAgents(w.ownedAgents); if (Array.isArray(w.ownedAvatars)) setOwnedAvatars(w.ownedAvatars); if (Array.isArray(w.ownedThemes)) setOwnedThemes(w.ownedThemes); } } catch (_) {} })();
   }, [appStage]);
 
+  // Web Push: بعد از ورود، نوتیفیکیشن را فعال کن تا حتی وقتی اپ بسته است پیام/تماس اطلاع داده شود.
+  useEffect(() => {
+    if (!getToken() || appStage !== 'app') return;
+    import('../services/push').then((m) => m.initPush()).catch(() => {});
+  }, [appStage]);
+
   // euchatpersist: گفتگوی کاربر با ایجنت‌ها (رستوران/مارکت/پشتیبانی/دستیار) per-user ذخیره/بازیابی می‌شود
   // تا با بستن/بازکردنِ اپ یا دستگاهِ دیگر نپرد (قبلاً فقط در حافظه بود و «ذخیره نمی‌شد»).
   const _euChatsLoaded = useRef(false);

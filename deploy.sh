@@ -72,6 +72,19 @@ add_env RTC_PORT 4001
 add_env MEDIASOUP_ANNOUNCED_IP "$PUBIP"
 add_env MEDIASOUP_MIN_PORT 40000
 add_env MEDIASOUP_MAX_PORT 40200
+
+# ── Web Push (VAPID): یک‌بار کلید بساز و در .env بگذار (نوتیفیکیشنِ اپِ بسته) ──
+if ! grep -q "^VAPID_PUBLIC=" "$ENVF" 2>/dev/null; then
+  VKEYS="$(cd "$SRV" && node -e "try{const w=require('web-push');const k=w.generateVAPIDKeys();console.log(k.publicKey+'|'+k.privateKey);}catch(e){process.exit(1)}" 2>/dev/null || true)"
+  if [ -n "${VKEYS:-}" ]; then
+    echo "VAPID_PUBLIC=${VKEYS%%|*}" >> "$ENVF"
+    echo "VAPID_PRIVATE=${VKEYS##*|}" >> "$ENVF"
+    grep -q "^VAPID_SUBJECT=" "$ENVF" || echo "VAPID_SUBJECT=mailto:admin@servein.ir" >> "$ENVF"
+    echo "  ✅ کلیدهای VAPID ساخته شد (Web Push فعال)"
+  else
+    echo "  ⚠️ ساختِ کلیدِ VAPID نشد — بعد از نصبِ کاملِ وابستگی‌ها دوباره deploy کنید"
+  fi
+fi
 # بازکردنِ پورت‌های مدیا (UDP/TCP 40000-40200) روی فایروال — بی‌خطر و بی‌اثر اگر قبلاً باز باشد.
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -qi active; then
   ufw allow 40000:40200/udp >/dev/null 2>&1 || true; ufw allow 40000:40200/tcp >/dev/null 2>&1 || true; echo "  ✅ ufw: 40000-40200 باز شد"

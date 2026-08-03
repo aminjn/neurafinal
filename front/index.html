@@ -2,17 +2,17 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <!-- کُشندهٔ service workerِ کهنه + fallbackِ عکسِ خراب -->
+  <!-- ثبتِ service workerِ Push (بدونِ کش) + پاک‌کردنِ کش‌های کهنه + fallbackِ عکسِ خراب -->
   <script>
     (function () {
       try {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations()
-            .then(function (rs) { rs.forEach(function (r) { r.unregister(); }); })
-            .catch(function () {});
-        }
+        // کش‌های کهنه را پاک کن (میراثِ SW کش‌کننده) ولی SW را unregister نکن — برای Push لازم است بماند.
         if (window.caches && caches.keys) {
           caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
+        }
+        // SW جدید (فقط Push، بدونِ کش) را ثبت کن.
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
         }
       } catch (e) {}
     })();

@@ -4,6 +4,7 @@
 import { Server } from 'socket.io';
 import * as mediasoup from 'mediasoup';
 import jwt from 'jsonwebtoken';
+import { sendPush } from '../push.js';
 
 const SECRET = process.env.JWT_SECRET || 'dev-insecure-secret';
 const ANNOUNCED_IP = process.env.MEDIASOUP_ANNOUNCED_IP || '';       // IP عمومیِ سرور (آروان) — الزامی برای تماسِ واقعی
@@ -71,10 +72,13 @@ export async function initRtc(server) {
     // callUser: به هر subِ مقصد که آنلاین است، «تماسِ ورودی» با roomName + نوع (audio/video) اطلاع بده.
     socket.on('callUser', ({ toSubs, roomName, kind, callerName }, ack) => {
       const targets = Array.isArray(toSubs) ? toSubs.map(String) : [];
+      const name = callerName || socket.data.name || 'کاربر';
       let delivered = 0;
       for (const t of targets) {
         const set = online.get(t);
-        if (set) for (const sid of set) { io.to(sid).emit('incomingCall', { roomName, kind: kind || 'audio', fromSub: sub, callerName: callerName || socket.data.name || 'کاربر' }); delivered++; }
+        if (set) for (const sid of set) { io.to(sid).emit('incomingCall', { roomName, kind: kind || 'audio', fromSub: sub, callerName: name }); delivered++; }
+        // اگر مقصد آنلاین نیست (اپش بسته است) نوتیفیکیشنِ push بفرست تا مثلِ واتساپ باخبر شود.
+        if (!set || set.size === 0) sendPush(t, { title: name, body: (kind === 'video' ? 'تماس تصویری ورودی' : 'تماس صوتی ورودی'), kind: 'call', tag: 'call_' + sub, url: '/', data: { call: sub, roomName } }).catch(() => {});
       }
       if (ack) ack({ ok: true, delivered });
     });

@@ -310,6 +310,10 @@ export const api = {
   // حضورِ واقعیِ کاربران از سرورِ تماس (RTC) — { sub: true/false }
   rtcPresence: (subs: string[]) =>
     req<Record<string, boolean>>(`/rtc/presence?subs=${encodeURIComponent(subs.join(','))}&_=${Date.now()}`),
+  // Web Push
+  pushVapid: () => req<{ publicKey: string; enabled: boolean }>(`/push/vapid`),
+  pushSubscribe: (subscription: any) =>
+    req<{ ok: boolean }>(`/push/subscribe`, { method: 'POST', body: JSON.stringify({ subscription }) }),
   discardDraft: (agentId: string) =>
     req<{ ok: boolean }>(`/ai/session/discard`, { method: 'POST', body: JSON.stringify({ agentId }) }),
 

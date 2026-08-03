@@ -17,6 +17,7 @@ import remindersRoutes from './routes/reminders.js';
 import mapRoutes from './routes/map.js';
 import peerRoutes from './routes/peer.js';
 import rtcRoutes from './routes/rtc.js';
+import pushRoutes from './routes/push.js';
 import { attachRtcHttpProxy } from './rtc/proxy-to-rtc.js';
 import { auditMiddleware } from './audit.js';
 import { agents as SEED_AGENTS } from './seed-data.js';
@@ -64,6 +65,7 @@ export function createApp() {
   app.use('/api/ai', aiRoutes);
   app.use('/api/peer', peerRoutes);
   app.use('/api/rtc', rtcRoutes);
+  app.use('/api/push', pushRoutes);
   app.use('/api/voip', voipRoutes);
   app.use('/api/logs', logsRoutes);
   app.use('/api/analytics', analyticsRoutes);
