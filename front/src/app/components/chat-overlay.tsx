@@ -20,13 +20,11 @@ function __pickFile(accept: string, cb: (name: string) => void) {
 function __speak(text: string) {
   try { const u = new SpeechSynthesisUtterance(text); u.lang = 'fa-IR'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (_) {}
 }
-function __recMic(onOk: () => void, onErr: () => void) {
-  try { (navigator as any).mediaDevices.getUserMedia({ audio: true }).then((st: any) => { onOk(); try { st.getTracks().forEach((t: any) => setTimeout(() => t.stop(), 4000)); } catch (_) {} }).catch(() => onErr()); } catch (_) { onErr(); }
-}
 import { motion, AnimatePresence } from 'motion/react';
 import { LetterAvatar } from './letter-avatar';
 import { useApp } from './app-context';
 import { toFa } from './data';
+import { api } from '../services/api';
 import svgChatIcons from '../../imports/Frame2147223516/svg-6y73huub0v';
 
 export default function ChatOverlay() {
@@ -51,6 +49,30 @@ export default function ChatOverlay() {
   const [deletedHistory, setDeletedHistory] = useState<Record<string, string[]>>({});
   const msgsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // realmic: میکروفونِ واقعی (STT) — ضبط می‌کند، به /ai/stt می‌فرستد و متن را در ورودی می‌گذارد.
+  const [recording, setRecording] = useState(false);
+  const recRef = useRef<any>(null);
+  const chunksRef = useRef<any[]>([]);
+  const toggleMic = async () => {
+    if (recording) { try { recRef.current?.stop(); } catch (_) {} return; }
+    try {
+      const stream = await (navigator as any).mediaDevices.getUserMedia({ audio: true });
+      const mr = new (window as any).MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e: any) => { if (e.data && e.data.size) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        try { stream.getTracks().forEach((t: any) => t.stop()); } catch (_) {}
+        setRecording(false);
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || 'audio/webm' });
+        if (!blob.size) return;
+        const b64: string = await new Promise((res) => { const rd = new FileReader(); rd.onloadend = () => res(String(rd.result || '').split(',')[1] || ''); rd.readAsDataURL(blob); });
+        if (!b64) return;
+        showToast('در حال تبدیل صدا به متن…', 'info');
+        try { const r: any = await (api as any).stt((chat as any)?.id || null, b64, mr.mimeType || 'audio/webm'); const txt = r && r.text ? String(r.text).trim() : ''; if (txt) { setInputText(prev => (prev ? prev + ' ' : '') + txt); setTimeout(() => inputRef.current?.focus(), 50); } else showToast('صدایی تشخیص داده نشد'); } catch (_) { showToast('تبدیل صدا ناموفق بود'); }
+      };
+      recRef.current = mr; mr.start(); setRecording(true); showToast('در حال ضبط… برای پایان دوباره بزنید', 'info');
+    } catch (_) { showToast('دسترسی به میکروفون داده نشد'); }
+  };
   const messages = getMessages();
   const [headerBottom, setHeaderBottom] = useState(120);
 
@@ -275,9 +297,6 @@ export default function ChatOverlay() {
     inputRef.current?.focus();
   };
 
-  const handleAttach = () => {
-    openModal('ارسال فایل', <AttachOptions />);
-  };
 
   const handleCall = () => {
     if (headerName && headerBg && headerInit) {
@@ -756,11 +775,11 @@ export default function ChatOverlay() {
             paddingLeft: 12,
           }}
         >
-          {/* Mic icon (RTL start = right side) */}
-          <div className="flex-shrink-0 w-[22px] h-[22px] relative" onClick={() => __recMic(() => showToast('ضبط صدا شروع شد...'), () => showToast('دسترسی به میکروفون داده نشد'))} style={{ cursor: 'pointer' }}>
+          {/* Mic icon (RTL start = right side) — real STT */}
+          <div className="flex-shrink-0 w-[22px] h-[22px] relative" onClick={toggleMic} style={{ cursor: 'pointer' }} title={recording ? 'در حال ضبط — برای پایان بزنید' : 'ضبط صدا'}>
             <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-              <path d={svgChatIcons.p7f348f0} fill="#565656" />
-              <path d={svgChatIcons.p1899c780} fill="#565656" />
+              <path d={svgChatIcons.p7f348f0} fill={recording ? '#ef4444' : '#565656'} />
+              <path d={svgChatIcons.p1899c780} fill={recording ? '#ef4444' : '#565656'} />
             </svg>
           </div>
 
@@ -780,14 +799,6 @@ export default function ChatOverlay() {
             onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
           />
 
-          {/* Add/attach icon (RTL end = left side) */}
-          <div className="flex-shrink-0 w-[22px] h-[22px] relative" onClick={handleAttach} style={{ cursor: 'pointer' }}>
-            <svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-              <path d={svgChatIcons.p12f1a600} fill="#565656" />
-              <path d={svgChatIcons.p29988c00} fill="#565656" />
-              <path d={svgChatIcons.p2050cb80} fill="#565656" />
-            </svg>
-          </div>
         </div>
       </div>
     </motion.div>
