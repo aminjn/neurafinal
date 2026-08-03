@@ -115,6 +115,8 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
   const [picked, setPicked] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [mapOn, setMapOn] = useState(false);
+  const [plate, setPlate] = useState(''); // addraddr: پلاک
+  const [unit, setUnit] = useState('');   // addraddr: واحد
   React.useEffect(() => { (api as any).mapStatus().then((r: any) => setMapOn(!!(r && r.configured))).catch(() => {}); }, []);
   React.useEffect(() => {
     if (!mapOn || q.trim().length < 2) { setPreds([]); return; }
@@ -133,7 +135,9 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
     if (!addressText) return;
     setBusy(true);
     const loc = picked && picked.location ? picked.location : null;
-    const rec: any = { id: 'addr_' + Date.now(), title: title.trim() || 'آدرس', address: addressText, icon: 'fa-solid fa-location-dot' };
+    const _pl = plate.trim(), _un = unit.trim();
+    const fullAddr = addressText + (_pl ? '، پلاک ' + _pl : '') + (_un ? '، واحد ' + _un : '');
+    const rec: any = { id: 'addr_' + Date.now(), title: title.trim() || 'آدرس', address: fullAddr, plate: _pl, unit: _un, icon: 'fa-solid fa-location-dot' };
     if (loc && loc.lat != null && loc.lng != null) { rec.lat = loc.lat; rec.lng = loc.lng; }
     if (picked && picked.place_id) rec.placeId = picked.place_id;
     try { await (api as any).myCreate('addresses', rec); } catch (_e) {}
@@ -164,6 +168,16 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
       {picked && picked.location && (
         <div className="text-[10px] text-[#10B981]"><i className="fa-solid fa-location-crosshairs ml-1" />موقعیت روی نقشه ثبت شد</div>
       )}
+      <div className="flex gap-2">
+        <div className="flex flex-col gap-1 flex-1">
+          <span className="text-[11px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>پلاک</span>
+          <input style={IN} value={plate} onChange={e => setPlate(e.target.value)} placeholder="مثلاً ۱۲" inputMode="numeric" />
+        </div>
+        <div className="flex flex-col gap-1 flex-1">
+          <span className="text-[11px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>واحد</span>
+          <input style={IN} value={unit} onChange={e => setUnit(e.target.value)} placeholder="مثلاً ۳" inputMode="numeric" />
+        </div>
+      </div>
       <button type="button" onClick={save} disabled={busy}
         className="mt-1 py-2.5 rounded-xl border-none text-white text-[13px] cursor-pointer"
         style={{ background: 'var(--aw-eu-primary, #7B62FC)', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>

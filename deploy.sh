@@ -11,6 +11,14 @@
 # ============================================================
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")" && pwd)"
+# selfpull: همیشه اول آخرین کد را از گیت بگیر (تا دیگر «بیلدِ قدیمی» ساخته نشود)، بعد اسکریپتِ
+# تازه را یک‌بار دوباره اجرا کن (تا تغییراتِ خودِ deploy.sh هم اعمال شود).
+if [ -z "${_NF_REEXEC:-}" ]; then
+  echo -e "\n\033[1;36m==> ۰) دریافتِ آخرین کد از گیت\033[0m"
+  ( cd "$REPO" && git pull --ff-only origin main 2>/dev/null && git --no-pager log --oneline -1 ) || echo "  ⚠️ pull نشد؛ با کدِ محلی ادامه"
+  export _NF_REEXEC=1
+  exec bash "$REPO/deploy.sh" "$@"
+fi
 SERVE="${SERVE_DIR:-/opt/neuravergh}"          # nginx root فرانت (dist داخلش)
 ADMIN="${ADMIN_DIR:-/opt/neuravergh/admin}"     # nginx root سوپرادمین
 SRV="${SERVER_DIR:-/opt/neura-ui/server}"       # مسیرِ سرویسِ Node (شاملِ .env)
