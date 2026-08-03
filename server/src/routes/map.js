@@ -16,6 +16,9 @@ async function mapCfg() {
     key: String(s.mapApiKey || ''),
     keyParam: (s.mapApiKeyParam == null ? 'api_key' : String(s.mapApiKeyParam)),
     keyHeader: String(s.mapApiKeyHeader || ''),
+    // قالبِ تایلِ نقشه (اختیاری) — مثلاً https://tile.neksa.ir/{z}/{x}/{y}.png?key={key}
+    // اگر تنظیم نشود، فرانت به تایلِ OSM برمی‌گردد (نقشه همچنان نمایش داده می‌شود).
+    tileUrl: String(s.mapTileUrl || ''),
   };
 }
 
@@ -80,7 +83,34 @@ router.get('/reverse', authRequired, async (req, res) => {
 // آیا نقشه پیکربندی شده؟ (برای اینکه UI دکمهٔ نقشه را نشان دهد یا نه) — بدونِ افشای کلید.
 router.get('/status', authRequired, async (_req, res) => {
   const cfg = await mapCfg();
-  res.json({ configured: !!cfg.base, hasKey: !!cfg.key });
+  res.json({ configured: !!cfg.base, hasKey: !!cfg.key, tiles: !!cfg.tileUrl });
+});
+
+// پروکسیِ تایلِ نقشه — کلیدِ نکسا سمتِ سرور تزریق می‌شود و به کلاینت نشت نمی‌کند.
+// عمومی است (تصویرِ نقشه حساس نیست و <img> نمی‌تواند هدرِ Authorization بفرستد)؛ z/x/y اعتبارسنجی می‌شوند
+// و فقط به قالبِ تنظیم‌شدهٔ سوپرادمین می‌رود. اگر tileUrl تنظیم نشده باشد ۴۰۴ می‌دهد و فرانت به OSM می‌رود.
+router.get('/tile/:z/:x/:y', async (req, res) => {
+  const cfg = await mapCfg();
+  if (!cfg.tileUrl) return res.status(404).end();
+  const z = parseInt(req.params.z, 10);
+  const x = parseInt(req.params.x, 10);
+  const y = parseInt(String(req.params.y).replace(/\.(png|jpg|jpeg|webp)$/i, ''), 10);
+  if (![z, x, y].every(Number.isInteger) || z < 0 || z > 22 || x < 0 || y < 0) return res.status(400).end();
+  const url = cfg.tileUrl
+    .replace(/\{z\}/g, String(z)).replace(/\{x\}/g, String(x)).replace(/\{y\}/g, String(y))
+    .replace(/\{s\}/g, 'a').replace(/\{key\}/g, encodeURIComponent(cfg.key || ''));
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const headers = {};
+    if (cfg.keyHeader && cfg.key) headers[cfg.keyHeader] = cfg.key;
+    const r = await fetch(url, { headers, signal: ctrl.signal });
+    if (!r.ok) return res.status(r.status).end();
+    res.setHeader('Content-Type', r.headers.get('content-type') || 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const buf = Buffer.from(await r.arrayBuffer());
+    res.end(buf);
+  } catch (e) { res.status(502).end(); } finally { clearTimeout(t); }
 });
 
 export default router;

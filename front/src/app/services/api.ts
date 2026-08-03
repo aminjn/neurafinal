@@ -182,7 +182,7 @@ export const api = {
   dineContent: (kind: string, topic?: string, tone?: string) =>
     req<{ ok: boolean; text: string; fallback?: boolean }>('/ai/dine-content', { method: 'POST', body: JSON.stringify({ kind, topic, tone }) }),
   // نقشه/ژئوکدینگ (کلید سمتِ سرور است؛ کلاینت فقط پروکسی را صدا می‌زند)
-  mapStatus: () => req<{ configured: boolean; hasKey: boolean }>(`/map/status`),
+  mapStatus: () => req<{ configured: boolean; hasKey: boolean; tiles?: boolean }>(`/map/status`),
   mapAutocomplete: (q: string, lat?: number, lng?: number) =>
     req<any>(`/map/autocomplete?q=${encodeURIComponent(q)}${lat != null ? `&lat=${lat}` : ''}${lng != null ? `&lng=${lng}` : ''}`),
   mapGeocode: (address: string) => req<any>(`/map/geocode?address=${encodeURIComponent(address)}`),

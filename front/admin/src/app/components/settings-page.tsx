@@ -382,6 +382,10 @@ export function SettingsPage() {
               <Field label="کلید API نقشه" type="password" ph={s.mapApiKeySet ? "•••••• (ذخیره‌شده)" : "API Key"} {...f("mapApiKey")} />
               <Field label="نام پارامتر کلید (کوئری)" ph="api_key" {...f("mapApiKeyParam")} />
               <Field label="نام هدر کلید (اختیاری)" ph="X-API-Key" {...f("mapApiKeyHeader")} />
+              <div className="sm:col-span-2">
+                <Field label="قالبِ تایلِ نقشه (اختیاری)" ph="https://tile.neksa.ir/{z}/{x}/{y}.png?key={key}" {...f("mapTileUrl")}
+                  hint="اگر نکسا سرویسِ تایل دارد اینجا بگذار تا نقشهٔ تصویری از نکسا بیاید ({z}/{x}/{y} و {key} جایگزین می‌شوند). خالی = نقشهٔ پیش‌فرضِ OpenStreetMap. آدرسِ متنی در هر حالت از همین API نکسا گرفته می‌شود." />
+              </div>
             </div>
           )}
         </CardContent>

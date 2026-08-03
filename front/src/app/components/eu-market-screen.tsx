@@ -22,7 +22,9 @@ function useMarketData() {
   return __MARKET;
 }
  // marketshops
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from './app-context';
 import { OrderDetail } from './end-user-panel';
@@ -108,38 +110,115 @@ function MarketChatTab() {
   return <AgentChatTabUI chatList={CHAT_LIST} interactionMessages={INTERACTION_MESSAGES} agentCards={AGENT_CARDS} agentTopics={AGENT_TOPICS} topicMessages={TOPIC_MESSAGES} suggestionsByAgent={SUGGESTIONS} uniqueKey="market" />;
 }
 
+// آدرسِ ساخت‌یافتهٔ برگشتی از نکسا (ژئوکدِ معکوس) را به یک رشتهٔ خوانا تبدیل می‌کند — چند شکلِ رایج را پوشش می‌دهد.
+function __parseReverse(r: any): string {
+  if (!r) return '';
+  if (typeof r === 'string') return r;
+  const first = Array.isArray(r.results) ? r.results[0] : (r.result || r);
+  return String(
+    r.formatted_address || r.address || r.formattedAddress ||
+    (first && (first.formatted_address || first.address || first.formattedAddress)) ||
+    [first?.route_name, first?.neighbourhood || first?.neighborhood, first?.city, first?.state || first?.province].filter(Boolean).join('، ') ||
+    ''
+  ).trim();
+}
+
+// نقشهٔ واقعیِ تعاملی (Leaflet). پینِ ثابتِ وسط + کشیدنِ نقشه؛ هر بار که نقشه می‌ایستد،
+// مختصاتِ مرکز به بیرون داده می‌شود تا آدرس از نکسا (reverse) گرفته شود. دکمهٔ موقعیتِ من (GPS).
+function AddressMapPicker({ tileUrl, onPoint, onReady }: { tileUrl: string; onPoint: (lat: number, lng: number) => void; onReady?: (flyTo: (lat: number, lng: number) => void) => void }) {
+  const elRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const onPointRef = useRef(onPoint); onPointRef.current = onPoint;
+  useEffect(() => {
+    if (!elRef.current || mapRef.current) return;
+    const TEHRAN: [number, number] = [35.6892, 51.3890];
+    const map = L.map(elRef.current, { zoomControl: true, attributionControl: false, center: TEHRAN, zoom: 14 });
+    mapRef.current = map;
+    L.tileLayer(tileUrl, { maxZoom: 19, subdomains: 'abc' }).addTo(map);
+    let t: any;
+    const emit = () => { const c = map.getCenter(); clearTimeout(t); t = setTimeout(() => onPointRef.current(c.lat, c.lng), 250); };
+    map.on('moveend', emit);
+    if (onReady) onReady((lat: number, lng: number) => map.setView([lat, lng], 16));
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (p) => { map.setView([p.coords.latitude, p.coords.longitude], 16); },
+        () => { onPointRef.current(TEHRAN[0], TEHRAN[1]); },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    } else { onPointRef.current(TEHRAN[0], TEHRAN[1]); }
+    // مودال بعد از باز شدن ابعادش عوض می‌شود؛ اندازهٔ نقشه را دوباره محاسبه کن.
+    const inv = setTimeout(() => map.invalidateSize(), 250);
+    return () => { clearTimeout(inv); clearTimeout(t); map.remove(); mapRef.current = null; };
+  }, []);
+  const gps = () => {
+    if (!navigator.geolocation || !mapRef.current) return;
+    navigator.geolocation.getCurrentPosition((p) => mapRef.current.setView([p.coords.latitude, p.coords.longitude], 16), () => {}, { enableHighAccuracy: true, timeout: 6000 });
+  };
+  return (
+    <div style={{ position: 'relative', width: '100%', height: 230, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--aw-border)' }}>
+      <div ref={elRef} style={{ position: 'absolute', inset: 0 }} />
+      {/* پینِ ثابتِ مرکز */}
+      <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-100%)', pointerEvents: 'none', zIndex: 500 }}>
+        <i className="fa-solid fa-location-dot" style={{ fontSize: 34, color: '#EF4444', filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.45))' }} />
+      </div>
+      <button type="button" onClick={gps} title="موقعیتِ من"
+        style={{ position: 'absolute', right: 10, bottom: 10, zIndex: 500, width: 42, height: 42, borderRadius: 11, border: 'none', background: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', cursor: 'pointer', color: '#7B62FC', fontSize: 16 }}>
+        <i className="fa-solid fa-location-crosshairs" />
+      </button>
+    </div>
+  );
+}
+
 export function AddressFormModal({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState('خانه');
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState('');           // متنِ جست‌وجو برای جابه‌جاییِ نقشه
   const [preds, setPreds] = useState<any[]>([]);
-  const [picked, setPicked] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [mapOn, setMapOn] = useState(false);
-  const [plate, setPlate] = useState(''); // addraddr: پلاک
-  const [unit, setUnit] = useState('');   // addraddr: واحد
-  React.useEffect(() => { (api as any).mapStatus().then((r: any) => setMapOn(!!(r && r.configured))).catch(() => {}); }, []);
-  React.useEffect(() => {
+  const [tileUrl, setTileUrl] = useState('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+  const [addr, setAddr] = useState('');     // آدرسِ خیابان/شهر که «خودِ نکسا» برمی‌گرداند
+  const [loc, setLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [revBusy, setRevBusy] = useState(false);
+  const [plate, setPlate] = useState('');   // پلاک (کاربر)
+  const [unit, setUnit] = useState('');     // واحد (کاربر)
+  const flyRef = useRef<((lat: number, lng: number) => void) | null>(null);
+  useEffect(() => {
+    (api as any).mapStatus().then((r: any) => {
+      setMapOn(!!(r && r.configured));
+      if (r && r.tiles) setTileUrl(((import.meta as any).env?.VITE_API_BASE || '/api') + '/map/tile/{z}/{x}/{y}');
+    }).catch(() => {});
+  }, []);
+  // هر بار نقشه ایستاد → آدرسِ آن نقطه را از نکسا بگیر (reverse) و در فیلدِ آدرس بگذار.
+  const onPoint = useCallback((lat: number, lng: number) => {
+    setLoc({ lat, lng }); setRevBusy(true);
+    (api as any).mapReverse(lat, lng).then((r: any) => { const a = __parseReverse(r); if (a) setAddr(a); }).catch(() => {}).finally(() => setRevBusy(false));
+  }, []);
+  // جست‌وجوی متنی فقط برای «جابه‌جاییِ نقشه» به آن محل است (نه ثبتِ نهایی).
+  useEffect(() => {
     if (!mapOn || q.trim().length < 2) { setPreds([]); return; }
     let alive = true;
-    const h = setTimeout(() => {
-      (api as any).mapAutocomplete(q.trim()).then((r: any) => { if (alive) setPreds(Array.isArray(r && r.predictions) ? r.predictions : []); }).catch(() => {});
-    }, 350);
+    const h = setTimeout(() => { (api as any).mapAutocomplete(q.trim()).then((r: any) => { if (alive) setPreds(Array.isArray(r && r.predictions) ? r.predictions : []); }).catch(() => {}); }, 350);
     return () => { alive = false; clearTimeout(h); };
   }, [q, mapOn]);
-  const pick = (p: any) => {
-    setPicked(p); setPreds([]);
-    setQ(p.main_text ? (p.main_text + (p.secondary_text ? '، ' + p.secondary_text : '')) : (p.formatted_address || q));
+  const pickPred = (p: any) => {
+    setPreds([]); setQ('');
+    const l = p && p.location;
+    if (l && l.lat != null && l.lng != null && flyRef.current) flyRef.current(l.lat, l.lng);
+    else if (p && (p.main_text || p.formatted_address)) {
+      (api as any).mapGeocode(p.formatted_address || p.main_text).then((r: any) => {
+        const g = (r && (r.results?.[0] || r.result || r)) || null; const gl = g && (g.location || g);
+        if (gl && gl.lat != null && gl.lng != null && flyRef.current) flyRef.current(gl.lat, gl.lng);
+      }).catch(() => {});
+    }
   };
   const save = async () => {
-    const addressText = (picked && (picked.formatted_address || (picked.main_text ? picked.main_text + (picked.secondary_text ? '، ' + picked.secondary_text : '') : ''))) || q.trim();
+    const addressText = addr.trim();
     if (!addressText) return;
     setBusy(true);
-    const loc = picked && picked.location ? picked.location : null;
     const _pl = plate.trim(), _un = unit.trim();
     const fullAddr = addressText + (_pl ? '، پلاک ' + _pl : '') + (_un ? '، واحد ' + _un : '');
     const rec: any = { id: 'addr_' + Date.now(), title: title.trim() || 'آدرس', address: fullAddr, plate: _pl, unit: _un, icon: 'fa-solid fa-location-dot' };
-    if (loc && loc.lat != null && loc.lng != null) { rec.lat = loc.lat; rec.lng = loc.lng; }
-    if (picked && picked.place_id) rec.placeId = picked.place_id;
+    if (loc) { rec.lat = loc.lat; rec.lng = loc.lng; }
     try { await (api as any).myCreate('addresses', rec); } catch (_e) {}
     setBusy(false); onDone();
   };
@@ -150,13 +229,14 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
         <span className="text-[11px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>عنوان</span>
         <input style={IN} value={title} onChange={e => setTitle(e.target.value)} placeholder="خانه / محل کار / انبار" />
       </div>
+
+      {/* جست‌وجو برای جابه‌جاییِ نقشه (اختیاری) */}
       <div className="flex flex-col gap-1 relative">
-        <span className="text-[11px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>آدرس {mapOn ? '(جستجو روی نقشه)' : ''}</span>
-        <textarea style={{ ...IN, minHeight: 64, resize: 'vertical' }} value={q} onChange={e => { setQ(e.target.value); setPicked(null); }} placeholder={mapOn ? 'شروع به تایپِ آدرس کن…' : 'آدرسِ کامل را وارد کن'} />
+        <input style={IN} value={q} onChange={e => setQ(e.target.value)} placeholder="جست‌وجوی محله/خیابان برای رفتن روی نقشه… (اختیاری)" />
         {preds.length > 0 && (
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--aw-border)', background: 'var(--aw-bg-card)' }}>
+          <div className="rounded-xl overflow-hidden absolute left-0 right-0 z-[20]" style={{ top: '100%', marginTop: 4, border: '1px solid var(--aw-border)', background: 'var(--aw-bg-card)' }}>
             {preds.slice(0, 6).map((p: any, i: number) => (
-              <button key={p.place_id || i} type="button" onClick={() => pick(p)}
+              <button key={p.place_id || i} type="button" onClick={() => pickPred(p)}
                 className="w-full text-right px-3 py-2 cursor-pointer bg-transparent border-none" style={{ borderTop: i ? '1px solid var(--aw-border)' : 'none' }}>
                 <div className="text-[12px] text-[var(--aw-text-primary)]" style={{ fontWeight: 600 }}>{p.main_text || p.formatted_address || '—'}</div>
                 {p.secondary_text ? <div className="text-[10px] text-[var(--aw-text-muted)]">{p.secondary_text}</div> : null}
@@ -165,9 +245,17 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
           </div>
         )}
       </div>
-      {picked && picked.location && (
-        <div className="text-[10px] text-[#10B981]"><i className="fa-solid fa-location-crosshairs ml-1" />موقعیت روی نقشه ثبت شد</div>
-      )}
+
+      {/* نقشهٔ واقعی — پین را روی درِ خانه‌ات بگذار؛ آدرس خودکار از نکسا پر می‌شود */}
+      <div className="text-[11px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>موقعیت را روی نقشه تنظیم کن (پینِ وسط = محلِ تحویل)</div>
+      <AddressMapPicker tileUrl={tileUrl} onPoint={onPoint} onReady={(fly) => { flyRef.current = fly; }} />
+
+      {/* آدرسِ خودکار از نکسا (قابلِ ویرایش برای اصلاحِ جزئی) */}
+      <div className="flex flex-col gap-1">
+        <span className="text-[11px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>آدرس {revBusy ? '(در حال گرفتن از نقشه…)' : (loc ? '✓' : '')}</span>
+        <textarea style={{ ...IN, minHeight: 56, resize: 'vertical' }} value={addr} onChange={e => setAddr(e.target.value)} placeholder="با تنظیمِ پین روی نقشه، خیابان و شهر خودکار پر می‌شود" />
+      </div>
+
       <div className="flex gap-2">
         <div className="flex flex-col gap-1 flex-1">
           <span className="text-[11px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>پلاک</span>
@@ -178,9 +266,9 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
           <input style={IN} value={unit} onChange={e => setUnit(e.target.value)} placeholder="مثلاً ۳" inputMode="numeric" />
         </div>
       </div>
-      <button type="button" onClick={save} disabled={busy}
+      <button type="button" onClick={save} disabled={busy || !addr.trim()}
         className="mt-1 py-2.5 rounded-xl border-none text-white text-[13px] cursor-pointer"
-        style={{ background: 'var(--aw-eu-primary, #7B62FC)', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>
+        style={{ background: 'var(--aw-eu-primary, #7B62FC)', fontWeight: 700, opacity: (busy || !addr.trim()) ? 0.6 : 1 }}>
         {busy ? 'در حال ذخیره…' : 'ذخیره آدرس'}
       </button>
     </div>

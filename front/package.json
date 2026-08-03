@@ -10,11 +10,12 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.6.0",
+    "leaflet": "^1.9.4",
     "motion": "^11.11.0",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^2.13.3",
-    "qrcode": "^1.5.4"
+    "recharts": "^2.13.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
