@@ -461,30 +461,13 @@ export function EuSupportScreen() {
 
   const supportTabs = SUPPORT_TABS.map(t => t.id === 'tickets' ? { ...t, badge: openTickets } : t);
 
-  const SUPPORT_TOPICS = [];
-
-  const SUPPORT_TOPIC_MESSAGES: Record<number, { from: 'user' | 'agent'; text: string }[]> = {
-    1: [
-      { from: 'user', text: 'پرداخت آنلاینم ناموفق شد ولی مبلغ کم شد!' },
-      { from: 'agent', text: 'سلام، متأسفم بابت این مشکل. تراکنش ناموفق بوده و مبلغ تا ۷۲ ساعت به‌صورت خودکار برمی‌گردد. شماره پیگیری پرداخت را دارید؟' },
-      { from: 'user', text: 'بله، ۴۵۹۸۲۳' },
-      { from: 'agent', text: 'تراکنش ۴۵۹۸۲۳ بررسی شد و درخواست بازگشت وجه ثبت گردید. نتیجه را پیامکی اطلاع می‌دهیم.' },
-    ],
-    2: [
-      { from: 'user', text: 'سفارشم چند روزه که نرسیده.' },
-      { from: 'agent', text: 'بررسی کردم؛ سفارش شما به دلیل ترافیک ارسال یک روز تأخیر خورده و هم‌اکنون در مسیر است. کد رهگیری: NP-8842.' },
-      { from: 'user', text: 'کی می‌رسه؟' },
-      { from: 'agent', text: 'پیش‌بینی تحویل تا فردا ظهر است. بابت تأخیر یک کد تخفیف ۱۵٪ برای خرید بعدی شما فعال شد.' },
-    ],
-    3: [
-      { from: 'user', text: 'وضعیت بازگشت وجه سفارش ۱۰۲۴ چی شد؟' },
-      { from: 'agent', text: 'درخواست بازگشت وجه سفارش ۱۰۲۴ تأیید شده و مبلغ ۸۹۰,۰۰۰ تومان به کیف پول شما واریز شد. ✅' },
-    ],
-    4: [
-      { from: 'user', text: 'گارانتی محصول چند ماهه؟' },
-      { from: 'agent', text: 'این محصول ۱۸ ماه گارانتی رسمی دارد. برای ثبت گارانتی کافیست شماره سریال روی جعبه را در پروفایل خود وارد کنید.' },
-    ],
-  };
+  // supportreal: «پرونده‌ها» = گفتگوهای واقعیِ پشتیبانیِ همین کاربر از سرور (نه پیام‌های هاردکد).
+  const [__supTopics, setSupTopics] = useState<any[]>([]);
+  useEffect(() => {
+    if (!getToken() || !showTopics) return;
+    (async () => { try { const r: any = await (api as any).chatSessions('support'); const arr = r && Array.isArray(r.sessions) ? r.sessions : (Array.isArray(r) ? r : []); setSupTopics(arr); } catch (_) {} })();
+  }, [showTopics]);
+  const SUPPORT_TOPICS = __supTopics.map((s: any) => ({ id: s.id, title: s.title || 'گفتگو', date: s.date || '', msgs: s.count || 0, active: false }));
 
   return (
     <div className="flex flex-col h-full relative">
@@ -537,7 +520,7 @@ export function EuSupportScreen() {
               <button key={topic.id}
                 className="w-full flex items-center gap-3 px-3 py-2.5 border-none bg-transparent cursor-pointer text-right transition-all hover:bg-[rgba(244,63,94,0.08)]"
                 style={topic.active ? { background: 'rgba(244,63,94,0.1)' } : {}}
-                onClick={() => { setShowTopics(false); setTab('chat'); setTopicMsgs(SUPPORT_TOPIC_MESSAGES[topic.id] || []); setLoadSignal(s => s + 1); }}>
+                onClick={async () => { setShowTopics(false); setTab('chat'); try { const d: any = await (api as any).chatSession('support', topic.id); const msgs = (d && Array.isArray(d.messages) ? d.messages : []).map((m: any) => ({ from: m.role === 'user' ? 'user' : 'agent', text: String(m.content || '') })); setTopicMsgs(msgs); } catch (_) { setTopicMsgs([]); } setLoadSignal(s => s + 1); }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{ background: topic.active ? '#f43f5e22' : 'var(--aw-bg-app)' }}>
                   <i className={`fa-solid ${topic.active ? 'fa-comment-dots' : 'fa-file-lines'} text-[12px]`}
