@@ -675,7 +675,13 @@ export default function ChatOverlay() {
 
         {/* Messages */}
         <div ref={msgsRef} className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto px-3 pt-2 pb-3 flex flex-col gap-2 aw-scroll" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
-          {messages.length === 0 && (
+          {messages.length === 0 && (chat.type === 'contact' ? (
+            // چتِ کاربر-به-کاربر (انسان): هیچ خوش‌آمدِ AI/فیک نشان نده — فقط راهنمای ساده.
+            <div className="self-center text-[12px] text-[var(--aw-text-muted)] py-10 text-center">
+              <i className="fa-regular fa-comments text-[22px] mb-2 block opacity-60" />
+              هنوز پیامی نیست. اولین پیام را بفرست 👋
+            </div>
+          ) : (
             <div className="self-end max-w-[82%] px-3.5 py-2.5 rounded-[18px] text-[13px] break-words"
               style={{ background: 'var(--aw-chat-recv, rgba(255,255,255,0.7))', color: 'var(--aw-text-primary)', lineHeight: 1.7, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', backdropFilter: 'blur(8px)', border: '0.5px solid var(--aw-chat-bd, rgba(255,255,255,0.8))', fontFamily: "'Kamand', sans-serif" }}>
               <div style={{ fontWeight: 700, marginBottom: 2 }}>سلام! 👋 دنبال چی می‌گردی؟</div>
@@ -689,7 +695,7 @@ export default function ChatOverlay() {
                 ))}
               </div>
             </div>
-          )}
+          ))}
           {messages.map(m => (
             <div key={m.id} className={`max-w-[78%] px-3.5 py-2.5 rounded-[18px] text-[13px] relative break-words ${
               m.sent ? 'self-start' : 'self-end'

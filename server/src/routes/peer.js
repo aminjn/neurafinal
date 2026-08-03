@@ -68,4 +68,27 @@ router.get('/with', authRequired, async (req, res) => {
   res.json({ messages });
 });
 
+// فهرستِ گفتگوهای کاربر-به-کاربرِ من (برای نمایش در لیستِ گفتگوها) — آخرین پیامِ هر گفتگو.
+router.get('/conversations', authRequired, async (req, res) => {
+  const me = String(req.user.sub);
+  let rows = [];
+  try {
+    rows = (await query(
+      "SELECT data FROM documents WHERE collection='peer_msgs' AND (data->>'from'=$1 OR data->>'to'=$1) ORDER BY (data->>'ts')::bigint",
+      [me]
+    )).rows;
+  } catch (_) { rows = []; }
+  const byConv = {};
+  for (const r of rows) { const m = r.data; const other = String(m.from) === me ? String(m.to) : String(m.from); byConv[other] = { other, lastText: m.text, ts: m.ts }; }
+  const others = Object.keys(byConv);
+  const names = {};
+  if (others.length) {
+    try { const u = await query('SELECT id, name, username FROM app_users WHERE id::text = ANY($1::text[])', [others]); for (const row of u.rows) names[String(row.id)] = row.name || row.username; } catch (_) {}
+  }
+  const conversations = Object.values(byConv)
+    .map((c) => ({ sub: c.other, name: names[c.other] || c.other, lastText: c.lastText, ts: c.ts }))
+    .sort((a, b) => b.ts - a.ts);
+  res.json({ conversations });
+});
+
 export default router;

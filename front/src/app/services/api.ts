@@ -304,7 +304,9 @@ export const api = {
   peerSend: (to: string, text: string) =>
     req<{ ok: boolean; message: any }>(`/peer/send`, { method: 'POST', body: JSON.stringify({ to, text }) }),
   peerWith: (sub: string) =>
-    req<{ messages: { from: string; to: string; text: string; ts: number }[] }>(`/peer/with?sub=${encodeURIComponent(sub)}&_=${Date.now()}`),
+    req<{ messages: { from: string; to: string; text: string; ts: number; mine?: boolean }[] }>(`/peer/with?sub=${encodeURIComponent(sub)}&_=${Date.now()}`),
+  peerConversations: () =>
+    req<{ conversations: { sub: string; name: string; lastText: string; ts: number }[] }>(`/peer/conversations?_=${Date.now()}`),
   discardDraft: (agentId: string) =>
     req<{ ok: boolean }>(`/ai/session/discard`, { method: 'POST', body: JSON.stringify({ agentId }) }),
 

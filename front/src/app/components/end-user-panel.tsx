@@ -1659,6 +1659,10 @@ function EuChatListScreen() {
   // مخاطبانِ واقعیِ کاربر (per-user) — منبعِ USER_CONVERSATIONS/convoOptions به‌جای نام‌های فیک.
   const [__euContacts, __setEuContacts] = useState<{ name: string; phone: string }[]>([]);
   useEffect(() => { (api as any).contacts().then((r: any) => __setEuContacts(Array.isArray(r?.contacts) ? r.contacts : [])).catch(() => {}); }, []);
+  // گفتگوهای واقعیِ کاربر-به-کاربرِ نورا — بعد از ایجنت‌ها در همین لیست نمایش داده می‌شوند.
+  const [__peerConvs, __setPeerConvs] = useState<any[]>([]);
+  const __loadPeerConvs = () => { (api as any).peerConversations().then((r: any) => __setPeerConvs(Array.isArray(r?.conversations) ? r.conversations : [])).catch(() => {}); };
+  useEffect(() => { __loadPeerConvs(); const h = () => __loadPeerConvs(); window.addEventListener('neura:data-changed', h); return () => window.removeEventListener('neura:data-changed', h); }, []);
   const [chatListTab, setChatListTab] = useState<'interactions' | 'agents'>('interactions');
   const [searchQuery, setSearchQuery] = useState('');
   const [chatFilter, setChatFilter] = useState('all');
@@ -1943,6 +1947,24 @@ function EuChatListScreen() {
                 </div>
               );
             })()}
+            {/* گفتگوهای کاربر-به-کاربرِ نورا — بعد از ایجنت‌ها */}
+            {(chatFilter === 'all' || chatFilter === 'unread') && __peerConvs
+              .filter((c: any) => { const sq = searchQuery.trim(); return !sq || String(c.name || '').includes(sq) || String(c.lastText || '').includes(sq); })
+              .map((c: any) => (
+              <SwipeToCall key={'peer_' + c.sub} onCall={() => startCall(c.name, 'کاربر نورا', 'bg-[var(--aw-eu-primary,#7B62FC)]', String(c.name || '?').charAt(0), '')}>
+                <div className="flex items-center gap-3 p-3 rounded-[10px] cursor-pointer border border-transparent hover:bg-[var(--aw-bg-card-hover)] active:scale-[0.98]"
+                  onClick={() => openChat('peer_' + c.sub, 'contact', { name: c.name, init: String(c.name || '?').charAt(0), bg: 'bg-[var(--aw-eu-primary,#7B62FC)]', sub: 'کاربر نورا' } as any, [])}>
+                  <div className="relative flex-shrink-0"><LetterAvatar name={c.name} init={String(c.name || '?').charAt(0)} size={48} radius={14} /></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-0.5">
+                      <span className="text-sm" style={{ fontWeight: 600 }}>{c.name}</span>
+                    </div>
+                    <div className="text-[10px] text-[var(--aw-text-muted)] flex items-center gap-1"><i className="fa-solid fa-user" /> کاربر نورا</div>
+                    <div className="text-[12px] text-[var(--aw-text-secondary)] truncate">{c.lastText}</div>
+                  </div>
+                </div>
+              </SwipeToCall>
+            ))}
           </div>
         </>
       ) : (
