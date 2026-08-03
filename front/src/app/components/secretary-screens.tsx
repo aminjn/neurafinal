@@ -2075,7 +2075,7 @@ export function SecDailyFinanceScreen() {
                   {receipts.map(r => (
                     <div key={'ar' + r.id} className="p-3 flex items-center justify-between gap-2" style={cardStyle}>
                       <div className="flex-1 min-w-0"><span className="text-[12.5px] text-[var(--aw-text-primary)]" style={{ fontWeight: 600 }}>{r.from}</span><div className="text-[10px] text-[var(--aw-text-muted)] mt-0.5">{r.date} · {r.method}</div></div>
-                      <span className="text-[12.5px] text-[#10B981] flex-shrink-0" style={{ fontWeight: 700 }}>{r.amount}</span>
+                      <span className="text-[12.5px] text-[#10B981] flex-shrink-0" style={{ fontWeight: 700 }}>{(Number(String(r.amount).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR')}</span>
                     </div>
                   ))}
                 </div>
@@ -2086,7 +2086,7 @@ export function SecDailyFinanceScreen() {
                   {payments.map(p => (
                     <div key={'ap' + p.id} className="p-3 flex items-center justify-between gap-2" style={cardStyle}>
                       <div className="flex-1 min-w-0"><span className="text-[12.5px] text-[var(--aw-text-primary)]" style={{ fontWeight: 600 }}>{p.title}</span><div className="text-[10px] text-[var(--aw-text-muted)] mt-0.5">{p.date} · {p.recipient}</div></div>
-                      <span className="text-[12.5px] text-[#EF4444] flex-shrink-0" style={{ fontWeight: 700 }}>{p.amount}</span>
+                      <span className="text-[12.5px] text-[#EF4444] flex-shrink-0" style={{ fontWeight: 700 }}>{(Number(String(p.amount).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR')}</span>
                     </div>
                   ))}
                 </div>
@@ -2126,7 +2126,7 @@ export function SecDailyFinanceScreen() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end flex-shrink-0">
-                      <span className="text-[13px] text-[#10B981]" style={{ fontWeight: 700 }}>{r.amount}</span>
+                      <span className="text-[13px] text-[#10B981]" style={{ fontWeight: 700 }}>{(Number(String(r.amount).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR')}</span>
                       <span className="text-[10px] text-[var(--aw-text-muted)] mt-0.5">{r.date}</span>
                     </div>
                   </div>
@@ -2151,7 +2151,7 @@ export function SecDailyFinanceScreen() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end flex-shrink-0">
-                      <span className="text-[13px] text-[#EF4444]" style={{ fontWeight: 700 }}>{p.amount}</span>
+                      <span className="text-[13px] text-[#EF4444]" style={{ fontWeight: 700 }}>{(Number(String(p.amount).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR')}</span>
                       <span className="text-[10px] text-[var(--aw-text-muted)] mt-0.5">{p.date}</span>
                     </div>
                   </div>
