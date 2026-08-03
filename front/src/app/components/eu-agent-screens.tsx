@@ -1542,6 +1542,7 @@ function AssistantNewChat({ resetSignal = 0, loadMessages = null, loadSignal = 0
   const asst: any = (agents || []).find((a: any) => a.id === 'assistant') || null;
   const asstName: string = (asst && (asst.name || asst.title)) || 'دستیار';
   const [messages, setMessages] = useState<{ from: 'user' | 'agent'; text: string }[]>([]);
+  const messagesRef = useRef(messages); messagesRef.current = messages;
   // chatpersist: گفتگوی دستیار را per-user ذخیره/بارگذاری کن تا با هارد‌رفرش/ناوبری نپرد
   const __chatLoaded = useRef(false);
   useEffect(() => { if (!getToken()) return; (async () => { try { const v: any = await (api as any).myList('asst_msgs'); if (Array.isArray(v) && v.length) setMessages(v as any); } catch (_) {} __chatLoaded.current = true; })(); }, []);
@@ -1643,9 +1644,17 @@ function AssistantNewChat({ resetSignal = 0, loadMessages = null, loadSignal = 0
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight; }, [messages, voiceState]);
 
-  // + (new chat) → reset conversation in-place, no new page
+  // + (new chat) → گفتگوی فعلی را به‌صورتِ یک «پرونده» آرشیو کن (نه اُوررایت)، بعد گفتگوی خالیِ جدید شروع کن
   useEffect(() => {
     if (resetSignal === 0) return;
+    const cur = messagesRef.current || [];
+    if (cur.length) {
+      const firstUser = cur.find(m => m.from === 'user');
+      const title = String((firstUser ? firstUser.text : cur[0].text) || 'گفتگو').slice(0, 40);
+      const sess = { id: Date.now(), title, date: new Date().toISOString(), messages: cur };
+      (api as any).myCreate('asst_sessions', sess).catch(() => {});
+      try { window.dispatchEvent(new CustomEvent('asst-sessions-changed')); } catch (_) {}
+    }
     setMessages([]);
     setInputText('');
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -2020,6 +2029,24 @@ export function EuAssistantScreen() {
   const [drawerSearch, setDrawerSearch] = useState('');
   const [topicsList, setTopicsList] = useState<any[]>([]);
   const [foldersList, setFoldersList] = useState<any[]>([]);
+  // پرونده‌های گفتگوی دستیار (asst_sessions) — هر «گفتگوی جدید»، قبلی را اینجا آرشیو می‌کند.
+  useEffect(() => {
+    const load = () => {
+      if (!getToken()) return;
+      (api as any).myList('asst_sessions').then((v: any) => {
+        if (!Array.isArray(v)) return;
+        const s = v.slice().sort((a: any, b: any) => (Number(b.id) || 0) - (Number(a.id) || 0)).map((x: any) => ({
+          id: x.id, title: x.title || 'گفتگو',
+          date: /^\d{4}-\d{2}-\d{2}T/.test(String(x.date)) ? new Date(x.date).toLocaleDateString('fa-IR') : (x.date || ''),
+          msgs: Array.isArray(x.messages) ? x.messages.length : 0, messages: x.messages || [], active: false,
+        }));
+        setTopicsList(s);
+      }).catch(() => {});
+    };
+    load();
+    window.addEventListener('asst-sessions-changed', load);
+    return () => window.removeEventListener('asst-sessions-changed', load);
+  }, []);
 
   // Drag sheet (mobile) — mirrors the admin chat overlay: 3 snaps (full / below-header / closed)
   const FULL_TOP = 0;
@@ -2216,9 +2243,8 @@ export function EuAssistantScreen() {
                     setFoldersList((l: any[]) => [{ id: newId, title: 'پوشه جدید', date: '۰ مورد', active: false }, ...l]);
                     setDrawerEditId(newId); setDrawerEditVal('پوشه جدید');
                   } else {
-                    const newId = Date.now();
-                    setTopicsList((l: any[]) => [{ id: newId, title: 'گفتگوی جدید', date: 'همین الان', msgs: 0, active: false }, ...l]);
-                    setDrawerEditId(newId); setDrawerEditVal('گفتگوی جدید');
+                    // «گفتگوی جدید» واقعی: گفتگوی فعلی را آرشیو کن و خالیِ نو شروع کن (نه تاپیکِ فیکِ محلی)
+                    setShowTopics(false); setTab('chat'); setNewChatSignal(s => s + 1);
                   }
                 }}>
                 <i className="fa-solid fa-plus text-[9px]" /> جدید
@@ -2244,7 +2270,7 @@ export function EuAssistantScreen() {
             {(drawerView === 'folders' ? FOLDERS_LIST : TOPICS_LIST).filter((item: any) => !drawerSearch.trim() || (item.title || '').includes(drawerSearch.trim())).map((item: any) => {
               const setList = drawerView === 'folders' ? setFoldersList : setTopicsList;
               const isEditing = drawerEditId === item.id;
-              const openItem = () => { setShowTopics(false); setTab('chat'); if (drawerView !== 'folders') { setTopicMsgs(TOPIC_MESSAGES[item.id] || []); setLoadSignal(s => s + 1); } };
+              const openItem = () => { setShowTopics(false); setTab('chat'); if (drawerView !== 'folders') { setTopicMsgs((item.messages && item.messages.length ? item.messages : (TOPIC_MESSAGES[item.id] || []))); setLoadSignal(s => s + 1); } };
               return (
                 <div key={item.id} className="w-full flex items-center gap-1 px-2 py-2 transition-all"
                   style={item.active ? { background: 'rgba(99,102,241,0.08)' } : {}}>
