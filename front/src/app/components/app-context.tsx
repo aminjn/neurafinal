@@ -942,10 +942,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else if (type === 'customer') {
       getCustMsgs(id);
     } else if (type === 'contact') {
-      setContactMsgsMap(prev => {
-        if (prev[id]) return prev;
-        return { ...prev, [id]: initialMessages || [] };
-      });
+      // peerchat: گفتگوی واقعیِ کاربر-به-کاربرِ نورا — تاریخچه را از سرور بگیر (id = 'peer_<sub>')
+      if (String(id).startsWith('peer_')) {
+        const other = String(id).slice(5);
+        (api as any).peerWith(other).then((r: any) => {
+          const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, text: m.text, sent: !!m.mine, time: '' }));
+          setContactMsgsMap(prev => ({ ...prev, [id]: msgs }));
+        }).catch(() => { setContactMsgsMap(prev => (prev[id] ? prev : { ...prev, [id]: [] })); });
+      } else {
+        setContactMsgsMap(prev => {
+          if (prev[id]) return prev;
+          return { ...prev, [id]: initialMessages || [] };
+        });
+      }
     }
 
     setChatState({ open: true, id, type, topicId, topicsOpen: false, contactMeta: meta });
@@ -1096,6 +1105,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setGroupMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
     } else if (chat.type === 'contact' && chat.id) {
       setContactMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
+      // peerchat: پیام را واقعاً به کاربرِ نورا بفرست (بدونِ پاسخِ خودکار — طرفِ مقابل انسان است)
+      if (String(chat.id).startsWith('peer_')) { const other = String(chat.id).slice(5); (api as any).peerSend(other, text).catch(() => {}); }
     } else if (chat.type === 'customer' && chat.id) {
       setCustMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
 

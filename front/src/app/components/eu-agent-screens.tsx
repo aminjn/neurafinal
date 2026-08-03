@@ -2160,12 +2160,6 @@ export function EuAssistantScreen() {
             <i className="fa-solid fa-clock-rotate-left text-[13px]" />
             <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px]" style={{ background: '#6366f1', fontWeight: 700 }}>{TOPICS_LIST.length}</span>
           </button>
-          <button className="w-8 h-8 rounded-[10px] border border-[var(--aw-border)] bg-transparent cursor-pointer flex items-center justify-center text-[var(--aw-text-secondary)] hover:text-[#6366f1] hover:border-[#6366f1] transition-all relative"
-            style={showTopics && drawerView === 'folders' ? { background: 'rgba(99,102,241,0.12)', color: '#6366f1', borderColor: '#6366f1' } : {}}
-            onClick={() => toggleDrawer('folders')} title="پوشه‌ها">
-            <i className="fa-solid fa-folder-open text-[13px]" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px]" style={{ background: '#6366f1', fontWeight: 700 }}>{FOLDERS_LIST.length}</span>
-          </button>
           <button className="w-8 h-8 rounded-[10px] border border-[var(--aw-border)] bg-transparent cursor-pointer flex items-center justify-center text-[var(--aw-text-secondary)] hover:text-[#6366f1] hover:border-[#6366f1] transition-all"
             onClick={() => { setNewChatSignal(s => s + 1); showToast('گفتگوی جدید'); }} title="گفتگوی جدید">
             <i className="fa-solid fa-plus text-[13px]" />

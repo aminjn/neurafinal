@@ -15,6 +15,7 @@ import logsRoutes from './routes/logs.js';
 import analyticsRoutes from './routes/analytics.js';
 import remindersRoutes from './routes/reminders.js';
 import mapRoutes from './routes/map.js';
+import peerRoutes from './routes/peer.js';
 import { auditMiddleware } from './audit.js';
 import { agents as SEED_AGENTS } from './seed-data.js';
 import { query } from './db.js';
@@ -57,6 +58,7 @@ export function createApp() {
   app.use('/api/shop', shopRoutes);
   app.use('/api/users', usersRoutes);
   app.use('/api/ai', aiRoutes);
+  app.use('/api/peer', peerRoutes);
   app.use('/api/voip', voipRoutes);
   app.use('/api/logs', logsRoutes);
   app.use('/api/analytics', analyticsRoutes);

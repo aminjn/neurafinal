@@ -483,8 +483,8 @@ export function EuSupportScreen() {
         </button>
         <div className="flex items-center gap-1.5">
         <button className="w-8 h-8 rounded-xl border border-[var(--aw-border)] bg-transparent cursor-pointer flex items-center justify-center text-[var(--aw-text-secondary)] hover:text-[#f43f5e] hover:border-[#f43f5e] transition-all relative"
-          onClick={() => setShowTopics(!showTopics)}>
-          <i className="fa-solid fa-folder-open text-[13px]" />
+          onClick={() => setShowTopics(!showTopics)} title="تاریخچه گفتگو">
+          <i className="fa-solid fa-clock-rotate-left text-[13px]" />
           <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px]" style={{ background: '#f43f5e', fontWeight: 700 }}>{SUPPORT_TOPICS.length}</span>
         </button>
         <button className="w-8 h-8 rounded-xl border border-[var(--aw-border)] bg-transparent cursor-pointer flex items-center justify-center text-[var(--aw-text-secondary)] hover:text-[#f43f5e] hover:border-[#f43f5e] transition-all"

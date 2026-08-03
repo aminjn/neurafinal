@@ -298,6 +298,13 @@ export const api = {
     req<{ ok: boolean; total: number; added: number }>(`/ai/contacts`, { method: 'POST', body: JSON.stringify({ contacts }) }),
   deleteContact: (phone: string) =>
     req<{ ok: boolean }>(`/ai/contacts/delete`, { method: 'POST', body: JSON.stringify({ phone }) }),
+  // پیام‌رسانیِ کاربر-به-کاربرِ نورا
+  peerResolve: (phones: string[]) =>
+    req<{ users: { sub: string; name: string; phone: string }[] }>(`/peer/resolve`, { method: 'POST', body: JSON.stringify({ phones }) }),
+  peerSend: (to: string, text: string) =>
+    req<{ ok: boolean; message: any }>(`/peer/send`, { method: 'POST', body: JSON.stringify({ to, text }) }),
+  peerWith: (sub: string) =>
+    req<{ messages: { from: string; to: string; text: string; ts: number }[] }>(`/peer/with?sub=${encodeURIComponent(sub)}&_=${Date.now()}`),
   discardDraft: (agentId: string) =>
     req<{ ok: boolean }>(`/ai/session/discard`, { method: 'POST', body: JSON.stringify({ agentId }) }),
 

@@ -1266,67 +1266,86 @@ function __chatBg(i: number): string {
 }
 
 function NewConversationModal() {
-  const { openChat, closeModal } = useApp();
+  const { openChat, closeModal, setEuScreen, agents } = useApp() as any;
   const [q, setQ] = useState('');
+  const [neura, setNeura] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // مخاطبینِ واقعیِ کاربر (از /ai/contacts) — نه فهرستِ کاربرانِ فیک.
-  const [APP_USERS, setPeople] = React.useState<any[]>([]);
-  React.useEffect(() => { (async () => { try { const r: any = await api.contacts(); const list = (r && r.contacts) || []; setPeople(list.map((c: any, i: number) => ({ id: 'c' + i, name: c.name || c.phone || 'مخاطب', init: String(c.name || c.phone || '?').charAt(0), bg: 'bg-[var(--aw-eu-primary,#7B62FC)]', handle: c.phone || '', online: false }))); } catch (_e) {} })(); }, []);
+  // مخاطبینِ کاربر را می‌گیریم و از سرور می‌پرسیم کدام‌شان «کاربرِ نورا» هستند (فقط همان‌ها قابلِ پیام‌اند).
+  React.useEffect(() => { (async () => {
+    try {
+      const r: any = await api.contacts(); const list = (r && r.contacts) || [];
+      const phones = list.map((c: any) => c.phone).filter(Boolean);
+      if (phones.length) {
+        const rr: any = await (api as any).peerResolve(phones);
+        const nameByPhone: any = {}; list.forEach((c: any) => { if (c.phone) nameByPhone[String(c.phone).replace(/\D/g, '').slice(-10)] = c.name; });
+        setNeura((rr?.users || []).map((u: any) => ({ sub: String(u.sub), name: nameByPhone[String(u.phone).replace(/\D/g, '').slice(-10)] || u.name || u.phone, phone: u.phone })));
+      }
+    } catch (_e) {}
+    setLoading(false);
+  })(); }, []);
 
-  const sq = q.trim().toLowerCase();
-  const filtered = APP_USERS.filter(u => !sq || u.name.toLowerCase().includes(sq) || u.handle.toLowerCase().includes(sq));
-
-  const start = (u: typeof APP_USERS[number]) => {
-    openChat('peer_' + u.id, 'contact', { name: u.name, init: u.init, bg: u.bg, sub: u.online ? 'آنلاین' : 'آفلاین' }, []);
-    closeModal();
+  const AGENT_META: Record<string, { label: string; icon: string; screen: string }> = {
+    assistant: { label: 'دستیار شخصی', icon: 'fa-solid fa-robot', screen: 'euAssistantScreen' },
+    support: { label: 'پشتیبانی', icon: 'fa-solid fa-headset', screen: 'euSupportScreen' },
+    restaurant: { label: 'سفارش غذا', icon: 'fa-solid fa-utensils', screen: 'euDineScreen' },
+    market: { label: 'مارکت', icon: 'fa-solid fa-store', screen: 'euMarketScreen' },
   };
+  const pinnedIds = ['assistant', 'support'];
+  const otherIds = ['restaurant', 'market'];
+  const agentRow = (id: string) => {
+    const m = AGENT_META[id]; if (!m) return null;
+    const a = (agents || []).find((x: any) => x.id === id);
+    return (
+      <div key={id} className="flex items-center gap-3 p-2.5 rounded-[10px] cursor-pointer border border-transparent hover:bg-[var(--aw-bg-card-hover)] active:scale-[0.98] transition-all"
+        onClick={() => { closeModal(); setEuScreen(m.screen); }}>
+        <div className="w-11 h-11 rounded-[13px] flex items-center justify-center text-white flex-shrink-0" style={{ background: 'var(--aw-eu-primary, #7B62FC)' }}><i className={`${m.icon} text-[16px]`} /></div>
+        <div className="flex-1 min-w-0"><div className="text-[13px]" style={{ fontWeight: 700, color: 'var(--aw-text-primary)' }}>{(a && a.name) || m.label}</div><div className="text-[11px] text-[var(--aw-text-muted)]">ایجنت</div></div>
+        <i className="fa-solid fa-chevron-left text-[11px] text-[var(--aw-text-muted)]" />
+      </div>
+    );
+  };
+  const sq = q.trim();
+  const filteredUsers = neura.filter((u) => !sq || String(u.name || '').includes(sq) || String(u.phone || '').includes(sq));
+  const openPeer = (u: any) => { openChat('peer_' + u.sub, 'contact', { name: u.name, init: String(u.name || '?').charAt(0), bg: 'bg-[var(--aw-eu-primary,#7B62FC)]', sub: 'کاربر نورا' }, []); closeModal(); };
 
   return (
-    <div className="flex flex-col" style={{ maxHeight: '62vh' }}>
-      {/* Search */}
+    <div className="flex flex-col" style={{ maxHeight: '66vh' }}>
       <div className="flex items-center gap-2 rounded-[10px] px-3 border border-[var(--aw-border)] flex-shrink-0" style={{ background: 'var(--aw-bg-input)' }}>
         <i className="fa-solid fa-search text-[12px] text-[var(--aw-text-muted)]" />
-        <input
-          autoFocus
-          className="flex-1 bg-transparent border-none py-2.5 text-[13px] text-[var(--aw-text-primary)] outline-none placeholder:text-[var(--aw-text-muted)]"
-          placeholder="جستجوی نام یا آیدی کاربر..."
-          value={q}
-          onChange={e => setQ(e.target.value)}
-        />
-        {q && (
-          <button className="border-none bg-transparent text-[var(--aw-text-muted)] text-[12px] cursor-pointer hover:text-[var(--aw-eu-primary)]" onClick={() => setQ('')}>
-            <i className="fa-solid fa-xmark" />
-          </button>
-        )}
+        <input autoFocus className="flex-1 bg-transparent border-none py-2.5 text-[13px] text-[var(--aw-text-primary)] outline-none placeholder:text-[var(--aw-text-muted)]"
+          placeholder="جستجوی کاربر یا شماره…" value={q} onChange={e => setQ(e.target.value)} />
+        {q && <button className="border-none bg-transparent text-[var(--aw-text-muted)] text-[12px] cursor-pointer" onClick={() => setQ('')}><i className="fa-solid fa-xmark" /></button>}
       </div>
 
-      {/* Results */}
       <div className="overflow-y-auto mt-2 aw-scroll -mx-1 px-1">
-        {filtered.length === 0 ? (
-          <div className="text-center text-[12px] text-[var(--aw-text-muted)] py-10">
-            <i className="fa-solid fa-user-slash text-[20px] mb-2 block opacity-50" />
-            کاربری با این نام یافت نشد
+        {/* ایجنت‌ها — دستیار شخصی و پشتیبانی همیشه بالا، بقیه زیرشان */}
+        {!sq && (
+          <>
+            <div className="text-[11px] text-[var(--aw-text-muted)] px-1 mt-1 mb-1" style={{ fontWeight: 700 }}>ایجنت‌ها</div>
+            {pinnedIds.map(agentRow)}
+            {otherIds.map(agentRow)}
+          </>
+        )}
+
+        {/* کاربرانِ نورا از میان مخاطبینِ من */}
+        <div className="text-[11px] text-[var(--aw-text-muted)] px-1 mt-3 mb-1" style={{ fontWeight: 700 }}>کاربرانِ نورا (از مخاطبین تو)</div>
+        {loading ? (
+          <div className="text-center text-[12px] text-[var(--aw-text-muted)] py-6">در حال بررسی مخاطبین…</div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="text-center text-[12px] text-[var(--aw-text-muted)] py-6">
+            <i className="fa-solid fa-user-slash text-[18px] mb-2 block opacity-50" />
+            {neura.length === 0 ? 'هیچ‌کدام از مخاطبینت هنوز در نورا نیستند. وقتی عضو شوند اینجا می‌آیند.' : 'کاربری با این جست‌وجو نیست.'}
           </div>
         ) : (
-          filtered.map(u => (
-            <div
-              key={u.id}
-              className="flex items-center gap-3 p-2.5 rounded-[10px] cursor-pointer border border-transparent hover:bg-[var(--aw-bg-card-hover)] active:scale-[0.98] transition-all"
-              onClick={() => start(u)}
-            >
-              <div className="relative flex-shrink-0">
-                <LetterAvatar name={u.name} init={u.init} size={44} radius={13} />
-                {u.online && (
-                  <span className="absolute bottom-0 left-0 w-3 h-3 rounded-full border-2 border-[var(--aw-bg-modal)]" style={{ background: 'var(--aw-online)' }} />
-                )}
-              </div>
+          filteredUsers.map((u) => (
+            <div key={u.sub} className="flex items-center gap-3 p-2.5 rounded-[10px] cursor-pointer border border-transparent hover:bg-[var(--aw-bg-card-hover)] active:scale-[0.98] transition-all" onClick={() => openPeer(u)}>
+              <div className="relative flex-shrink-0"><LetterAvatar name={u.name} init={String(u.name || '?').charAt(0)} size={44} radius={13} /></div>
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] truncate" style={{ fontWeight: 600, color: 'var(--aw-text-primary)' }}>{u.name}</div>
-                <div className="text-[11px] text-[var(--aw-text-muted)] truncate" dir="ltr" style={{ textAlign: 'right' }}>{u.handle}</div>
+                <div className="text-[11px] text-[var(--aw-text-muted)] truncate" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
               </div>
-              <span className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--aw-eu-primary, #7B62FC)', color: '#fff' }}>
-                <i className="fa-solid fa-comment-dots text-[13px]" />
-              </span>
+              <span className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--aw-eu-primary, #7B62FC)', color: '#fff' }}><i className="fa-solid fa-comment-dots text-[13px]" /></span>
             </div>
           ))
         )}
@@ -1630,7 +1649,8 @@ function AddToChatCategoryModal({ options, selected, onSave }: { options: { id: 
 // ========================
 function EuChatListScreen() {
   const { agents, openChat, openModal, setEuScreen, startCall, showToast } = useApp();
-  const euAgentIds = ['restaurant', 'market', 'assistant', 'support'];
+  // دستیار شخصی و پشتیبانی همیشه بالا؛ بقیهٔ ایجنت‌ها زیرِ این دو.
+  const euAgentIds = ['assistant', 'support', 'restaurant', 'market'];
   const euAgents = euAgentIds.map(id => agents.find(a => a.id === id)).filter((a): a is Agent => a != null);
   // پیشِ‌نمایشِ واقعیِ گفتگو (موضوعِ آخرین سشن) به‌جای lastMsgِ بریفینگِ خودکار.
   const [__sessPreview, __setSessPreview] = useState<Record<string, string>>({});
