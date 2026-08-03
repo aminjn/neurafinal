@@ -35,14 +35,7 @@ const MEETINGS = [];
 // 3 → meetings list
 // 4 → charts (activity + revenue)
 // 5 → CTA
-const BRIEFING_LINES = [
-  'سلام، صبح بخیر! من دستیار شخصی شما هستم.',
-  'خلاصه گزارش امروز رو براتون آماده کردم.',
-  '۳ وظیفه با اولویت بالا در انتظار بررسی شماست.',
-  '۴ جلسه برای امروز برنامه‌ریزی شده.',
-  'درآمد این هفته ۱۲٪ نسبت به هفته قبل رشد داشته.',
-  'هر وقت آماده بودید، بریم سراغ کار!',
-];
+// realbriefing: خطوطِ روایت داخلِ کامپوننت از دادهٔ واقعی ساخته می‌شوند (پایین‌تر).
 
 // ========================
 // MINI TOOLTIP
@@ -179,6 +172,21 @@ export default function DailyBriefingScreen({ onDismiss }: { onDismiss: () => vo
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter(t => t.status === 'done').length;
   const todayMeetings = MEETINGS.length;
+  // realbriefing: روایتِ صوتی از دادهٔ واقعی ساخته می‌شود (نه اعدادِ هاردکد که با کارت‌های زیرش تناقض داشت)
+  const BRIEFING_LINES = [
+    'سلام! من دستیار شخصی شما هستم.',
+    'خلاصهٔ گزارش امروز رو براتون آماده کردم.',
+    highPriorityCount === 0
+      ? 'وظیفهٔ با اولویت بالایی در انتظار بررسی نیست.'
+      : `${toFa(highPriorityCount)} وظیفه با اولویت بالا در انتظار بررسی شماست.`,
+    todayMeetings === 0
+      ? 'جلسه‌ای برای امروز ثبت نشده.'
+      : `${toFa(todayMeetings)} جلسه برای امروز برنامه‌ریزی شده.`,
+    totalTasks === 0
+      ? 'هنوز وظیفه‌ای ثبت نشده؛ بریم شروع کنیم.'
+      : `${toFa(doneTasks)} از ${toFa(totalTasks)} وظیفه تا الان انجام شده.`,
+    'هر وقت آماده بودید، بریم سراغ کار!',
+  ];
 
   // Which sections are visible
   const showStats = currentLine >= 1 && !isDismissing;
