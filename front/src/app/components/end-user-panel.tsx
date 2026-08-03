@@ -75,7 +75,10 @@ function EuHeader() {
   const agentMeta = AGENT_SCREEN_META[euScreen];
   // شمارشِ واقعیِ اعلان‌ها برای بَجِ هدر (به‌جای نقطه/عددِ فیک). خالی برای کاربرِ تازه.
   const _euHdrApp = useApp() as any;
-  const [_euNotifCount, _setEuNotifCount] = useState(0);
+  // بَجِ هدر = تعدادِ اعلان‌های واقعی (سفارشِ فعال + یادآوری + کارِ باز + اعلانِ ذخیره‌شده)، نه فقط collectionِ خالی.
+  const [_euStored, _setEuStored] = useState<any[]>([]);
+  const [_euCal, _setEuCal] = useState<any[]>([]);
+  const [_euTasks, _setEuTasks] = useState<any[]>([]);
   React.useEffect(() => {
     let _live = true;
     (async () => {
@@ -83,11 +86,16 @@ function EuHeader() {
         const v: any = _euHdrApp.role === 'user'
           ? await (api as any).myList('notifications')
           : await (api as any).list('notifications', _euHdrApp.company);
-        if (_live && Array.isArray(v)) _setEuNotifCount(v.length);
+        if (_live && Array.isArray(v)) _setEuStored(v);
       } catch (_e) {}
+      if (_euHdrApp.role === 'user') {
+        try { const c: any = await (api as any).myList('calendar'); if (_live && Array.isArray(c)) _setEuCal(c); } catch (_e) {}
+        try { const t: any = await (api as any).myList('tasks'); if (_live && Array.isArray(t)) _setEuTasks(t); } catch (_e) {}
+      }
     })();
     return () => { _live = false; };
   }, [_euHdrApp.role, _euHdrApp.company]);
+  const _euNotifCount = buildEuFeed({ stored: _euStored, calendar: _euCal, tasks: _euTasks, orders: (_euHdrApp.euPlacedOrders || []) }).length;
   // Personal-assistant agents for the top name dropdown.
   const asstAgents = (agents || []).filter((a: any) => a.team === 'assistant' || a.id === 'assistant');
   const activeAsst = asstAgents.find((a: any) => a.id === assistantId) || asstAgents[0];
@@ -845,13 +853,49 @@ function WalletModal() {
   );
 }
 
+// وضعیتِ سفارش به فارسی (هر دو واژگانِ مارکت و آشپزخانهٔ داین)
+const __EU_ORD_FA: Record<string, string> = {
+  pending: 'در انتظار تایید', preparing: 'در حال آماده‌سازی', confirmed: 'تایید شد', shipping: 'در حال ارسال',
+  delivering: 'در حال ارسال', delivered: 'تحویل شده', cancelled: 'لغو شده',
+  received: 'ثبت شد', cooking: 'در حال آماده‌سازی', ready: 'آماده', served: 'سرو شد', paid: 'تسویه‌شده',
+};
+const __euActiveOrder = (o: any) => ['pending', 'preparing', 'confirmed', 'shipping', 'delivering', 'received', 'cooking', 'ready'].includes(String(o && o.status));
+const __euFmtDate = (d: any) => /^\d{4}-\d{2}-\d{2}T/.test(String(d)) ? new Date(d).toLocaleString('fa-IR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : (d || '');
+// اعلان‌های واقعی از دادهٔ خودِ کاربر: سفارش‌های فعال + یادآوری‌های تقویم + کارهای بازِ روزمرگی + اعلان‌های ذخیره‌شده.
+function buildEuFeed({ stored, calendar, tasks, orders }: { stored: any[]; calendar: any[]; tasks: any[]; orders: any[] }) {
+  const out: any[] = [];
+  (orders || []).filter(__euActiveOrder).forEach((o: any) => out.push({
+    id: 'ord_' + o.id, type: 'order', icon: 'fa-solid fa-bag-shopping',
+    title: 'سفارش ' + (o.num ? '#' + o.num : '') + (o.source === 'dine' ? ' (غذا)' : ' (مارکت)'),
+    desc: __EU_ORD_FA[String(o.status)] || String(o.status || ''), time: __euFmtDate(o.date), _sort: 4,
+  }));
+  (calendar || []).filter((e: any) => e && !e.done && e.status !== 'done' && e.status !== 'cancelled' && (e.title)).forEach((e: any) => out.push({
+    id: 'cal_' + e.id, type: 'reminder', icon: 'fa-solid fa-bell',
+    title: e.title, desc: [e.date, e.time].filter(Boolean).join(' · ') || 'یادآوریِ روزمرگی', time: e.time || '', _sort: 3,
+  }));
+  (tasks || []).filter((t: any) => t && !t.done && t.status !== 'done' && t.title).slice(0, 20).forEach((t: any) => out.push({
+    id: 'task_' + t.id, type: 'task', icon: 'fa-solid fa-list-check',
+    title: t.title, desc: 'کارِ بازِ روزمرگی' + (t.dueDate ? ' · ' + t.dueDate : ''), time: '', _sort: 2,
+  }));
+  (stored || []).forEach((n: any) => out.push({ ...n, type: (n.type || 'info'), target: (n.target || ''), _sort: (n.type === 'order' || n.type === 'chat') ? 4 : 1 }));
+  return out.sort((a, b) => (b._sort || 0) - (a._sort || 0));
+}
+
 function EuNotifications() {
-  const { closeModal, openChat, setEuScreen, agents } = useApp();
+  const { closeModal, openChat, setEuScreen, agents, euPlacedOrders } = useApp() as any;
 
   const __appN = useApp() as any; const __coN = __appN.company; const __roleN = __appN.role;
-  const [__euNotifs, setEuNotifs] = useState<any[]>([]);
-  useEffect(() => { (async () => { try { const v: any = __roleN === 'user' ? await (api as any).myList('notifications') : await (api as any).list('notifications', __coN); if (Array.isArray(v)) setEuNotifs(v.slice().reverse()); } catch (_) {} })(); }, [__coN, __roleN]);
-  const euNotifs: any[] = (__euNotifs || []).map((n: any) => ({ ...n, type: (n.type || 'info') as string, target: (n.target || '') }));
+  const [__stored, setStored] = useState<any[]>([]);
+  const [__cal, setCal] = useState<any[]>([]);
+  const [__tasks, setTasks] = useState<any[]>([]);
+  useEffect(() => { (async () => {
+    try { const v: any = __roleN === 'user' ? await (api as any).myList('notifications') : await (api as any).list('notifications', __coN); if (Array.isArray(v)) setStored(v.slice().reverse()); } catch (_) {}
+    if (__roleN === 'user') {
+      try { const c: any = await (api as any).myList('calendar'); if (Array.isArray(c)) setCal(c); } catch (_) {}
+      try { const t: any = await (api as any).myList('tasks'); if (Array.isArray(t)) setTasks(t); } catch (_) {}
+    }
+  })(); }, [__coN, __roleN]);
+  const euNotifs: any[] = buildEuFeed({ stored: __stored, calendar: __cal, tasks: __tasks, orders: (euPlacedOrders || []) });
 
   return (
     <div>
@@ -866,10 +910,12 @@ function EuNotifications() {
           onClick={() => {
             closeModal();
             if (n.type === 'chat') {
-              const a = agents.find(x => x.id === n.target);
+              const a = agents.find((x: any) => x.id === n.target);
               if (a && !a.locked) setTimeout(() => openChat(n.target, 'eu'), 200);
             } else if (n.type === 'order') {
               setEuScreen('euOrdersScreen');
+            } else if (n.type === 'reminder' || n.type === 'task') {
+              setEuScreen('euPlannerScreen');
             }
           }}>
           <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--aw-eu-nav-bg)', border: '1px solid var(--aw-eu-nav-border)', backdropFilter: 'blur(8px)' }}>
@@ -881,9 +927,9 @@ function EuNotifications() {
             <div className="text-[13px] mb-0.5" style={{ fontWeight: 600 }}>{n.title}</div>
             <div className="text-[11px] text-[var(--aw-text-secondary)]">{n.desc}</div>
             <div className="text-[10px] text-[var(--aw-text-muted)] mt-1">{n.time}</div>
-            {(n.type === 'chat' || n.type === 'order') && (
+            {(n.type === 'chat' || n.type === 'order' || n.type === 'reminder' || n.type === 'task') && (
               <span className="text-[11px] text-[var(--aw-eu-primary)] mt-1 inline-block" style={{ fontWeight: 600 }}>
-                {n.type === 'chat' ? 'مشاهده چت' : 'مشاهده سفارش'} ←
+                {n.type === 'chat' ? 'مشاهده چت' : n.type === 'order' ? 'مشاهده سفارش' : 'مشاهده در روزمرگی'} ←
               </span>
             )}
           </div>
