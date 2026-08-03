@@ -785,6 +785,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => { try { const w: any = await (api as any).getWallet(); if (w) { if (typeof w.balance === 'number') setWalletBalance(w.balance); if (Array.isArray(w.tx)) setWalletTx(w.tx); if (Array.isArray(w.ownedAgents)) setOwnedAgents(w.ownedAgents); if (Array.isArray(w.ownedAvatars)) setOwnedAvatars(w.ownedAvatars); if (Array.isArray(w.ownedThemes)) setOwnedThemes(w.ownedThemes); } } catch (_) {} })();
   }, [appStage]);
 
+  // euchatpersist: گفتگوی کاربر با ایجنت‌ها (رستوران/مارکت/پشتیبانی/دستیار) per-user ذخیره/بازیابی می‌شود
+  // تا با بستن/بازکردنِ اپ یا دستگاهِ دیگر نپرد (قبلاً فقط در حافظه بود و «ذخیره نمی‌شد»).
+  const _euChatsLoaded = useRef(false);
+  useEffect(() => {
+    if (!getToken() || appStage !== 'app' || role !== 'user') return;
+    (async () => {
+      try {
+        const v: any = await (api as any).myList('eu_chats');
+        if (Array.isArray(v) && v.length) {
+          const m: Record<string, Message[]> = {};
+          for (const d of v) if (d && d.id != null && Array.isArray(d.messages)) m[String(d.id)] = d.messages;
+          setEuMsgsMap(prev => ({ ...prev, ...m }));
+        }
+      } catch (_) {}
+      _euChatsLoaded.current = true;
+    })();
+  }, [appStage, role]);
+  useEffect(() => {
+    if (!_euChatsLoaded.current || !getToken() || role !== 'user') return;
+    const _h = setTimeout(() => {
+      const docs = Object.entries(euMsgsMap).map(([id, messages]) => ({ id, messages: (messages || []).slice(-200) }));
+      (api as any).myBulkSave('eu_chats', docs).catch(() => {});
+    }, 800);
+    return () => clearTimeout(_h);
+  }, [euMsgsMap]);
+
   useEffect(() => {
     if (!getToken() || appStage !== 'app') return;
     (async () => { try { const _l: any = await (api as any).myList('businesses'); if (Array.isArray(_l) && _l.length) { const _rec: any = {}; for (const _b of _l) if (_b && _b.id) _rec[_b.id] = _b; setCompanies((prev: any) => ({ ...prev, ..._rec })); } } catch (_) {} })();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from './app-context';
 import { api, getToken } from '../services/api';
@@ -363,6 +363,10 @@ function SupportFeedbackTab() {
 function SupportNewChat({ loadMessages = null, loadSignal = 0 }: { loadMessages?: { from: 'user' | 'agent'; text: string }[] | null; loadSignal?: number }) {
   const [messages, setMessages] = useState<{ from: 'user' | 'agent'; text: string }[]>([]);
   const [inputText, setInputText] = useState('');
+  // suppchatpersist: گفتگوی پشتیبانی per-user ذخیره/بازیابی می‌شود تا با بستن/بازکردنِ اپ نپرد.
+  const __supLoaded = useRef(false);
+  useEffect(() => { if (!getToken()) return; (async () => { try { const v: any = await (api as any).myList('support_msgs'); if (Array.isArray(v) && v.length) setMessages(v as any); } catch (_) {} __supLoaded.current = true; })(); }, []);
+  useEffect(() => { if (!__supLoaded.current || !getToken()) return; const h = setTimeout(() => { (api as any).myBulkSave('support_msgs', messages).catch(() => {}); }, 600); return () => clearTimeout(h); }, [messages]);
 
   useEffect(() => {
     if (loadSignal === 0) return;
