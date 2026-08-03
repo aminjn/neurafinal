@@ -909,7 +909,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getPMsgs(id);
       setPersonnel(prev => prev.map(p => p.id === id ? { ...p, unread: 0 } : p));
     } else if (type === 'eu') {
-      getEuMsgs(id);
+      if (initialMessages && initialMessages.length) setEuMsgsMap(prev => ({ ...prev, [id]: [...(prev[id] || []), ...initialMessages] }));
+      else getEuMsgs(id);
     } else if (type === 'customer') {
       getCustMsgs(id);
     } else if (type === 'contact') {

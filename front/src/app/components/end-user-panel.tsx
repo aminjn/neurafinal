@@ -2153,16 +2153,24 @@ function EuOrdersScreen() {
   );
 }
 
+// orderdate: تاریخِ ISO را به تاریخِ فارسیِ خوانا تبدیل کن (وگرنه رشتهٔ فعلی مثل «هم‌اکنون» را نگه‌دار)
+function __faOrderDate(d: any): string {
+  if (!d) return '';
+  const s = String(d);
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) { const dt = new Date(s); if (!isNaN(dt.getTime())) return dt.toLocaleDateString('fa-IR') + ' ' + dt.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }); }
+  return s;
+}
+
 export function OrderDetail({ order: o }: { order: Order }) {
   const { closeModal, openChat } = useApp();
-  // نگاشتِ عامل از منبعِ واقعیِ سفارش (سفارشِ خرید agentId ندارد؛ از source مشتق می‌شود).
-  const __agentId = (o as any).agentId || ((o as any).source === 'dine' ? 'restaurant' : 'market');
+  const __num = (o as any).num || (o as any).id || '';
+  const __statusLabel = (ORDER_STATUS_LABELS as any)[o.status] || 'ثبت شد';
 
   return (
     <div>
       <div className="text-center mb-4">
-        <i className="fa-solid fa-shopping-bag text-[40px] text-[var(--aw-eu-primary)] mb-2.5 block" />
-        <h3>سفارش #{o.num}</h3>
+        <i className={`fa-solid ${(o as any).source === 'dine' ? 'fa-utensils' : 'fa-bag-shopping'} text-[40px] text-[var(--aw-eu-primary)] mb-2.5 block`} />
+        <h3>سفارش #{__num}</h3>
       </div>
       <div className="flex justify-between py-2 border-b border-[var(--aw-border-light)] text-[12px]">
         <span className="text-[var(--aw-text-secondary)]">وضعیت</span>
@@ -2178,12 +2186,12 @@ export function OrderDetail({ order: o }: { order: Order }) {
       </div>
       <div className="flex justify-between py-2 border-b border-[var(--aw-border-light)] text-[12px]">
         <span className="text-[var(--aw-text-secondary)]">تاریخ</span>
-        <span style={{ fontWeight: 700 }}>{o.date}</span>
+        <span style={{ fontWeight: 700 }}>{__faOrderDate(o.date)}</span>
       </div>
       <div className="flex gap-2 mt-4">
         <button className="flex-1 py-2.5 px-5 border-none rounded-[10px] text-[13px] text-white cursor-pointer" style={{ background: 'var(--aw-primary, #2E86FF)', fontWeight: 600 }}
-          onClick={() => { closeModal(); setTimeout(() => openChat(__agentId, 'eu'), 200); }}>
-          <i className="fa-solid fa-comment" /> پیگیری با عامل
+          onClick={() => { closeModal(); setTimeout(() => openChat('assistant', 'eu', undefined, [{ id: Date.now(), text: `پیگیری سفارش #${__num} — وضعیت: ${__statusLabel}`, sent: false, time: '' } as any]), 200); }}>
+          <i className="fa-solid fa-comment" /> پیگیری سفارش با دستیار
         </button>
         {/* دکمهٔ «لغو» حذف شد: آرایهٔ اشتباه را دست‌کاری می‌کرد و toastِ «لغو شد» دروغ بود؛ لغوِ واقعی نیازِ endpointِ سرور + بازپرداخت + اطلاعِ صندوقدار دارد (کارِ بعدی). */}
       </div>

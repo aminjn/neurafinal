@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from './app-context';
 import { QuickForm } from './quick-actions';
 import { toFa, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from './data';
+import { OrderDetail } from './end-user-panel';
 
 // Figma-exported icon components
 import Layer from '../../imports/Layer4-1/index';
@@ -407,26 +408,32 @@ function EuHomeScreenGlass() {
 
       {/* ── فعالیت‌های اخیر ── */}
       <div className="px-4 mt-3">
-        {orders.slice(0, 4).map((o: any) => ({ icon: 'fa-solid fa-utensils', bg: 'rgba(255,141,40,0.16)', color: '#FF8D28', title: 'سفارش' + (o.num ? (' #' + o.num) : ''), sub: (ORDER_STATUS_LABELS as any)[o.status] || 'ثبت شد', time: o.date || '', action: () => setEuScreen('euOrdersScreen') })).map((a, i) => (
+        {orders.slice(0, 4).map((o: any, i: number) => {
+          // euorders: آیکون بر اساسِ منبعِ واقعی (مارکت=کیف، دین=قاشق‌چنگال)، تاریخِ فارسی، کلیک→جزئیاتِ واقعی (نه صفحهٔ سفید)
+          const isDine = o.source === 'dine';
+          const ic = isDine ? { icon: 'fa-solid fa-utensils', bg: 'rgba(255,141,40,0.16)', color: '#FF8D28' } : { icon: 'fa-solid fa-bag-shopping', bg: 'rgba(139,92,246,0.16)', color: '#8B5CF6' };
+          const ds = String(o.date || '');
+          const time = /^\d{4}-\d{2}-\d{2}T/.test(ds) ? new Date(ds).toLocaleDateString('fa-IR') : ds;
+          const title = 'سفارش' + (o.num ? (' #' + o.num) : '');
+          const sub = (ORDER_STATUS_LABELS as any)[o.status] || 'ثبت شد';
+          return (
           <div
             key={i}
             className="flex items-center px-3 gap-3 mb-2 cursor-pointer"
             style={{ ...gcGlass, height: 62, overflow: 'hidden' }}
-            onClick={a.action}
+            onClick={() => openModal('جزئیات سفارش', <OrderDetail order={o} />)}
           >
-            {/* icon chip RIGHT */}
-            <div className="flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, borderRadius: 10, background: a.bg }}>
-              <i className={a.icon} style={{ fontSize: 15, color: a.color }} />
+            <div className="flex items-center justify-center flex-shrink-0" style={{ width: 38, height: 38, borderRadius: 10, background: ic.bg }}>
+              <i className={ic.icon} style={{ fontSize: 15, color: ic.color }} />
             </div>
-            {/* text */}
             <div className="flex-1 flex flex-col items-end min-w-0" style={{ gap: 2 }}>
-              <p style={{ fontFamily: KAMAND, fontSize: 13, fontWeight: 700, color: 'var(--aw-text-primary)', margin: 0 }}>{a.title}</p>
-              <p className="truncate max-w-full" style={{ fontFamily: KAMAND, fontSize: 11, color: 'var(--aw-text-secondary)', margin: 0 }}>{a.sub}</p>
+              <p style={{ fontFamily: KAMAND, fontSize: 13, fontWeight: 700, color: 'var(--aw-text-primary)', margin: 0 }}>{title}</p>
+              <p className="truncate max-w-full" style={{ fontFamily: KAMAND, fontSize: 11, color: 'var(--aw-text-secondary)', margin: 0 }}>{sub}</p>
             </div>
-            {/* time LEFT */}
-            <span className="flex-shrink-0" style={{ fontFamily: KAMAND, fontSize: 9.5, color: 'var(--aw-text-muted)' }}>{a.time}</span>
+            <span className="flex-shrink-0" style={{ fontFamily: KAMAND, fontSize: 9.5, color: 'var(--aw-text-muted)' }}>{time}</span>
           </div>
-        ))}
+          );
+        })}
       </div>
 
     </div>
@@ -498,17 +505,17 @@ function EuHomeScreenDefault() {
               مشاهده همه <i className="fa-solid fa-chevron-left text-[8px]" />
             </button>
           </div>
-          {activeOrders.slice(0, 2).map(o => (
+          {activeOrders.slice(0, 2).map((o: any) => (
             <div key={o.id} className="flex items-center gap-3 p-3 rounded-xl mb-2 border cursor-pointer"
               style={{ background: 'var(--aw-eu-card)', borderColor: 'rgba(126,95,170,0.15)' }}
-              onClick={() => setEuScreen('euOrdersScreen')}>
+              onClick={() => openModal('جزئیات سفارش', <OrderDetail order={o} />)}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ background: ORDER_STATUS_COLORS[o.status]?.bg || 'var(--aw-primary-bg)' }}>
-                <i className={`fa-solid fa-utensils text-[14px]`}
+                <i className={`fa-solid ${o.source === 'dine' ? 'fa-utensils' : 'fa-bag-shopping'} text-[14px]`}
                   style={{ color: ORDER_STATUS_COLORS[o.status]?.text || 'var(--aw-eu-primary)' }} />
               </div>
               <div className="flex-1 text-right">
-                <div style={{ fontSize: 12, fontWeight: 700 }}>سفارش</div>
+                <div style={{ fontSize: 12, fontWeight: 700 }}>سفارش{o.num ? ' #' + o.num : ''}</div>
                 <div style={{ fontSize: 11, color: 'var(--aw-text-muted)' }}>{ORDER_STATUS_LABELS[o.status]}</div>
               </div>
             </div>
