@@ -2223,7 +2223,7 @@ function EuOrdersScreen() {
               </span>
             </div>
             <div className="text-[12px] text-[var(--aw-text-secondary)] space-y-1">
-              <div className="flex items-center gap-1.5"><i className="fa-solid fa-utensils text-[var(--aw-text-muted)]" /> {(o as any).items || (o as any).desc}</div>
+              <div className="flex items-center gap-1.5"><i className="fa-solid fa-utensils text-[var(--aw-text-muted)]" /> {__orderItemsText(o)}</div>
               <div className="flex items-center gap-1.5"><i className="fa-solid fa-calendar text-[var(--aw-text-muted)]" /> {o.date}</div>
               <div className="flex items-center gap-1.5"><i className="fa-solid fa-coins text-[var(--aw-accent)]" /> {(o as any).total != null ? Number((o as any).total).toLocaleString('fa-IR') + ' تومان' : ((o as any).price + ' ریال')}</div>
             </div>
@@ -2238,6 +2238,22 @@ function EuOrdersScreen() {
       </div>
     </div>
   );
+}
+
+// orderitems: شرحِ سفارش را امن رِندر کن. آیتم‌های واقعیِ داین/مارکت آرایه‌ای از آبجکت‌اند
+// ({name,qty,price})؛ رِندرِ مستقیمِ آرایهٔ آبجکت به‌عنوانِ فرزندِ React خطای #31 می‌دهد (کرشِ صفحه).
+function __orderItemsText(o: any): string {
+  const it = o && (o.items ?? o.desc);
+  if (Array.isArray(it)) {
+    return it.map((x: any) => {
+      if (x == null) return '';
+      if (typeof x === 'string') return x;
+      const nm = x.name || x.title || '';
+      return x.qty && x.qty > 1 ? `${nm}×${x.qty}` : nm;
+    }).filter(Boolean).join('، ') || (it.length ? it.length + ' قلم' : '');
+  }
+  if (it && typeof it === 'object') return it.name || it.title || '';
+  return it != null ? String(it) : '';
 }
 
 // orderdate: تاریخِ ISO را به تاریخِ فارسیِ خوانا تبدیل کن (وگرنه رشتهٔ فعلی مثل «هم‌اکنون» را نگه‌دار)
@@ -2265,7 +2281,7 @@ export function OrderDetail({ order: o }: { order: Order }) {
       </div>
       <div className="flex justify-between py-2 border-b border-[var(--aw-border-light)] text-[12px]">
         <span className="text-[var(--aw-text-secondary)]">شرح</span>
-        <span style={{ fontWeight: 600 }}>{(o as any).items || (o as any).desc}</span>
+        <span style={{ fontWeight: 600 }}>{__orderItemsText(o)}</span>
       </div>
       <div className="flex justify-between py-2 border-b border-[var(--aw-border-light)] text-[12px]">
         <span className="text-[var(--aw-text-secondary)]">مبلغ کل</span>

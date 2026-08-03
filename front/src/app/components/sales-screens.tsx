@@ -582,7 +582,25 @@ export function SalesOrdersScreen() {
   };
 
   const [__srvOrd, setSrvOrd] = useState<any[]>([]);
-  useEffect(() => { if (!company) return; (async () => { try { const v: any = await (api as any).list('orders', company); if (Array.isArray(v)) setSrvOrd((v as any[]).filter((o: any) => o.source === 'pos' || o.source === 'sales').map((o: any) => ({ id: o.id, customer: o.customer || 'مهمان', table: o.table || 'میز ۱', items: Array.isArray(o.items) ? o.items.length : (o.items || 0), total: o.total || 0, time: o.time || 'اخیر', status: o.status || 'active', payment: o.paid ? 'paid' : (o.payment || 'pending'), note: o.note || '', source: o.source }))); } catch (_) {} })(); }, [company]);
+  // فروش‌های آنلاین: سفارش‌هایی که از فروشگاه/داین/مارکت آمده‌اند (نه POS/فروشِ دستی). واقعی، از سرور.
+  const [__onlineSales, setOnlineSales] = useState<any[]>([]);
+  useEffect(() => {
+    if (!company) return;
+    (async () => {
+      try {
+        const v: any = await (api as any).list('orders', company);
+        if (!Array.isArray(v)) return;
+        setSrvOrd((v as any[]).filter((o: any) => o.source === 'pos' || o.source === 'sales').map((o: any) => ({ id: o.id, customer: o.customer || 'مهمان', table: o.table || 'میز ۱', items: Array.isArray(o.items) ? o.items.length : (o.items || 0), total: o.total || 0, time: o.time || 'اخیر', status: o.status || 'active', payment: o.paid ? 'paid' : (o.payment || 'pending'), note: o.note || '', source: o.source })));
+        setOnlineSales((v as any[]).filter((o: any) => o.source && o.source !== 'pos' && o.source !== 'sales').map((o: any) => ({
+          id: o.id,
+          total: o.total || 0,
+          date: o.date || o.createdAt || o.ts || Date.now(),
+          itemsText: Array.isArray(o.items) ? (o.items.map((it: any) => it.name || it.title).filter(Boolean).join('، ') || (o.items.length + ' قلم')) : (o.title || 'فروش آنلاین'),
+          source: o.source,
+        })));
+      } catch (_) {}
+    })();
+  }, [company]);
   const ORDERS_DATA = __srvOrd;
   const activeOrders = ORDERS_DATA.filter(o => o.status === 'active');
   const completedOrders = ORDERS_DATA.filter(o => o.status === 'completed');
