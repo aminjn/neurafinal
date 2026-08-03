@@ -576,7 +576,7 @@ export function EuAvatar({ palette, accent, name, portrait, cornerSlot, onSwipeL
   }, []);
 
   return (
-    <div ref={rootRef} className="md:hidden relative" style={{ width: '100%', overflowX: 'clip', overflowY: 'visible', height: Math.round((active ? H : H / 3) * fit), marginTop: active ? -40 : -14, marginBottom: active ? 4 : 6, touchAction: 'none', transition: 'height 0.45s cubic-bezier(0.4,0,0.2,1), margin-top 0.45s cubic-bezier(0.4,0,0.2,1), margin-bottom 0.45s cubic-bezier(0.4,0,0.2,1)' }}>
+    <div ref={rootRef} className="md:hidden relative" style={{ width: '100%', overflowX: 'hidden', overflowY: 'visible', height: Math.round((active ? H : H / 3) * fit), marginTop: active ? -40 : -14, marginBottom: active ? 4 : 6, touchAction: 'none', transition: 'height 0.45s cubic-bezier(0.4,0,0.2,1), margin-top 0.45s cubic-bezier(0.4,0,0.2,1), margin-bottom 0.45s cubic-bezier(0.4,0,0.2,1)' }}>
     <div className="relative flex items-center justify-center overflow-visible" style={{ width: '100%', height: active ? H : Math.round(H / 3), transform: `scale(${fit})`, transformOrigin: 'top center', transition: 'height 0.45s cubic-bezier(0.4,0,0.2,1)' }}>
       <motion.div
         className="touch-none relative flex items-center justify-center overflow-visible"
@@ -600,7 +600,10 @@ export function EuAvatar({ palette, accent, name, portrait, cornerSlot, onSwipeL
           style={{ width: '100%', height: '100%', opacity: powered ? 1 : 0, transition: 'opacity 0.55s ease' }} />
         {/* Portrait — circular, sized as a fraction of the container so it tracks the spectrum at every size */}
         <div ref={womanRef} className="absolute rounded-full overflow-hidden" style={{
-          height: '54%', aspectRatio: '1', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', transformOrigin: 'center',
+          // ابعادِ صریحِ پیکسلی (نه درصد+aspect-ratio) — روی iOS Safari ترکیبِ height:٪ + aspect-ratio
+          // عرض را به صفر می‌بُرد و آواتار «ناپدید» می‌شد. حالا مربعِ ثابت بر مبنای ارتفاعِ والد.
+          width: Math.round((active ? H : H / 3) * 0.54), height: Math.round((active ? H : H / 3) * 0.54),
+          left: '50%', top: '50%', transform: 'translate(-50%, -50%)', transformOrigin: 'center',
           filter: 'none',
           transition: 'filter 0.5s ease',
           boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.18)',
