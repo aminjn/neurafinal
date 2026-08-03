@@ -1181,7 +1181,7 @@ const FOLLOWUP_TYPE_LABELS: Record<string, string> = {
   invoice: 'فاکتور',
 };
 
-const leadStatusColors: Record<string, string> = { 'جدید': '#3B82F6', 'تماس اول': '#F59E0B', 'پیگیری': '#8B5CF6' };
+const leadStatusColors: Record<string, string> = { 'جدید': '#3B82F6', 'تماس اول': '#F59E0B', 'پیگیری': '#8B5CF6', 'ارجاع به فروش': '#10B981', 'برنده': '#22C55E', 'بسته‌شده': '#6B7280' };
 const typeIcons: Record<string, string> = { call: 'fa-solid fa-phone', email: 'fa-solid fa-envelope', meeting: 'fa-solid fa-users', task: 'fa-solid fa-list-check' };
 
 function FollowupCard({ item, variant }: { item: FollowupItem; variant: 'overdue' | 'upcoming' }) {
@@ -1253,6 +1253,10 @@ export function SecCrmLiteScreen() {
   __usePersist('sec_leads', leads, setLeads);
   const [followups, setFollowups] = useState<any[]>(MOCK_FOLLOWUPS);
   __usePersist('sec_followups', followups, setFollowups);
+  // crmreal: لاگِ فعالیتِ واقعی (per-user، پایدار) — تایم‌لاینِ CRM از همین می‌آید، نه هاردکد.
+  const [activities, setActivities] = useState<any[]>([]);
+  __usePersist('sec_activities', activities, setActivities);
+  const logActivity = (kind: string, title: string, desc: string) => setActivities((prev: any[]) => [{ id: Date.now(), kind, title, desc, at: Date.now() }, ...prev].slice(0, 200));
   const [tab, setTab] = useState('contacts');
   const [contactQuery, setContactQuery] = useState('');
   const [contactSegment, setContactSegment] = useState('همه');
@@ -1328,7 +1332,7 @@ export function SecCrmLiteScreen() {
           { icon: 'fa-solid fa-envelope', color: '#3b82f6', label: 'ایمیل' },
           { icon: 'fa-solid fa-note-sticky', color: '#f59e0b', label: 'یادداشت' },
         ].map(a => (
-          <button key={a.label} onClick={() => { const ph = String((c as any).phone || '').replace(/[^\d]/g, ''); if (a.label === 'تماس') window.location.href = 'tel:' + ph; else if (a.label === 'پیامک') window.location.href = 'sms:' + ph; else if (a.label === 'واتساپ') window.open('https://wa.me/' + (ph.startsWith('0') ? '98' + ph.slice(1) : ph), '_blank'); else if (a.label === 'ایمیل') window.location.href = 'mailto:' + ((c as any).email || ''); else { (api as any).myCreate('sec_todos', { kind: 'note', contact: (c as any).name, at: new Date().toISOString() }); } }} className="flex-1 py-1.5 rounded-md border-none cursor-pointer flex items-center justify-center gap-1 text-[10px]" style={{ background: `${a.color}15`, color: a.color, fontWeight: 600 }}>
+          <button key={a.label} onClick={() => { const ph = String((c as any).phone || '').replace(/[^\d]/g, ''); const nm = (c as any).name || 'مخاطب'; if (a.label === 'تماس') { logActivity('call', 'تماس با ' + nm, ph); window.location.href = 'tel:' + ph; } else if (a.label === 'پیامک') { logActivity('sms', 'پیامک به ' + nm, ph); window.location.href = 'sms:' + ph; } else if (a.label === 'واتساپ') { logActivity('whatsapp', 'واتساپ به ' + nm, ''); window.open('https://wa.me/' + (ph.startsWith('0') ? '98' + ph.slice(1) : ph), '_blank'); } else if (a.label === 'ایمیل') { logActivity('email', 'ایمیل به ' + nm, (c as any).email || ''); window.location.href = 'mailto:' + ((c as any).email || ''); } else { logActivity('note', 'یادداشت برای ' + nm, ''); showToast('یادداشت ثبت شد'); } }} className="flex-1 py-1.5 rounded-md border-none cursor-pointer flex items-center justify-center gap-1 text-[10px]" style={{ background: `${a.color}15`, color: a.color, fontWeight: 600 }}>
             <i className={`${a.icon} text-[10px]`} />{a.label}
           </button>
         ))}
@@ -1337,6 +1341,15 @@ export function SecCrmLiteScreen() {
   );
   const favContacts = contacts.filter((c: any) => c.fav);
 
+  // crmreal: KPIهای واقعی از شمارشِ دادهٔ واقعی + تایم‌لاین از لاگِ فعالیتِ واقعی
+  const CRM_KPIS = [
+    { color: '#3B82F6', icon: 'fa-solid fa-address-book', value: toFa(contacts.length), label: 'مخاطبین' },
+    { color: '#8B5CF6', icon: 'fa-solid fa-user-plus', value: toFa(leads.length), label: 'سرنخ‌ها' },
+    { color: '#F59E0B', icon: 'fa-solid fa-arrows-rotate', value: toFa(followups.filter((f: any) => f.status !== 'done').length), label: 'پیگیری فعال' },
+    { color: '#10B981', icon: 'fa-solid fa-handshake', value: toFa(contacts.filter((c: any) => c.type === 'مشتری').length), label: 'مشتریان' },
+  ];
+  const __actMeta: Record<string, { color: string; icon: string }> = { call: { color: '#10B981', icon: 'fa-solid fa-phone' }, sms: { color: '#3B82F6', icon: 'fa-solid fa-comment-sms' }, email: { color: '#F59E0B', icon: 'fa-solid fa-envelope' }, whatsapp: { color: '#22C55E', icon: 'fa-brands fa-whatsapp' }, meeting: { color: '#8B5CF6', icon: 'fa-solid fa-users' }, note: { color: '#6B7280', icon: 'fa-solid fa-note-sticky' } };
+  const CRM_ACTIVITIES = [...activities].sort((a: any, b: any) => (b.at || 0) - (a.at || 0)).map((a: any) => ({ id: a.id, kind: a.kind || 'note', title: a.title || 'فعالیت', desc: a.desc || '', when: a.at ? new Date(a.at).toLocaleDateString('fa-IR') : '', color: (__actMeta[a.kind] || __actMeta.note).color, icon: (__actMeta[a.kind] || __actMeta.note).icon }));
   return (
     <div className="flex flex-col h-full">
       {/* KPI strip */}
@@ -1373,7 +1386,7 @@ export function SecCrmLiteScreen() {
                   >{s}</button>
                 ))}
               </div>
-              <button onClick={() => openModal('افزودن مخاطب جدید', <QuickForm onSubmit={(v) => setContacts(prev => [{ id: Date.now(), name: v.name, phone: v.phone || '', email: '', company: v.company || '', role: '', type: v.seg || 'مشتری', tier: 'عادی', address: v.address || '', lastContact: 'امروز' } as any, ...prev])} submitLabel="افزودن مخاطب" toast="مخاطب جدید افزوده شد" fields={[{ key: 'name', label: 'نام مخاطب' }, { key: 'phone', label: 'شماره تماس', type: 'tel' }, { key: 'company', label: 'شرکت / سازمان' }, { key: 'address', label: 'آدرس', type: 'textarea' }, { key: 'seg', label: 'دسته', type: 'select', options: ['مشتری', 'تأمین‌کننده', 'همکار'] }]} />)} className="p-2.5 flex items-center justify-center gap-2 border-2 border-dashed border-[var(--aw-border)] rounded-[12px] cursor-pointer bg-transparent hover:border-[#22A6F0] transition-colors text-[12px] text-[#22A6F0]">
+              <button onClick={() => openModal('افزودن مخاطب جدید', <QuickForm onSubmit={(v) => { setContacts(prev => [{ id: Date.now(), name: v.name, phone: v.phone || '', email: '', company: v.company || '', role: '', type: v.seg || 'مشتری', tier: 'عادی', address: v.address || '', lat: (v as any).lat, lng: (v as any).lng, lastContact: 'امروز' } as any, ...prev]); logActivity('note', 'مخاطب جدید: ' + (v.name || ''), v.company || ''); }} submitLabel="افزودن مخاطب" toast="مخاطب جدید افزوده شد" fields={[{ key: 'name', label: 'نام مخاطب' }, { key: 'phone', label: 'شماره تماس', type: 'tel' }, { key: 'company', label: 'شرکت / سازمان' }, { key: 'address', label: 'آدرس', type: 'textarea' }, { key: 'seg', label: 'دسته', type: 'select', options: ['مشتری', 'تأمین‌کننده', 'همکار'] }]} />)} className="p-2.5 flex items-center justify-center gap-2 border-2 border-dashed border-[var(--aw-border)] rounded-[12px] cursor-pointer bg-transparent hover:border-[#22A6F0] transition-colors text-[12px] text-[#22A6F0]">
                 <i className="fa-solid fa-user-plus" />افزودن مخاطب جدید
               </button>
 
@@ -1423,7 +1436,7 @@ export function SecCrmLiteScreen() {
                 <input value={leadQuery} onChange={e => setLeadQuery(e.target.value)} placeholder="جستجو سرنخ..." className={searchInputCls} />
               </div>
 
-              <button onClick={() => openModal('ثبت سرنخ جدید', <QuickForm onSubmit={(v) => setLeads(prev => [{ id: Date.now(), name: v.name, contact: v.contact || '', source: v.source || 'سایر', status: 'جدید', value: '—', date: 'امروز' } as any, ...prev])} submitLabel="ثبت سرنخ" toast="سرنخ جدید ثبت شد" fields={[{ key: 'name', label: 'عنوان سرنخ' }, { key: 'contact', label: 'نام تماس' }, { key: 'phone', label: 'شماره تماس', type: 'tel' }, { key: 'source', label: 'منبع', type: 'select', options: ['تماس ورودی', 'وب‌سایت', 'معرفی', 'شبکه اجتماعی'] }]} />)} className="p-2.5 flex items-center justify-center gap-2 border-2 border-dashed border-[var(--aw-border)] rounded-[12px] cursor-pointer bg-transparent hover:border-[#22A6F0] transition-colors text-[12px] text-[#22A6F0]">
+              <button onClick={() => openModal('ثبت سرنخ جدید', <QuickForm onSubmit={(v) => { setLeads(prev => [{ id: Date.now(), name: v.name, contact: v.contact || '', phone: v.phone || '', source: v.source || 'سایر', status: 'جدید', value: '—', date: 'امروز' } as any, ...prev]); logActivity('note', 'سرنخ جدید: ' + (v.name || ''), v.source || ''); }} submitLabel="ثبت سرنخ" toast="سرنخ جدید ثبت شد" fields={[{ key: 'name', label: 'عنوان سرنخ' }, { key: 'contact', label: 'نام تماس' }, { key: 'phone', label: 'شماره تماس', type: 'tel' }, { key: 'source', label: 'منبع', type: 'select', options: ['تماس ورودی', 'وب‌سایت', 'معرفی', 'شبکه اجتماعی'] }]} />)} className="p-2.5 flex items-center justify-center gap-2 border-2 border-dashed border-[var(--aw-border)] rounded-[12px] cursor-pointer bg-transparent hover:border-[#22A6F0] transition-colors text-[12px] text-[#22A6F0]">
                 <i className="fa-solid fa-plus" />ثبت سرنخ جدید
               </button>
 
@@ -1447,10 +1460,10 @@ export function SecCrmLiteScreen() {
                     <button onClick={() => startCall(l.name, 'سرنخ', 'aw-bg-cyan', l.name.slice(0,2), l.contact || '')} className="flex-1 text-[10px] py-1.5 rounded-md border-none cursor-pointer text-white" style={{ background: 'linear-gradient(135deg, var(--aw-primary-light), var(--aw-primary-dark))', fontWeight: 600 }}>
                       <i className="fa-solid fa-phone text-[9px] ml-1" />تماس
                     </button>
-                    <button onClick={() => { setLeads(prev => prev.map((x: any) => x.id === l.id ? { ...x, status: 'ارجاع به فروش' } : x)); showToast('سرنخ به تیم فروش ارجاع شد ✅'); }} className="flex-1 text-[10px] py-1.5 rounded-md border-none cursor-pointer text-white" style={{ background: 'linear-gradient(135deg, var(--aw-primary-light), var(--aw-primary-dark))', fontWeight: 600 }}>
+                    <button onClick={() => { setLeads(prev => prev.map((x: any) => x.id === l.id ? { ...x, status: 'ارجاع به فروش' } : x)); try { (api as any).myCreate('sec_referrals', { id: Date.now(), title: l.name, contact: l.contact || '', phone: (l as any).phone || '', source: l.source || '', target: 'sales', at: new Date().toISOString(), status: 'new' }); } catch (_e) {} logActivity('note', 'ارجاعِ سرنخ به فروش: ' + l.name, l.contact || ''); showToast('سرنخ به تیم فروش ارجاع شد ✅'); }} className="flex-1 text-[10px] py-1.5 rounded-md border-none cursor-pointer text-white" style={{ background: 'linear-gradient(135deg, var(--aw-primary-light), var(--aw-primary-dark))', fontWeight: 600 }}>
                       <i className="fa-solid fa-share text-[9px] ml-1" />ارجاع به فروش
                     </button>
-                    <button onClick={() => { setLeads(prev => prev.map((x: any) => x.id === l.id ? { ...x, status: 'پیگیری' } : x)); showToast('سرنخ به مرحله بعد منتقل شد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-[10px] border border-[var(--aw-border)] cursor-pointer bg-transparent text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>
+                    <button onClick={() => { setLeads(prev => prev.map((x: any) => { if (x.id !== l.id) return x; const stages = LEAD_PIPELINE_STAGES.map(s => s.id); const ci = stages.indexOf(x.status); const nx = ci < 0 ? stages[0] : (ci < stages.length - 1 ? stages[ci + 1] : x.status); return { ...x, status: nx }; })); showToast('سرنخ به مرحله بعد منتقل شد ✅'); }} className="text-[10px] px-2.5 py-1.5 rounded-[10px] border border-[var(--aw-border)] cursor-pointer bg-transparent text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>
                       <i className="fa-solid fa-arrow-right text-[9px] ml-1" />مرحله بعد
                     </button>
                   </div>
