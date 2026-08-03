@@ -345,7 +345,7 @@ function EuProfileSettings() {
 
 function EuWalletSettings() {
   // __realdata3
-  const { showToast, walletBalance, walletTx } = useApp();
+  const { showToast, walletBalance, walletTx, euProfile } = useApp() as any;
   const [tab, setTab] = useState<'cards' | 'tx' | 'subs' | 'cb'>('cards');
   const [CARDS, setCARDS] = useState<any[]>([]);
   const [SUBS, setSUBS] = useState<any[]>([]);
@@ -394,7 +394,7 @@ function EuWalletSettings() {
                 {c.primary && <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.25)', fontWeight: 700 }}>پیش‌فرض</span>}
               </div>
               <div className="text-[16px] mt-3 tracking-widest" style={{ direction: 'ltr', fontWeight: 700 }}>•••• •••• •••• {c.last4}</div>
-              <div className="text-[10px] mt-1" style={{ opacity: 0.7 }}>به نام علی محمدی</div>
+              <div className="text-[10px] mt-1" style={{ opacity: 0.7 }}>به نام {(euProfile && euProfile.name) || 'صاحب کارت'}</div>
             </div>
           ))}
           <button onClick={addCard} className="py-3 rounded-[10px] border-2 border-dashed cursor-pointer text-[12px]" style={{ borderColor: 'var(--aw-eu-primary)', background: 'transparent', color: 'var(--aw-eu-primary)', fontWeight: 700 }}>
@@ -2261,7 +2261,8 @@ export function EuProfileBody() {
 type FinanceTab = 'wallet' | 'history' | 'methods' | 'invoices' | 'transactions';
 
 function EuFinanceContent() {
-  const { showToast, orders, walletBalance, walletTx, walletDeposit, walletWithdraw } = useApp();
+  const { showToast, euPlacedOrders, walletBalance, walletTx, walletDeposit, walletWithdraw } = useApp() as any;
+  const orders = (euPlacedOrders || []) as any[]; // euorders: تاریخچه/فاکتور از سفارش‌های واقعیِ کاربر
   const [tab, setTab] = useState<FinanceTab>('wallet');
   const balance = walletBalance;
   const [opAmount, setOpAmount] = useState('');
@@ -2269,7 +2270,14 @@ function EuFinanceContent() {
 
   const transactions = (walletTx || []).map((t: any, i: number) => ({ id: i, type: (t.amount >= 0 ? 'deposit' : (t.type === 'purchase' ? 'purchase' : 'withdraw')) as 'deposit' | 'withdraw' | 'purchase', amount: t.amount, date: t.date, desc: t.title }));
 
-  const invoices: { id: string; date: string; amount: string; status: 'paid' | 'pending' | 'refund'; desc: string }[] = [];
+  // invoicereal: فاکتور از سفارش‌های واقعیِ کاربر (هر سفارش = یک فاکتور) — نه تبِ همیشه‌خالی
+  const invoices: { id: string; date: string; amount: string; status: 'paid' | 'pending' | 'refund'; desc: string }[] = orders.map((o: any) => ({
+    id: String(o.num || o.id || ''),
+    date: o.date || '',
+    amount: (Number(String(o.total).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR') + ' تومان',
+    status: (o.status === 'delivered' ? 'paid' : (o.status === 'cancelled' ? 'refund' : 'pending')) as 'paid' | 'pending' | 'refund',
+    desc: (o.source === 'dine' ? 'سفارش غذا' : 'خرید از مارکت') + (o.restaurant ? ' — ' + o.restaurant : ''),
+  }));
 
   const [paymentMethods, setPaymentMethods] = useState<any[]>([{ id: 'pm_wallet', type: 'wallet', label: 'کیف پول Neura', last4: '', icon: 'fa-solid fa-wallet', color: '#8B5CF6', isDefault: true }]);
   useEffect(() => { (async () => { try { const pm: any = await (api as any).myList('payment_methods'); if (Array.isArray(pm)) setPaymentMethods([{ id: 'pm_wallet', type: 'wallet', label: 'کیف پول Neura', last4: '', icon: 'fa-solid fa-wallet', color: '#8B5CF6', isDefault: pm.length === 0 }, ...pm]); } catch (_) {} })(); }, []);
