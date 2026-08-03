@@ -1123,6 +1123,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [chat, company, agents, isAgentOwned]);
 
+  // peerlive: تا گفتگوی کاربر-به-کاربر باز است، هر چند ثانیه پیام‌های تازه را از سرور بگیر تا بدونِ
+  // رفرش/بستنِ چت، پیامِ طرفِ مقابل زنده بیاید. (وقتی چت بسته شد، پولینگ متوقف می‌شود.)
+  useEffect(() => {
+    if (!chat.open || chat.type !== 'contact' || !String(chat.id || '').startsWith('peer_')) return;
+    const other = String(chat.id).slice(5);
+    let stop = false;
+    const poll = async () => {
+      try {
+        const r: any = await (api as any).peerWith(other);
+        if (stop) return;
+        const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, text: m.text, sent: !!m.mine, time: '' }));
+        setContactMsgsMap(prev => {
+          const cur = prev[chat.id as string] || [];
+          // فقط وقتی سرور پیامِ بیشتری دارد به‌روزرسانی کن تا پیامِ خوش‌بینانهٔ همین‌الان پاک نشود.
+          if (msgs.length <= cur.length) return prev;
+          return { ...prev, [chat.id as string]: msgs };
+        });
+      } catch (_) {}
+    };
+    const iv = setInterval(poll, 4000);
+    poll();
+    return () => { stop = true; clearInterval(iv); };
+  }, [chat.open, chat.id, chat.type]);
+
   // Modal
   const openModalFn = useCallback((title: string, content: React.ReactNode, onBack?: (() => void) | null) => {
     setModal({ open: true, title, content, onBack: onBack || null });
