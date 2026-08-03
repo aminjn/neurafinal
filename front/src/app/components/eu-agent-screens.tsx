@@ -1536,26 +1536,6 @@ function AssistantReportTab({ tasks, events, orders }: { tasks: AsstTask[]; even
 
 // agentaction: تشخیصِ خواستِ کاربر برای «انجامِ کار» و اجرای واقعیِ آن روی دادهٔ per-user
 // (نه ادعای دروغِ AI). خروجی: { collection, doc, confirm } یا null.
-function __detectAssistantAction(raw: string): { collection: string; doc: any; confirm: string } | null {
-  const m = String(raw || '').trim();
-  const hasCreate = /(بساز|بسازش|اضافه\s*کن|ثبت\s*کن|ایجاد\s*کن|بنویس|درست\s*کن|بذار|بگذار|تنظیم\s*کن|یادم\s*بنداز)/.test(m);
-  if (!hasCreate) return null;
-  const kind = /(یادآور|ریمایندر|یادم\s*بنداز)/.test(m) ? 'reminder' : /(یادداشت|نوت)/.test(m) ? 'note' : /(تسک|وظیفه|کار)/.test(m) ? 'task' : null;
-  if (!kind) return null;
-  const t = m
-    .replace(/(یک|یه)\s+/g, '')
-    .replace(/(تسک|وظیفه|کار|یادآوری|یادآور|ریمایندر|یادداشت|نوت)(\s+جدید)?/g, '')
-    .replace(/(بسازش|بساز|اضافه\s*کن|ثبت\s*کن|ایجاد\s*کن|بنویس|درست\s*کن|بذار|بگذار|تنظیم\s*کن|یادم\s*بنداز)/g, '')
-    .replace(/(به\s*نام|با\s*عنوان|با\s*موضوع|برای\s*من|برام|لطفا[ً]?|که|:|،|["'«»])/g, '')
-    .replace(/\s+/g, ' ').replace(/\s+(رو|را)$/,'').trim();
-  if (!t) return null;
-  // هر سه به سطحی می‌روند که کاربر واقعاً می‌بیندشان (وگرنه «ثبت شد» ولی نامرئی = همان دروغ):
-  // تسک → «روزمرگی»، یادآوری → رویدادِ امروزِ تقویمِ «روزمرگی»، یادداشت → «یادداشت‌های اخیر» در جستجو.
-  if (kind === 'task') return { collection: 'tasks', doc: { id: Date.now(), title: t, priority: 'medium', done: false, dueDate: '', status: 'todo' }, confirm: `تسکِ «${t}» ساخته شد و در «روزمرگی» ثبت شد ✅` };
-  if (kind === 'reminder') return { collection: 'calendar', doc: { id: Date.now(), title: t, time: '', date: 'امروز', type: 'reminder', status: 'pending', muted: false }, confirm: `یادآوریِ «${t}» برای امروز در «روزمرگی» ثبت شد ✅` };
-  return { collection: 'notes', doc: { id: Date.now(), title: t, text: t, tag: 'یادداشت', color: '#6366f1', preview: t, date: new Date().toLocaleDateString('fa-IR'), at: new Date().toISOString() }, confirm: `یادداشتِ «${t}» ثبت شد و در جستجو زیرِ «یادداشت‌های اخیر» می‌بینی ✅` };
-}
-
 function AssistantNewChat({ resetSignal = 0, loadMessages = null, loadSignal = 0 }: { resetSignal?: number; loadMessages?: { from: 'user' | 'agent'; text: string }[] | null; loadSignal?: number }) {
   const { showToast, speakMessage, speakingMsgId, agents } = useApp();
   // پرسونای واقعیِ دستیار (نام/خوش‌آمدِ ذخیره‌شدهٔ کاربر) — پیش‌تر asst/asstName تعریف‌نشده بودند و کرش می‌دادند.
@@ -1625,7 +1605,11 @@ function AssistantNewChat({ resetSignal = 0, loadMessages = null, loadSignal = 0
       if (!userText) continue;
       setMessages(prev => [...prev, { from: 'user' as const, text: userText }]);
       let reply = '';
-      try { const r: any = await (api as any).chat('assistant', [{ role: 'user', content: userText }]); reply = (r && r.ok && r.text) ? String(r.text) : generateReply(userText); } catch { reply = generateReply(userText); }
+      try {
+        const r: any = await (api as any).chat('assistant', [{ role: 'user', content: userText }]);
+        reply = (r && r.ok && r.text) ? String(r.text) : generateReply(userText);
+        if (r && Array.isArray(r.dataChanged)) r.dataChanged.forEach((c: string) => { try { window.dispatchEvent(new CustomEvent('neura-data-changed', { detail: { collection: c } })); } catch (_) {} });
+      } catch { reply = generateReply(userText); }
       if (!vOnRef.current) break;
       setMessages(prev => [...prev, { from: 'agent' as const, text: reply }]);
       setVoiceState('speaking');
@@ -1685,23 +1669,17 @@ function AssistantNewChat({ resetSignal = 0, loadMessages = null, loadSignal = 0
     setInputText('');
     const nextMsgs = [...messages, { from: 'user' as const, text: userMsg }];
     setMessages(nextMsgs);
-    // agentaction: اگر خواستِ ساختِ تسک/یادآوری/یادداشت بود، همین‌جا واقعاً بساز (نه ادعای دروغ)
-    const act = __detectAssistantAction(userMsg);
-    if (act) {
-      (async () => {
-        let ok = false;
-        try { await (api as any).myCreate(act.collection, act.doc); ok = true; } catch (_) { ok = false; }
-        setMessages(prev => [...prev, { from: 'agent', text: ok ? act.confirm : 'الان نتوانستم ثبتش کنم؛ چند لحظه بعد دوباره بگو.' }]);
-        try { window.dispatchEvent(new CustomEvent('neura-data-changed', { detail: { collection: act.collection } })); } catch (_) {}
-      })();
-      return;
-    }
+    // agentaction: اجرای واقعیِ کار به‌عهدهٔ ابزارهای سمتِ سرور (create_event/create_task/create_note) است؛
+    // بعد از پاسخ، اگر سرور چیزی ثبت کرد (dataChanged) صفحاتِ روزمرگی/جستجو را تازه می‌کنیم تا کاربر ببیندش.
     (async () => {
       try {
         const hist = nextMsgs.map(m => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.text }));
         const r: any = await (api as any).chat('assistant', hist);
         const reply = (r && r.ok && r.text) ? String(r.text) : generateReply(userMsg);
         setMessages(prev => [...prev, { from: 'agent', text: reply }]);
+        if (r && Array.isArray(r.dataChanged)) {
+          r.dataChanged.forEach((c: string) => { try { window.dispatchEvent(new CustomEvent('neura-data-changed', { detail: { collection: c } })); } catch (_) {} });
+        }
       } catch (_) {
         setMessages(prev => [...prev, { from: 'agent', text: generateReply(userMsg) }]);
       }

@@ -85,6 +85,101 @@ const ASK_AGENT_TOOL = {
   },
 };
 
+// ابزارهای «حیطهٔ دستیارِ شخصی» — دستیار واقعاً در روزمرگی/تقویم/کارها/یادداشت‌های کاربر ثبت می‌کند
+// (نه ادعای دروغِ «انجام شد»). خروجی در همان صفحه‌ای که کاربر می‌بیند ذخیره می‌شود.
+const CREATE_EVENT_TOOL = {
+  type: 'function',
+  function: {
+    name: 'create_event',
+    description: 'یک رویداد/یادآوری در «روزمرگیِ» (تقویمِ) کاربر واقعاً ثبت می‌کند و همان‌جا نمایش داده می‌شود. هر وقت کاربر خواست چیزی با زمانِ مشخص یا یک یادآوری/جلسه/قرار در برنامه‌اش ثبت شود (مثلِ «۱ ساعت دیگه به علی زنگ بزنم»، «فردا ساعت ۱۰ جلسه»، «یادم بنداز شیر بخرم»)، حتماً این را فراخوانی کن — فقط نگو «انجام شد».',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'عنوانِ کوتاه و تمیزِ خودِ کار (مثلاً «زنگ زدن به علیزاده»). کلماتی مثلِ «یه تسک بساز»، «تو روزمرگی»، «برام» را نیاور.' },
+        day: { type: 'string', enum: ['today', 'tomorrow', 'later'], description: 'روزِ رویداد: today=امروز، tomorrow=فردا، later=تا یک ماه آینده. «۱ ساعت دیگه/امشب/امروز»→today؛ «فردا»→tomorrow؛ دورتر→later.' },
+        in_minutes: { type: 'number', description: 'اگر کاربر زمان را نسبی گفت («۱ ساعت دیگه»=۶۰، «نیم ساعت دیگه»=۳۰)، تعدادِ دقیقه از الان را اینجا بده تا ساعت دقیق محاسبه شود.' },
+        time: { type: 'string', description: 'اگر ساعتِ مطلق مشخص است، به‌صورتِ HH:MM (۲۴ساعته). اگر in_minutes دادی لازم نیست.' },
+        type: { type: 'string', enum: ['reminder', 'meeting', 'personal', 'work'], description: 'نوعِ رویداد؛ پیش‌فرض reminder.' },
+      },
+      required: ['title', 'day'],
+    },
+  },
+};
+const CREATE_TASK_TOOL = {
+  type: 'function',
+  function: {
+    name: 'create_task',
+    description: 'یک وظیفهٔ چک‌لیستیِ بدونِ ساعتِ خاص در فهرستِ کارهای کاربر واقعاً ثبت می‌کند. وقتی کاربر یک کارِ بی‌زمان خواست («این را به کارهام اضافه کن»)، این را فراخوانی کن. اگر کار زمان/ساعت دارد به‌جای این از create_event استفاده کن.',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'عنوانِ کوتاه و تمیزِ کار، بدونِ کلماتِ دستوری.' },
+        priority: { type: 'string', enum: ['low', 'medium', 'high'], description: 'اولویت؛ پیش‌فرض medium.' },
+      },
+      required: ['title'],
+    },
+  },
+};
+const CREATE_NOTE_TOOL = {
+  type: 'function',
+  function: {
+    name: 'create_note',
+    description: 'یک یادداشتِ متنی برای کاربر واقعاً ثبت می‌کند. وقتی کاربر خواست چیزی را یادداشت/ذخیره کنی، این را فراخوانی کن.',
+    parameters: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'متنِ کاملِ یادداشت.' },
+      },
+      required: ['text'],
+    },
+  },
+};
+
+// اجرای واقعیِ ابزارهای دستیار: نوشتن در انبارِ per-userِ کاربر (همان جایی که myList فرانت می‌خواند).
+async function runAssistantTool(sub, fname, args) {
+  const cid = Date.now() + Math.floor(Math.random() * 1000);
+  const dbId = String(sub) + '__' + String(cid);
+  const company = 'user:' + sub;
+  const put = (coll, data) => query(
+    `INSERT INTO documents (collection, id, company, data) VALUES ($1,$2,$3,$4::jsonb)
+     ON CONFLICT (collection, id) DO UPDATE SET data=$4::jsonb, updated_at=now()`,
+    ['u_' + coll, dbId, company, JSON.stringify({ ...data, id: cid })]
+  );
+  try {
+    if (fname === 'create_task') {
+      const title = String(args.title || '').trim();
+      if (!title) return { msg: 'عنوانِ کار خالی بود؛ از کاربر بپرس چه کاری.' };
+      const priority = ['low', 'medium', 'high'].includes(args.priority) ? args.priority : 'medium';
+      await put('tasks', { title, priority, done: false, dueDate: '', status: 'todo' });
+      return { coll: 'tasks', msg: `کارِ «${title}» در فهرستِ کارهای کاربر ثبت شد.` };
+    }
+    if (fname === 'create_note') {
+      const text = String(args.text || args.title || '').trim();
+      if (!text) return { msg: 'متنِ یادداشت خالی بود.' };
+      await put('notes', { title: text.slice(0, 40), text, tag: 'یادداشت', color: '#6366f1', preview: text, date: '', at: Date.now() });
+      return { coll: 'notes', msg: 'یادداشت ثبت شد.' };
+    }
+    // create_event
+    const title = String(args.title || '').trim();
+    if (!title) return { msg: 'عنوانِ رویداد خالی بود؛ از کاربر بپرس.' };
+    const dayMap = { today: 'امروز', tomorrow: 'فردا', later: 'تا یک ماه آینده' };
+    const date = dayMap[args.day] || 'امروز';
+    let time = ''; let at = 0;
+    const inMin = Number(args.in_minutes);
+    if (inMin > 0) {
+      at = Date.now() + inMin * 60000;
+      try { time = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Tehran', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(at)); } catch (_) {}
+    } else if (/^\d{1,2}:\d{2}$/.test(String(args.time || ''))) {
+      time = String(args.time);
+    }
+    const type = ['reminder', 'meeting', 'personal', 'work'].includes(args.type) ? args.type : 'reminder';
+    await put('calendar', { title, time, date, type, status: 'pending', muted: false, ...(at ? { at } : {}) });
+    return { coll: 'calendar', msg: `رویداد «${title}»${time ? ' برای ساعتِ ' + time : ''} در «${date}»یِ روزمرگیِ کاربر ثبت شد.` };
+  } catch (e) {
+    return { msg: 'ثبت در سیستم ناموفق بود: ' + String(e?.message || e) };
+  }
+}
+
 // ارسالِ پیامکِ آزاد از طریق ippanel (مستقل از پترنِ OTP)
 async function sendSmsViaIppanel(text, phone) {
   let s = {};
@@ -867,6 +962,17 @@ async function runChat(req) {
     const toolList = phone ? [] : [SEND_SMS_TOOL]; // پیامک همیشه در دسترس است (از گوشیِ خودِ کاربر)
     if (!phone && voip.voipEnabled) toolList.push(MAKE_CALL_TOOL);
     if (!phone && !nested) toolList.push(ASK_AGENT_TOOL); // واگذاری به ایجنتِ دیگر (نه در تماس، نه در فراخوانیِ تو‌در‌تو)
+    // حیطهٔ دستیارِ شخصی: ثبتِ واقعیِ رویداد/کار/یادداشت در روزمرگیِ خودِ کاربر
+    const asstDomain = !phone && me && me.sub != null && agentId === 'assistant';
+    if (asstDomain) {
+      toolList.push(CREATE_EVENT_TOOL, CREATE_TASK_TOOL, CREATE_NOTE_TOOL);
+      let nowFa = '';
+      try { nowFa = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date()); } catch (_) {}
+      sys += `\n\n— اقدامِ واقعی (بسیار مهم): تو فقط حرف نمی‌زنی؛ در حیطهٔ خودت واقعاً کار انجام می‌دهی.`
+        + (nowFa ? ` زمانِ فعلی به وقتِ ایران: ${nowFa}.` : '')
+        + ` هر وقت کاربر خواست چیزی در «روزمرگی»/تقویم/کارها/یادداشت‌هایش ثبت شود، حتماً ابزارِ مناسب را فراخوانی کن و بعد کوتاه تأیید کن — هرگز نگو «ثبت کردم» بدونِ اینکه واقعاً ابزار را صدا زده باشی.`
+        + ` کارِ زمان‌دار/یادآوری/قرار→create_event (برای «۱ ساعت دیگه» مقدارِ in_minutes=۶۰)؛ کارِ بی‌زمان→create_task؛ یادداشت→create_note. عنوان را کوتاه و تمیز بده (بدونِ «یه تسک بساز»، «تو روزمرگی»، «برام»).`;
+    }
     const tools = toolList.length ? toolList : null;
 
     const callChat = (m, msgs, withTools) => fetchT(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
@@ -948,11 +1054,19 @@ async function runChat(req) {
     let smsAction = null;
     if (toolCalls.length && tools) {
       const toolMsgs = [];
+      const dataChanged = new Set(); // مجموعه‌هایی که تغییر کردند تا فرانت آن‌ها را تازه‌سازی کند
       let didCall = false; // جلوگیری از تماسِ دوتایی وقتی مدل make_call را دوبار صدا می‌زند
       for (const tc of toolCalls) {
         const fname = tc.function?.name;
         let args = {};
         try { args = JSON.parse(tc.function.arguments || '{}'); } catch {}
+        if ((fname === 'create_event' || fname === 'create_task' || fname === 'create_note') && asstDomain) {
+          const out = await runAssistantTool(me.sub, fname, args);
+          if (out.coll) dataChanged.add(out.coll);
+          console.log('AI', fname, '→', out.coll || 'noop', 'title=', args.title || args.text || '');
+          toolMsgs.push({ role: 'tool', tool_call_id: tc.id, content: out.msg });
+          continue;
+        }
         if (fname === 'make_call' && didCall) {
           toolMsgs.push({ role: 'tool', tool_call_id: tc.id, content: 'یک تماس قبلاً در همین پیام انجام شد؛ تماسِ تکراری نگیر.' });
           continue;
@@ -998,7 +1112,7 @@ async function runChat(req) {
       maybeUpdateProfile();
       const _tok1 = usageTokens(j) + usageTokens(j2);
       if (me && me.sub != null) await addTokenUsage(me.sub, _tok1, agentId);
-      return { ok: true, text: finalText, model: realModel, call: callResult?.task || null, sms: smsAction, tokens: _tok1 };
+      return { ok: true, text: finalText, model: realModel, call: callResult?.task || null, sms: smsAction, dataChanged: [...dataChanged], tokens: _tok1 };
     }
 
     console.log('AI chat OK model=', realModel, 'agent=', agentId, 'took=', (Date.now() - _t0) + 'ms');
