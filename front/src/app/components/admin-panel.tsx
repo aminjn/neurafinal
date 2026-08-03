@@ -4247,6 +4247,8 @@ export function SubscribeContent({ agentId }: { agentId: string }) {
   const { agents, setAgents, closeModal, showToast, buyAgent } = useApp();
   const a = agents.find(x => x.id === agentId);
   if (!a) return null;
+  // subprice: قیمتِ واقعی از AGENT_MARKETPLACE (نه «۴۹,۰۰۰»ِ ثابتِ غلط)
+  const __mktPrice = ((AGENT_MARKETPLACE as any[]).find((m: any) => m.name === a.name) as any)?.price || '';
 
   const activate = () => {
     buyAgent(agentId);
@@ -4263,8 +4265,9 @@ export function SubscribeContent({ agentId }: { agentId: string }) {
         <p className="text-[12px] text-[var(--aw-text-secondary)]">{a.role}</p>
       </div>
       <div className="rounded-[10px] p-4 mb-4 text-center border" style={{ background: 'var(--aw-primary-bg)', borderColor: 'var(--aw-primary)' }}>
-        <div className="text-[24px] text-[var(--aw-primary)]" style={{ fontWeight: 800 }}>۴۹,۰۰۰</div>
-        <div className="text-[12px] text-[var(--aw-text-secondary)]">تومان / ماهانه</div>
+        {__mktPrice
+          ? <div className="text-[20px] text-[var(--aw-primary)]" style={{ fontWeight: 800 }}>{__mktPrice}</div>
+          : <div className="text-[15px] text-[var(--aw-primary)]" style={{ fontWeight: 700 }}>فعال‌سازیِ ایجنت</div>}
       </div>
       <ul className="list-none p-0 mb-4">
         {['پاسخ‌دهی ۲۴ ساعته', 'یکپارچه‌سازی با سیستم‌ها', 'گزارش‌گیری پیشرفته'].map(f => (
