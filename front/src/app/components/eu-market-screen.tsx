@@ -179,6 +179,7 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
   const [addr, setAddr] = useState('');     // آدرسِ خیابان/شهر که «خودِ نکسا» برمی‌گرداند
   const [loc, setLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [revBusy, setRevBusy] = useState(false);
+  const [revErr, setRevErr] = useState('');
   const [plate, setPlate] = useState('');   // پلاک (کاربر)
   const [unit, setUnit] = useState('');     // واحد (کاربر)
   const flyRef = useRef<((lat: number, lng: number) => void) | null>(null);
@@ -190,8 +191,11 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
   }, []);
   // هر بار نقشه ایستاد → آدرسِ آن نقطه را از نکسا بگیر (reverse) و در فیلدِ آدرس بگذار.
   const onPoint = useCallback((lat: number, lng: number) => {
-    setLoc({ lat, lng }); setRevBusy(true);
-    (api as any).mapReverse(lat, lng).then((r: any) => { const a = __parseReverse(r); if (a) setAddr(a); }).catch(() => {}).finally(() => setRevBusy(false));
+    setLoc({ lat, lng }); setRevBusy(true); setRevErr('');
+    (api as any).mapReverse(lat, lng)
+      .then((r: any) => { const a = __parseReverse(r); if (a) { setAddr(a); setRevErr(''); } else setRevErr('نقشه آدرسی برنگرداند — می‌توانی دستی بنویسی'); })
+      .catch(() => setRevErr('سرویسِ آدرس فعلاً پاسخ نداد — آدرس را دستی وارد کن'))
+      .finally(() => setRevBusy(false));
   }, []);
   // جست‌وجوی متنی فقط برای «جابه‌جاییِ نقشه» به آن محل است (نه ثبتِ نهایی).
   useEffect(() => {
@@ -252,8 +256,9 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
 
       {/* آدرسِ خودکار از نکسا (قابلِ ویرایش برای اصلاحِ جزئی) */}
       <div className="flex flex-col gap-1">
-        <span className="text-[11px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>آدرس {revBusy ? '(در حال گرفتن از نقشه…)' : (loc ? '✓' : '')}</span>
+        <span className="text-[11px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 600 }}>آدرس {revBusy ? '(در حال گرفتن از نقشه…)' : (addr ? '✓' : '')}</span>
         <textarea style={{ ...IN, minHeight: 56, resize: 'vertical' }} value={addr} onChange={e => setAddr(e.target.value)} placeholder="با تنظیمِ پین روی نقشه، خیابان و شهر خودکار پر می‌شود" />
+        {revErr && <span className="text-[10px] text-[#F59E0B]"><i className="fa-solid fa-triangle-exclamation ml-1" />{revErr}</span>}
       </div>
 
       <div className="flex gap-2">

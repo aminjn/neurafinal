@@ -68,16 +68,26 @@ router.get('/geocode', authRequired, async (req, res) => {
   } catch (e) { res.status(502).json({ error: 'map_upstream', detail: String(e?.message || e) }); }
 });
 
-// ژئوکدِ معکوس: نقطه → آدرس
+// ژئوکدِ معکوس: نقطه → آدرس. مسیر/پارامترِ سرویس‌های مختلف فرق دارد؛ چند حالتِ رایج را امتحان می‌کنیم
+// (lng و lon هر دو فرستاده می‌شوند؛ اگر /v1/reverse نبود، /reverse را هم امتحان می‌کنیم) تا با هر ارائه‌دهنده کار کند.
 router.get('/reverse', authRequired, async (req, res) => {
   const cfg = await mapCfg();
   if (!guard(res, cfg)) return;
   const lat = req.query.lat, lng = req.query.lng;
   if (lat == null || lng == null) return res.status(400).json({ error: 'lat_lng_required' });
-  try {
-    const r = await callMap(cfg, '/v1/reverse', { lat, lng, lang: req.query.lang || 'fa' });
-    res.status(r.ok ? 200 : (r.status || 502)).json(r.data || { results: [] });
-  } catch (e) { res.status(502).json({ error: 'map_upstream', detail: String(e?.message || e) }); }
+  const params = { lat, lng, lon: lng, lang: req.query.lang || 'fa' };
+  const paths = ['/v1/reverse', '/reverse', '/v1/geocode/reverse'];
+  let last = null;
+  for (const p of paths) {
+    try {
+      const r = await callMap(cfg, p, params);
+      if (r.ok) return res.status(200).json(r.data || { results: [] });
+      last = { status: r.status, path: p, data: r.data };
+      // ۴۰۴/۴۰۵ یعنی مسیر اشتباه است؛ مسیرِ بعدی را امتحان کن. بقیهٔ خطاها را همان‌جا برگردان.
+      if (r.status !== 404 && r.status !== 405) return res.status(r.status || 502).json(r.data || { error: 'map_upstream' });
+    } catch (e) { last = { error: String(e?.message || e), path: p }; }
+  }
+  res.status(502).json({ error: 'map_upstream', tried: paths, last });
 });
 
 // آیا نقشه پیکربندی شده؟ (برای اینکه UI دکمهٔ نقشه را نشان دهد یا نه) — بدونِ افشای کلید.
