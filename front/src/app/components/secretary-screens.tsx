@@ -2184,17 +2184,28 @@ function PettyCashContent() {
   const [tab, setTab] = useState<'overview' | 'history'>('overview');
   const [mode, setMode] = useState<null | 'in' | 'out'>(null);
   const [amount, setAmount] = useState('');
-  const pettyCash = 0;
+  // pettyreal: از دادهٔ واقعیِ per-user (نه هاردکد؛ نه فقط‌نوشتنی) — موجودی و تاریخچه زنده به‌روز می‌شوند
+  const [receipts, setReceipts] = useState<any[]>([]);
+  __usePersist('sec_receipts', receipts, setReceipts);
+  const [payments, setPayments] = useState<any[]>([]);
+  __usePersist('sec_payments', payments, setPayments);
+  const __pa = (v: any) => { const n = parseInt(String(v == null ? 0 : v).replace(/[^\d]/g, ''), 10); return isNaN(n) ? 0 : n; };
+  const totalIn = receipts.reduce((s: number, r: any) => s + __pa(r.amount), 0);
+  const totalOut = payments.reduce((s: number, p: any) => s + __pa(p.amount), 0);
+  const pettyCash = totalIn - totalOut;
   const fmt = (n: number) => n.toLocaleString('en-US').replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d]);
-  const TX = [];
-  const totalIn = TX.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-  const totalOut = TX.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+  const TX = [
+    ...receipts.map((r: any) => ({ id: 'r' + r.id, t: r.from || r.title || 'دریافت', d: r.date || '', amount: __pa(r.amount), sort: r.id || 0 })),
+    ...payments.map((p: any) => ({ id: 'p' + p.id, t: p.title || p.from || 'پرداخت', d: p.date || '', amount: -__pa(p.amount), sort: p.id || 0 })),
+  ].sort((a: any, b: any) => (b.sort || 0) - (a.sort || 0));
   const quick = [50000, 100000, 200000, 500000];
   const faToEn = (s: string) => s.replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[^0-9]/g, '');
   const amountNum = parseInt(faToEn(amount)) || 0;
   const confirm = () => {
     if (amountNum <= 0) { showToast('مبلغ معتبر وارد کنید', 'error'); return; }
-    if (mode === 'in') { try { (api as any).myCreate('sec_receipts', { id: Date.now(), amount: amountNum, date: 'امروز', from: 'ثبت سریع' }); } catch (_e) {} } else { try { (api as any).myCreate('sec_payments', { id: Date.now(), amount: amountNum, date: 'امروز', title: 'ثبت سریع' }); } catch (_e) {} } showToast(mode === 'in' ? 'دریافت ثبت شد ✅' : 'پرداخت ثبت شد ✅', 'success');
+    if (mode === 'in') setReceipts(prev => [{ id: Date.now(), amount: amountNum, date: 'امروز', from: 'ثبت سریع' }, ...prev]);
+    else setPayments(prev => [{ id: Date.now(), amount: amountNum, date: 'امروز', title: 'ثبت سریع' }, ...prev]);
+    showToast(mode === 'in' ? 'دریافت ثبت شد ✅' : 'پرداخت ثبت شد ✅', 'success');
     setAmount(''); setMode(null); setTab('history');
   };
   const inputCls = 'w-full px-3 py-2.5 rounded-[10px] text-[15px] border border-[var(--aw-border)] bg-[var(--aw-bg-input)] text-[var(--aw-text-primary)] outline-none';
@@ -2289,11 +2300,25 @@ function PettyCashContent() {
 
 export function SecTodayScreen() {
   const { setAdminScreen, openModal } = useApp();
-  const [tasks, setTasks] = useState(TODAY_TASKS);
-  const pettyCash = 0;
+  // todayreal: همه از دادهٔ واقعیِ per-user (نه هاردکد)
+  const [tasks, setTasks] = useState<any[]>([]);
+  __usePersist('sec_tasks', tasks, setTasks);
+  const [receipts, setReceipts] = useState<any[]>([]);
+  __usePersist('sec_receipts', receipts, setReceipts);
+  const [payments, setPayments] = useState<any[]>([]);
+  __usePersist('sec_payments', payments, setPayments);
+  const [meetings, setMeetings] = useState<any[]>([]);
+  __usePersist('sec_meetings', meetings, setMeetings);
+  const __pa = (v: any) => { const n = parseInt(String(v == null ? 0 : v).replace(/[^\d]/g, ''), 10); return isNaN(n) ? 0 : n; };
+  const pettyCash = receipts.reduce((s: number, r: any) => s + __pa(r.amount), 0) - payments.reduce((s: number, p: any) => s + __pa(p.amount), 0);
   const fmt = (n: number) => n.toLocaleString('en-US').replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d]);
-  const doneCount = tasks.filter(t => t.done).length;
+  const doneCount = tasks.filter((t: any) => t.done).length;
   const openPetty = () => openModal('تنخواه منشی', <PettyCashContent />);
+  const YESTERDAY_SUMMARY = [
+    { i: 'fa-solid fa-check-double', c: '#10B981', v: toFa(String(doneCount)), l: 'انجام‌شده' },
+    { i: 'fa-solid fa-hourglass-half', c: '#F59E0B', v: toFa(String(tasks.length - doneCount)), l: 'در انتظار' },
+    { i: 'fa-solid fa-users', c: '#8B5CF6', v: toFa(String(meetings.length)), l: 'جلسات' },
+  ];
 
   return (
     <div className="flex flex-col h-full">
@@ -2325,13 +2350,13 @@ export function SecTodayScreen() {
           </div>
           <div className="flex flex-col gap-2">
             {tasks.map(t => (
-              <button key={t.id} onClick={() => setTasks(prev => prev.map(x => x.id === t.id ? { ...x, done: !x.done } : x))}
+              <button key={t.id} onClick={() => setTasks(prev => prev.map((x: any) => x.id === t.id ? { ...x, done: !x.done, completedAt: !x.done ? Date.now() : x.completedAt } : x))}
                 className="flex items-center gap-3 p-3 border-none cursor-pointer text-right w-full" style={cardStyle}>
                 <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: t.done ? '#10B981' : 'transparent', border: t.done ? 'none' : '1.5px solid var(--aw-border)' }}>
                   {t.done && <i className="fa-solid fa-check text-white text-[9px]" />}
                 </span>
                 <span className="flex-1 text-[12.5px]" style={{ fontWeight: 600, color: 'var(--aw-text-primary)', textDecoration: t.done ? 'line-through' : 'none', opacity: t.done ? 0.6 : 1 }}>{t.title}</span>
-                {t.prio === 'high' && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(239,68,68,0.14)', color: '#EF4444', fontWeight: 700 }}>مهم</span>}
+                {(t.prio || t.priority) === 'high' && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(239,68,68,0.14)', color: '#EF4444', fontWeight: 700 }}>مهم</span>}
               </button>
             ))}
           </div>
@@ -2357,7 +2382,8 @@ export function SecTodayScreen() {
           </div>
         </div>
 
-        {/* تسک‌های اولویت‌بالای سایر ایجنت‌ها */}
+        {/* اولویت‌های سایر ایجنت‌ها — فقط اگر دادهٔ واقعیِ کراس-ایجنت باشد (بدونِ فیک) */}
+        {OTHER_AGENTS_PRIO.length > 0 && (
         <div>
           <div className="flex items-center gap-2 px-1 mb-2">
             <i className="fa-solid fa-layer-group text-[12px]" style={{ color: '#F59E0B' }} />
@@ -2378,6 +2404,7 @@ export function SecTodayScreen() {
             ))}
           </div>
         </div>
+        )}
       </div>
     </div>
   );
