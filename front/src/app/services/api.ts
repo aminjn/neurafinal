@@ -307,6 +307,9 @@ export const api = {
     req<{ messages: { from: string; to: string; text: string; ts: number; mine?: boolean }[] }>(`/peer/with?sub=${encodeURIComponent(sub)}&_=${Date.now()}`),
   peerConversations: () =>
     req<{ conversations: { sub: string; name: string; lastText: string; ts: number }[] }>(`/peer/conversations?_=${Date.now()}`),
+  // حضورِ واقعیِ کاربران از سرورِ تماس (RTC) — { sub: true/false }
+  rtcPresence: (subs: string[]) =>
+    req<Record<string, boolean>>(`/rtc/presence?subs=${encodeURIComponent(subs.join(','))}&_=${Date.now()}`),
   discardDraft: (agentId: string) =>
     req<{ ok: boolean }>(`/ai/session/discard`, { method: 'POST', body: JSON.stringify({ agentId }) }),
 

@@ -168,5 +168,7 @@ export async function initRtc(server) {
     });
   });
 
-  return io;
+  // فهرستِ کاربرانِ واقعاً متصل (برای تشخیص + نشانگرِ آنلاینِ واقعی).
+  const presence = () => Array.from(online, ([s, set]) => ({ sub: s, sockets: set.size }));
+  return { io, presence, isOnline: (s) => online.has(String(s)) };
 }

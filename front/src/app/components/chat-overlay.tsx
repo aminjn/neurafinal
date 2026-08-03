@@ -203,6 +203,19 @@ export default function ChatOverlay() {
 
   if (!chat.open) return null;
 
+  // حضورِ واقعیِ طرفِ مقابل در گفتگوی مخاطبِ نورا (از سرورِ RTC) — «همه آنلاین»ِ فیک رفع می‌شود.
+  const [__peerOnline, setPeerOnline] = useState(false);
+  useEffect(() => {
+    const id = chat.id || '';
+    if (!chat.open || chat.type !== 'contact' || !id.startsWith('peer_')) { setPeerOnline(false); return; }
+    const sub = id.slice('peer_'.length);
+    let live = true;
+    const check = async () => { try { const r: any = await api.rtcPresence([sub]); if (live) setPeerOnline(!!(r && r[sub])); } catch (_) { if (live) setPeerOnline(false); } };
+    check();
+    const iv = setInterval(check, 15000);
+    return () => { live = false; clearInterval(iv); };
+  }, [chat.open, chat.id, chat.type]);
+
   // Get header info
   let headerName = '';
   let headerSub = '';
@@ -292,6 +305,8 @@ export default function ChatOverlay() {
   // گفتگوی مخاطبِ نورا (کاربر-به-کاربر): شناسهٔ طرفِ مقابل از id استخراج می‌شود → تماسِ اینترنتی.
   const isPeerChat = chat.type === 'contact' && typeof chat.id === 'string' && chat.id.startsWith('peer_');
   const peerSub = isPeerChat ? String(chat.id).slice('peer_'.length) : '';
+  // نشانگرِ آنلاین برای مخاطبِ نورا از حضورِ واقعی می‌آید (نه پیش‌فرضِ true).
+  if (isPeerChat) isOnline = __peerOnline;
 
   const topics = chat.type === 'agent' && chat.id ? getTopics(chat.id) : [];
 

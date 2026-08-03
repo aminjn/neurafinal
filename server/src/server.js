@@ -17,8 +17,18 @@ async function startRtcServer() {
   try {
     const http = await import('node:http');
     const { initRtc } = await import('./rtc/index.js');
-    const rtcServer = http.createServer((req, res) => { res.writeHead(200); res.end('rtc'); });
-    await initRtc(rtcServer);
+    let presence = () => [];
+    const rtcServer = http.createServer((req, res) => {
+      // /status: فهرستِ کاربرانِ آنلاین + IP عمومی (برای تشخیصِ زنگ‌نخوردن و نشانگرِ حضور)
+      if (req.url && req.url.startsWith('/status')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, online: presence(), announced: process.env.MEDIASOUP_ANNOUNCED_IP || null }));
+        return;
+      }
+      res.writeHead(200); res.end('rtc');
+    });
+    const api = await initRtc(rtcServer);
+    if (api && typeof api.presence === 'function') presence = api.presence;
     rtcServer.listen(RTC_PORT, '127.0.0.1', () => console.log(`Neura RTC (calls) listening on http://127.0.0.1:${RTC_PORT}`));
   } catch (e) { console.error('[rtc] disabled —', e?.message || e); }
 }
