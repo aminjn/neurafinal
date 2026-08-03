@@ -762,7 +762,7 @@ function MarketOrdersTab() {
                 <span><i className="fa-regular fa-clock text-[8px] ml-1" />{ord.date}</span>
               </div>
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-[rgba(126,95,170,0.1)]">
-                <span className="text-[12px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>{ord.total} <span className="text-[9px] text-[var(--aw-text-muted)]">تومان</span></span>
+                <span className="text-[12px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>{(Number(String(ord.total).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR')} <span className="text-[9px] text-[var(--aw-text-muted)]">تومان</span></span>
                 {(ord.status === 'preparing' || ord.status === 'shipping') && (
                   <button onClick={() => openModal('جزئیات سفارش', <OrderDetail order={ord as any} />)} className="text-[10px] px-3 py-1.5 rounded-lg border border-[#F59E0B] bg-transparent text-[#F59E0B] cursor-pointer" style={{ fontWeight: 600 }}>
                     <i className="fa-solid fa-eye text-[8px] ml-1" />پیگیری
