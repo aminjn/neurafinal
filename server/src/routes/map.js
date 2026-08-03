@@ -2,10 +2,33 @@
 // داده نمی‌شود — همهٔ درخواست‌ها از سرور به API بیرونی زده می‌شوند. کاربرِ واردشده می‌تواند آدرس/لوکیشن
 // بگیرد (autocomplete/geocode/reverse) بدون دیدنِ کلید.
 import express from 'express';
+import https from 'node:https';
 import { query } from '../db.js';
 import { authRequired } from '../auth.js';
 
 const router = express.Router();
+
+// درخواستِ مستقیمِ HTTPS بدونِ هیچ پروکسی‌ای — هر دو سرور (نورا و نکسا) روی آروان‌اند و باید
+// مستقیم حرف بزنند. fetchِ Node ممکن است از HTTPS_PROXYِ محیطی رد شود و به نکسا نرسد (۵۰۲)،
+// در حالی که curlِ سیستمی مستقیم می‌رود. اینجا از ماژولِ https با ترجیحِ IPv4 استفاده می‌کنیم.
+function directHttps(url, { method = 'GET', headers = {}, timeout = 12000 } = {}) {
+  return new Promise((resolve, reject) => {
+    let u;
+    try { u = new URL(url); } catch (e) { return reject(e); }
+    const req = https.request({
+      hostname: u.hostname, port: u.port || 443, path: u.pathname + u.search,
+      method, headers: { Host: u.hostname, ...headers }, servername: u.hostname,
+      family: 4, timeout,
+    }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => { const buffer = Buffer.concat(chunks); resolve({ status: res.statusCode || 0, headers: res.headers, buffer, body: buffer.toString('utf8') }); });
+    });
+    req.on('error', reject);
+    req.setTimeout(timeout, () => req.destroy(new Error('request timeout')));
+    req.end();
+  });
+}
 
 async function mapCfg() {
   let s = {};
@@ -29,14 +52,9 @@ async function callMap(cfg, path, params) {
   const url = `${cfg.base}${path}?${usp.toString()}`;
   const headers = { Accept: 'application/json' };
   if (cfg.keyHeader && cfg.key) headers[cfg.keyHeader] = cfg.key;
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    const r = await fetch(url, { headers, signal: ctrl.signal });
-    const text = await r.text();
-    let data; try { data = text ? JSON.parse(text) : null; } catch (_) { data = { raw: text }; }
-    return { ok: r.ok, status: r.status, data };
-  } finally { clearTimeout(t); }
+  const r = await directHttps(url, { method: 'GET', headers, timeout: 12000 });
+  let data; try { data = r.body ? JSON.parse(r.body) : null; } catch (_) { data = { raw: r.body }; }
+  return { ok: r.status >= 200 && r.status < 300, status: r.status, data };
 }
 
 function guard(res, cfg) {
@@ -109,18 +127,15 @@ router.get('/tile/:z/:x/:y', async (req, res) => {
   const url = cfg.tileUrl
     .replace(/\{z\}/g, String(z)).replace(/\{x\}/g, String(x)).replace(/\{y\}/g, String(y))
     .replace(/\{s\}/g, 'a').replace(/\{key\}/g, encodeURIComponent(cfg.key || ''));
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 12000);
   try {
     const headers = {};
     if (cfg.keyHeader && cfg.key) headers[cfg.keyHeader] = cfg.key;
-    const r = await fetch(url, { headers, signal: ctrl.signal });
-    if (!r.ok) return res.status(r.status).end();
-    res.setHeader('Content-Type', r.headers.get('content-type') || 'image/png');
+    const r = await directHttps(url, { headers, timeout: 12000 });
+    if (r.status < 200 || r.status >= 300) return res.status(r.status).end();
+    res.setHeader('Content-Type', r.headers['content-type'] || 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    const buf = Buffer.from(await r.arrayBuffer());
-    res.end(buf);
-  } catch (e) { res.status(502).end(); } finally { clearTimeout(t); }
+    res.end(r.buffer);
+  } catch (e) { res.status(502).end(); }
 });
 
 export default router;

@@ -114,13 +114,23 @@ function MarketChatTab() {
 function __parseReverse(r: any): string {
   if (!r) return '';
   if (typeof r === 'string') return r;
-  const first = Array.isArray(r.results) ? r.results[0] : (r.result || r);
-  return String(
-    r.formatted_address || r.address || r.formattedAddress ||
-    (first && (first.formatted_address || first.address || first.formattedAddress)) ||
-    [first?.route_name, first?.neighbourhood || first?.neighborhood, first?.city, first?.state || first?.province].filter(Boolean).join('، ') ||
-    ''
-  ).trim();
+  // شکلِ پاسخِ ارائه‌دهنده‌ها فرق دارد؛ نامزدهای رشته‌ایِ آدرس را از چند سطح جمع می‌کنیم و
+  // آدرس‌مانندترین (دارای ویرگول/طولانی‌تر) را برمی‌گردانیم.
+  const cands: string[] = [];
+  const KEYS = ['formatted_address', 'formattedAddress', 'address', 'display_name', 'value', 'full_address', 'fullAddress', 'name'];
+  const dig = (o: any, depth: number) => {
+    if (o == null || depth > 4) return;
+    if (typeof o === 'string') { if (o.trim().length > 6) cands.push(o.trim()); return; }
+    if (typeof o !== 'object') return;
+    for (const k of KEYS) if (typeof o[k] === 'string' && o[k].trim().length > 5) cands.push(o[k].trim());
+    // آدرسِ ساخت‌یافته از اجزا
+    const parts = [o.route_name, o.neighbourhood || o.neighborhood, o.city, o.state || o.province, o.district].filter((x: any) => typeof x === 'string' && x);
+    if (parts.length >= 2) cands.push(parts.join('، '));
+    for (const k of ['result', 'results', 'data', 'location', 'address']) if (o[k] && typeof o[k] === 'object') dig(Array.isArray(o[k]) ? o[k][0] : o[k], depth + 1);
+  };
+  dig(r, 0);
+  cands.sort((a, b) => (/[،,]/.test(b) ? 1 : 0) - (/[،,]/.test(a) ? 1 : 0) || b.length - a.length);
+  return (cands[0] || '').trim();
 }
 
 // نقشهٔ واقعیِ تعاملی (Leaflet). پینِ ثابتِ وسط + کشیدنِ نقشه؛ هر بار که نقشه می‌ایستد،
