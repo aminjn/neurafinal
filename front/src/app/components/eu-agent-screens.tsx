@@ -1955,7 +1955,7 @@ export function EuContacts() {
 }
 
 export function EuAssistantScreen() {
-  const { setEuScreen, openChat, showToast, startCall, goBack, speakMessage, speakingMsgId, agents, setAgents, assistantId, setAssistantId } = useApp();
+  const { setEuScreen, openChat, showToast, startCall, goBack, speakMessage, speakingMsgId, agents, setAgents, assistantId, setAssistantId, openModal } = useApp();
   // reloadSessions پیش‌تر تعریف‌نشده بود و کلیکِ «گفتگوی جدید» را کرش می‌کرد. no-opِ امن
   // (سشنِ جدید سمتِ سرور با api.newSession ساخته می‌شود؛ سیگنالِ ریست چت را خالی می‌کند).
   const reloadSessions = () => {};
