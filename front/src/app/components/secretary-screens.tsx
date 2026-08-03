@@ -207,7 +207,7 @@ const TIME_SLOTS = (() => {
   return out;
 })();
 
-function NewMeetingForm({ onCreate }: { onCreate: (m: any) => void }) {
+function NewMeetingForm({ onCreate, meetings }: { onCreate: (m: any) => void; meetings?: any[] }) {
   const { closeModal, showToast, agents, personnel } = useApp();
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -223,12 +223,10 @@ function NewMeetingForm({ onCreate }: { onCreate: (m: any) => void }) {
   const staffPeople = (personnel || []).map((p: any) => ({ key: 'p-' + p.id, name: p.name, sub: p.role, init: p.name[0], bg: 'bg-blue-500' }));
   const toggle = (k: string) => setPicked(s => s.includes(k) ? s.filter(x => x !== k) : [...s, k]);
 
-  // Deterministic mock availability for the chosen day+slot
+  // availreal: دسترسیِ واقعی — آیا این نفر در همان روز+ساعت جلسهٔ دیگری (ثبت‌شده) دارد؟ (نه هشِ مصنوعی)
   const isAvailable = (key: string) => {
     if (!slot) return true;
-    let h = 0; const str = key + day + slot;
-    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-    return h % 10 > 2; // ~70% available
+    return !(meetings || []).some((m: any) => m.day === day && m.slot === slot && Array.isArray(m.attendeeKeys) && m.attendeeKeys.includes(key));
   };
   const busyPicked = picked.filter(k => !isAvailable(k));
 
@@ -261,9 +259,11 @@ function NewMeetingForm({ onCreate }: { onCreate: (m: any) => void }) {
 
   const submit = () => {
     if (!title.trim()) { showToast('عنوان جلسه را وارد کنید'); return; }
-    onCreate({ id: Date.now(), title, desc, time: time || '—', attendees: picked.length || 1, location, status: 'pending' });
+    // day/slot/attendeeKeys را ذخیره کن تا دسترسیِ واقعی برای جلسه‌های بعدی محاسبه شود
+    const attendeeNames = picked.map(k => [...agentPeople, ...staffPeople].find(p => p.key === k)?.name).filter(Boolean);
+    onCreate({ id: Date.now(), title, desc, time: time || '—', day, slot, attendees: picked.length || 1, attendeeKeys: picked, attendeeNames, location, status: 'pending' });
     closeModal();
-    showToast(picked.length > 0 ? `جلسه ایجاد شد و دعوت‌نامه به ${toFa(picked.length)} نفر ارسال شد` : 'جلسه جدید ایجاد شد');
+    showToast(picked.length > 0 ? `جلسه با ${toFa(picked.length)} نفر ثبت شد` : 'جلسه جدید ثبت شد');
   };
 
   return (
@@ -1079,7 +1079,7 @@ export function SecPlanningScreen() {
                 )}
                 {popTab === 'meetings' && (
                   <motion.div key="meetings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-2 pt-2">
-              <button onClick={() => openModal('ایجاد جلسه جدید', <NewMeetingForm onCreate={(m) => setMeetings(prev => [m, ...prev])} />)} className="p-3 flex items-center gap-2 border-2 border-dashed border-[var(--aw-border)] rounded-[10px] cursor-pointer hover:border-[#22A6F0] transition-colors bg-transparent">
+              <button onClick={() => openModal('ایجاد جلسه جدید', <NewMeetingForm meetings={meetings} onCreate={(m) => setMeetings(prev => [m, ...prev])} />)} className="p-3 flex items-center gap-2 border-2 border-dashed border-[var(--aw-border)] rounded-[10px] cursor-pointer hover:border-[#22A6F0] transition-colors bg-transparent">
                 <i className="fa-solid fa-plus text-[14px] text-[#22A6F0]" />
                 <span className="text-[13px] text-[var(--aw-text-muted)]">ایجاد جلسه جدید</span>
               </button>
