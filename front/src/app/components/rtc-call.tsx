@@ -20,6 +20,18 @@ type Kind = 'audio' | 'video';
 type Phase = 'idle' | 'outgoing' | 'incoming' | 'connected';
 type RemoteTile = { producerId: string; kind: 'audio' | 'video'; ownerSub: string; ownerName: string; stream: MediaStream };
 
+// پیامِ خطای خوانا برای کاربر (به‌جای ماندن روی «در حال تماس…»).
+function callErrMsg(e: any): string {
+  const m = String(e?.message || e || '');
+  if (m.startsWith('no-signal')) return 'اتصال به سرورِ تماس برقرار نشد';
+  if (m.startsWith('no-media')) {
+    if (/NotAllowed|Permission/i.test(m)) return 'دسترسی به میکروفون/دوربین رد شد';
+    if (/NotFound|Devices/i.test(m)) return 'میکروفون/دوربین یافت نشد';
+    return 'دسترسی به میکروفون/دوربین ممکن نشد';
+  }
+  return 'خطا در برقراری تماس';
+}
+
 // رویدادِ شروعِ تماس که از دکمهٔ گفتگو dispatch می‌شود.
 export function startPeerCall(opts: { toSubs: string[]; peerName: string; kind: Kind }) {
   try { window.dispatchEvent(new CustomEvent('neura:peer-call', { detail: opts })); } catch (_) {}
@@ -128,17 +140,22 @@ export function NeuraCallLayer() {
     // اطمینان از اتصالِ سوکت
     if (!s.connected) await new Promise<void>((res) => { s.once('connect', () => res()); setTimeout(res, 4000); });
 
-    const joinRes: any = await s.emitWithAck('joinRoom', { roomName });
-    if (!joinRes || joinRes.state !== 'Success') throw new Error('join failed');
+    // اگر سوکت وصل نشد، خطای روشن بده (نه ماندن روی «در حال تماس…»).
+    if (!s.connected) throw new Error('no-signal');
+
+    const joinRes: any = await s.emitWithAck('joinRoom', { roomName }).catch(() => null);
+    if (!joinRes || joinRes.state !== 'Success') throw new Error('no-signal');
     roomRef.current = roomName;
 
     const device = new Device();
     await device.load({ routerRtpCapabilities: joinRes.rtpCapabilities });
     deviceRef.current = device;
 
-    // مدیای محلی
+    // مدیای محلی (دسترسیِ میکروفون/دوربین) — روی HTTP کار نمی‌کند و بدونِ اجازه رد می‌شود.
     const constraints: MediaStreamConstraints = callKind === 'video' ? { audio: true, video: { width: { ideal: 640 }, height: { ideal: 480 } } } : { audio: true, video: false };
-    const local = await navigator.mediaDevices.getUserMedia(constraints);
+    let local: MediaStream;
+    try { local = await navigator.mediaDevices.getUserMedia(constraints); }
+    catch (e: any) { throw new Error('no-media:' + (e?.name || '')); }
     localStreamRef.current = local;
     if (localVideoRef.current && callKind === 'video') { localVideoRef.current.srcObject = local; }
 
@@ -212,7 +229,7 @@ export function NeuraCallLayer() {
       try {
         await s.emitWithAck('callUser', { toSubs, roomName, kind: callKind, callerName: '' });
         await setupMedia(roomName, callKind);
-      } catch (err) { setStatusMsg('خطا در برقراری تماس'); setTimeout(resetAll, 1600); }
+      } catch (err: any) { setStatusMsg(callErrMsg(err)); setTimeout(resetAll, 2600); }
     };
     window.addEventListener('neura:peer-call', onStart as any);
     return () => window.removeEventListener('neura:peer-call', onStart as any);
@@ -224,7 +241,7 @@ export function NeuraCallLayer() {
     stopRing();
     toSubsRef.current = [inc.fromSub];
     setStatusMsg('در حال اتصال...');
-    try { await setupMedia(inc.roomName, inc.kind); } catch (_) { setStatusMsg('خطا در اتصال'); setTimeout(resetAll, 1500); }
+    try { await setupMedia(inc.roomName, inc.kind); } catch (e: any) { setStatusMsg(callErrMsg(e)); setTimeout(resetAll, 2600); }
   }, [resetAll]);
 
   const rejectIncoming = useCallback(() => {
