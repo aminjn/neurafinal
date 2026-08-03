@@ -205,9 +205,10 @@ function SimpleWalletContent() {
 // ── Glass Home Screen ──────────────────────────────────────────
 
 function EuHomeScreenGlass() {
-  const { openModal, setEuScreen, orders, cartCount, walletBalance } = useApp();
-
-  const activeOrders = orders.filter(o => o.status === 'preparing' || o.status === 'pending');
+  const { openModal, setEuScreen, euPlacedOrders, cartCount, walletBalance } = useApp();
+  // euorders: سفارش‌های واقعیِ خودِ کاربر (نه ordersِ ادمین که برای نقشِ user همیشه خالی است)
+  const orders = (euPlacedOrders || []) as any[];
+  const activeOrders = orders.filter(o => o.status === 'preparing' || o.status === 'pending' || o.status === 'shipping' || o.status === 'confirmed');
   const totalOrders = orders.length;
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
 
@@ -435,8 +436,9 @@ function EuHomeScreenGlass() {
 // ── Non-glass Home Screen (preserved from before) ──────────────
 
 function EuHomeScreenDefault() {
-  const { openModal, setEuScreen, agents, orders, walletBalance, ownedAgents } = useApp();
-  const activeOrders = orders.filter(o => o.status === 'preparing' || o.status === 'pending');
+  const { openModal, setEuScreen, agents, euPlacedOrders, walletBalance, ownedAgents } = useApp();
+  const orders = (euPlacedOrders || []) as any[]; // euorders: سفارش‌های واقعیِ کاربر
+  const activeOrders = orders.filter(o => o.status === 'preparing' || o.status === 'pending' || o.status === 'shipping' || o.status === 'confirmed');
   const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
 
   const quickActions = [
