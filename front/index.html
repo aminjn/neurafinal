@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <!-- کُشندهٔ service workerِ کهنه + fallbackِ عکسِ خراب -->
+  <script>
+    (function () {
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations()
+            .then(function (rs) { rs.forEach(function (r) { r.unregister(); }); })
+            .catch(function () {});
+        }
+        if (window.caches && caches.keys) {
+          caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
+        }
+      } catch (e) {}
+    })();
+    // اگر عکسی (آواتار/آیکون) لود نشد، به‌جای عکسِ خراب یک placeholderِ خنثی نشان بده تا UI خراب دیده نشود.
+    window.addEventListener('error', function (e) {
+      var t = e && e.target;
+      if (t && t.tagName === 'IMG' && !t.dataset.fb) {
+        t.dataset.fb = '1';
+        t.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="40" fill="%23e5e1f0"/><circle cx="40" cy="31" r="14" fill="%23b9b0d4"/><rect x="15" y="51" width="50" height="28" rx="14" fill="%23b9b0d4"/></svg>';
+      }
+    }, true);
+  </script>
+
+  <!-- interactive-widget حذف شد → رفتارِ پیش‌فرضِ overlay: layout ثابت می‌ماند و فقط visualViewport
+       کوچک می‌شود؛ پس تشخیصِ ارتفاعِ کیبورد روی اندروید و آیفون یکسان و قابل‌اعتماد است (رفعِ ریشه‌ایِ
+       «کیبورد روی ورودی می‌افتد» — یک فرمول، همه‌جا). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+
+  <!-- ===================== SEO ===================== -->
+  <title>نورا | دستیارِ هوشمندِ کسب‌وکار (فروش، بازاریابی، منشی، تدارکات)</title>
+  <meta name="description" content="نورا؛ پلتفرمِ دستیارِ هوشمندِ کسب‌وکار — مدیریتِ فروش و فاکتور، بازاریابی و کمپین، منشیِ هوشمند، تدارکات، کیفِ پول و باشگاهِ مشتریان، همه در یک اپِ فارسی." />
+  <meta name="keywords" content="نورا, دستیار هوشمند, هوش مصنوعی, مدیریت کسب‌وکار, CRM, فروش, بازاریابی, منشی هوشمند, تدارکات, فاکتور, کیف پول" />
+  <meta name="author" content="Neura" />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#7B62FC" />
+  <link rel="canonical" href="https://nr.servein.ir/" />
+
+  <!-- Open Graph (اشتراک در شبکه‌های اجتماعی/پیام‌رسان‌ها) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="نورا" />
+  <meta property="og:title" content="نورا | دستیارِ هوشمندِ کسب‌وکار" />
+  <meta property="og:description" content="مدیریتِ فروش، بازاریابی، منشیِ هوشمند و تدارکات در یک اپِ فارسی با هوشِ مصنوعی." />
+  <meta property="og:url" content="https://nr.servein.ir/" />
+  <meta property="og:image" content="https://nr.servein.ir/pwa-512.png" />
+  <meta property="og:locale" content="fa_IR" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="نورا | دستیارِ هوشمندِ کسب‌وکار" />
+  <meta name="twitter:description" content="مدیریتِ فروش، بازاریابی، منشیِ هوشمند و تدارکات با هوشِ مصنوعی." />
+  <meta name="twitter:image" content="https://nr.servein.ir/pwa-512.png" />
+
+  <!-- دادهٔ ساختاریافته (Schema.org) — به گوگل می‌گوید این چیست -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "نورا",
+    "alternateName": "Neura",
+    "url": "https://nr.servein.ir/",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web, Android, iOS",
+    "inLanguage": "fa-IR",
+    "description": "دستیارِ هوشمندِ کسب‌وکار برای مدیریتِ فروش، بازاریابی، منشیِ هوشمند و تدارکات.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IRR" }
+  }
+  </script>
+
+  <!-- PWA / آیکون‌ها -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="نورا" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="/favicon-32.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Preloadِ فونتِ اصلی تا متن بدونِ پرشِ فونت و سریع بیاید -->
+  <link rel="preload" href="/fonts/Vazirmatn-Regular.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/Vazirmatn-Bold.woff2" as="font" type="font/woff2" crossorigin />
+</head>
+<body>
+  <div id="root"></div>
+  <noscript>
+    <div style="font-family:Tahoma,sans-serif;direction:rtl;text-align:center;padding:40px;color:#333">
+      <h1>نورا — دستیارِ هوشمندِ کسب‌وکار</h1>
+      <p>برای استفاده از نورا لطفاً جاوااسکریپت را در مرورگر فعال کنید.</p>
+    </div>
+  </noscript>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

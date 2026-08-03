@@ -1,0 +1,412 @@
+    @import "tailwindcss";
+    @custom-variant dark (&:is(.dark *));
+
+    /* ===== فونت‌های سایت: فارسی → Kamand Pro، انگلیسی/لاتین → Neogrey ===== */
+    @font-face { font-family: 'Kamand'; src: url('/fonts/Vazirmatn-Light.woff2') format('woff2'); font-weight: 300; font-style: normal; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200D; }
+    @font-face { font-family: 'Kamand'; src: url('/fonts/Vazirmatn-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200D; }
+    @font-face { font-family: 'Kamand'; src: url('/fonts/Vazirmatn-Medium.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200D; }
+    @font-face { font-family: 'Kamand'; src: url('/fonts/Vazirmatn-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200D; }
+    @font-face { font-family: 'Kamand'; src: url('/fonts/Vazirmatn-ExtraBold.woff2') format('woff2'); font-weight: 800; font-style: normal; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200D; }
+    @font-face { font-family: 'Kamand'; src: url('/fonts/Vazirmatn-Black.woff2') format('woff2'); font-weight: 900; font-style: normal; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF, U+200C-200D; }
+    /* فونتِ اصلیِ فارسی: Vazirmatn (لوکال، self-hosted) — خوانا و تمیز برای رابطِ کاربری */
+    @font-face { font-family: 'Vazirmatn'; src: url('/fonts/Vazirmatn-Light.woff2') format('woff2'); font-weight: 300; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Vazirmatn'; src: url('/fonts/Vazirmatn-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Vazirmatn'; src: url('/fonts/Vazirmatn-Medium.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Vazirmatn'; src: url('/fonts/Vazirmatn-SemiBold.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Vazirmatn'; src: url('/fonts/Vazirmatn-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Vazirmatn'; src: url('/fonts/Vazirmatn-ExtraBold.woff2') format('woff2'); font-weight: 800; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Vazirmatn'; src: url('/fonts/Vazirmatn-Black.woff2') format('woff2'); font-weight: 900; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Neogrey'; src: url('/fonts/NeogreyRegular.otf') format('opentype'); font-weight: 100 450; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'Neogrey'; src: url('/fonts/NeogreyMedium.otf') format('opentype'); font-weight: 451 900; font-style: normal; font-display: swap; }
+    /* همهٔ متن‌ها به این دو فونت (به‌جز آیکون‌های FontAwesome) — inline styleها هم override می‌شوند */
+    *:not(.fa):not(.fas):not(.far):not(.fab):not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.fa-sharp):not(.fa-thin):not(.fa-light):not(.fa-duotone) {
+      font-family: 'Vazirmatn', 'Neogrey', system-ui, sans-serif !important;
+    }
+    /* گاردِ سخت: خودِ .aw-app هم Vazirmatn (بعضی استایل‌های دیگر Kamand را اول می‌گذارند)
+       — ولی آیکون‌های FontAwesome باید کنار گذاشته شوند وگرنه گلیفِ آیکون با فونتِ فارسی رندر
+       می‌شود و خالی/دایرهٔ بی‌آیکون می‌ماند (باگِ «دایرهٔ بنفش در خیلی جاها»). */
+    .aw-app,
+    .aw-app *:not(.fa):not(.fas):not(.far):not(.fab):not(.fa-solid):not(.fa-regular):not(.fa-brands):not(.fa-sharp):not(.fa-thin):not(.fa-light):not(.fa-duotone) {
+      font-family: 'Vazirmatn', 'Neogrey', system-ui, sans-serif !important;
+    }
+    /* بازگردانیِ صریحِ فونتِ FontAwesome روی آیکون‌ها + شبه‌عنصرِ ::before (بالاترین اولویت) */
+    .aw-app .fa, .aw-app .fas, .aw-app .fa-solid,
+    .aw-app .fa::before, .aw-app .fas::before, .aw-app .fa-solid::before { font-family: 'Font Awesome 6 Free' !important; font-weight: 900 !important; }
+    .aw-app .far, .aw-app .fa-regular,
+    .aw-app .far::before, .aw-app .fa-regular::before { font-family: 'Font Awesome 6 Free' !important; font-weight: 400 !important; }
+    .aw-app .fab, .aw-app .fa-brands,
+    .aw-app .fab::before, .aw-app .fa-brands::before { font-family: 'Font Awesome 6 Brands' !important; font-weight: 400 !important; }
+
+    :root {
+      --font-size: 16px;
+      --background: #ffffff;
+      --foreground: oklch(0.145 0 0);
+      --card: #ffffff;
+      --card-foreground: oklch(0.145 0 0);
+      --popover: oklch(1 0 0);
+      --popover-foreground: oklch(0.145 0 0);
+      --primary: #030213;
+      --primary-foreground: oklch(1 0 0);
+      --secondary: oklch(0.95 0.0058 264.53);
+      --secondary-foreground: #030213;
+      --muted: #ececf0;
+      --muted-foreground: #717182;
+      --accent: #e9ebef;
+      --accent-foreground: #030213;
+      --destructive: #d4183d;
+      --destructive-foreground: #ffffff;
+      --border: rgba(0, 0, 0, 0.1);
+      --input: transparent;
+      --input-background: #f3f3f5;
+      --switch-background: #cbced4;
+      --font-weight-medium: 500;
+      --font-weight-normal: 400;
+      --ring: oklch(0.708 0 0);
+      --chart-1: oklch(0.646 0.222 41.116);
+      --chart-2: oklch(0.6 0.118 184.704);
+      --chart-3: oklch(0.398 0.07 227.392);
+      --chart-4: oklch(0.828 0.189 84.429);
+      --chart-5: oklch(0.769 0.188 70.08);
+      --radius: 0.625rem;
+      --sidebar: oklch(0.985 0 0);
+      --sidebar-foreground: oklch(0.145 0 0);
+      --sidebar-primary: #030213;
+      --sidebar-primary-foreground: oklch(0.985 0 0);
+      --sidebar-accent: oklch(0.97 0 0);
+      --sidebar-accent-foreground: oklch(0.205 0 0);
+      --sidebar-border: oklch(0.922 0 0);
+      --sidebar-ring: oklch(0.708 0 0);
+    }
+
+    .dark {
+      --background: oklch(0.145 0 0);
+      --foreground: oklch(0.985 0 0);
+      --card: oklch(0.145 0 0);
+      --card-foreground: oklch(0.985 0 0);
+      --popover: oklch(0.145 0 0);
+      --popover-foreground: oklch(0.985 0 0);
+      --primary: oklch(0.985 0 0);
+      --primary-foreground: oklch(0.205 0 0);
+      --secondary: oklch(0.269 0 0);
+      --secondary-foreground: oklch(0.985 0 0);
+      --muted: oklch(0.269 0 0);
+      --muted-foreground: oklch(0.708 0 0);
+      --accent: oklch(0.269 0 0);
+      --accent-foreground: oklch(0.985 0 0);
+      --destructive: oklch(0.396 0.141 25.723);
+      --destructive-foreground: oklch(0.637 0.237 25.331);
+      --border: oklch(0.269 0 0);
+      --input: oklch(0.269 0 0);
+      --ring: oklch(0.439 0 0);
+      --font-weight-medium: 500;
+      --font-weight-normal: 400;
+      --chart-1: oklch(0.488 0.243 264.376);
+      --chart-2: oklch(0.696 0.17 162.48);
+      --chart-3: oklch(0.769 0.188 70.08);
+      --chart-4: oklch(0.627 0.265 303.9);
+      --chart-5: oklch(0.645 0.246 16.439);
+      --sidebar: oklch(0.205 0 0);
+      --sidebar-foreground: oklch(0.985 0 0);
+      --sidebar-primary: oklch(0.488 0.243 264.376);
+      --sidebar-primary-foreground: oklch(0.985 0 0);
+      --sidebar-accent: oklch(0.269 0 0);
+      --sidebar-accent-foreground: oklch(0.985 0 0);
+      --sidebar-border: oklch(0.269 0 0);
+      --sidebar-ring: oklch(0.439 0 0);
+    }
+
+    @theme inline {
+      --color-background: var(--background);
+      --color-foreground: var(--foreground);
+      --color-card: var(--card);
+      --color-card-foreground: var(--card-foreground);
+      --color-popover: var(--popover);
+      --color-popover-foreground: var(--popover-foreground);
+      --color-primary: var(--primary);
+      --color-primary-foreground: var(--primary-foreground);
+      --color-secondary: var(--secondary);
+      --color-secondary-foreground: var(--secondary-foreground);
+      --color-muted: var(--muted);
+      --color-muted-foreground: var(--muted-foreground);
+      --color-accent: var(--accent);
+      --color-accent-foreground: var(--accent-foreground);
+      --color-destructive: var(--destructive);
+      --color-destructive-foreground: var(--destructive-foreground);
+      --color-border: var(--border);
+      --color-input: var(--input);
+      --color-input-background: var(--input-background);
+      --color-switch-background: var(--switch-background);
+      --color-ring: var(--ring);
+      --color-chart-1: var(--chart-1);
+      --color-chart-2: var(--chart-2);
+      --color-chart-3: var(--chart-3);
+      --color-chart-4: var(--chart-4);
+      --color-chart-5: var(--chart-5);
+      --radius-sm: calc(var(--radius) - 4px);
+      --radius-md: calc(var(--radius) - 2px);
+      --radius-lg: var(--radius);
+      --radius-xl: calc(var(--radius) + 4px);
+      --color-sidebar: var(--sidebar);
+      --color-sidebar-foreground: var(--sidebar-foreground);
+      --color-sidebar-primary: var(--sidebar-primary);
+      --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+      --color-sidebar-accent: var(--sidebar-accent);
+      --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+      --color-sidebar-border: var(--sidebar-border);
+      --color-sidebar-ring: var(--sidebar-ring);
+    }
+
+    @layer base {
+      * { @apply border-border outline-ring/50; }
+      body { @apply bg-background text-foreground; }
+      html { font-size: var(--font-size); }
+      h1 { font-size: var(--text-2xl); font-weight: var(--font-weight-medium); line-height: 1.5; }
+      h2 { font-size: var(--text-xl); font-weight: var(--font-weight-medium); line-height: 1.5; }
+      h3 { font-size: var(--text-lg); font-weight: var(--font-weight-medium); line-height: 1.5; }
+      h4 { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
+      label { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
+      button { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
+      input { font-size: var(--text-base); font-weight: var(--font-weight-normal); line-height: 1.5; }
+    }
+
+    :root, [data-theme="dark"] {
+      --aw-primary: #7B62FC; --aw-primary-dark: #5C4ABD; --aw-primary-light: #A599FC; --aw-primary-bg: rgba(123,98,252,0.18);
+      --aw-secondary: #00E676; --aw-secondary-dark: #00C853; --aw-accent: #8169ff; --aw-danger: #FF383C; --aw-danger-bg: rgba(255,56,60,0.14);
+      --aw-bg-app: #15131A; --aw-bg-card: rgba(255,255,255,0.04); --aw-bg-card-hover: rgba(255,255,255,0.09); --aw-bg-input: rgba(255,255,255,0.05); --aw-bg-header: rgba(21,19,26,0.30); --aw-bg-modal: rgba(28,26,36,0.82);
+      --aw-text-primary: #FDFDFD; --aw-text-secondary: #CCCCCC; --aw-text-muted: #8F8F8F;
+      --aw-border: rgba(217,217,217,0.28); --aw-border-light: rgba(217,217,217,0.12); --aw-shadow: 0 4px 4px rgba(123,98,252,0.20); --aw-shadow-sm: 0 4px 4px rgba(123,98,252,0.20);
+      --aw-bubble-sent: linear-gradient(135deg, #8169ff, #5c4abd); --aw-bubble-sent-solid: #7B62FC; --aw-bubble-recv: rgba(255,255,255,0.06);
+      --aw-online: #00E676; --aw-offline: #8F8F8F;
+      --aw-eu-primary: #7B62FC; --aw-eu-primary-dark: #5C4ABD; --aw-eu-bg: #15131A; --aw-eu-card: rgba(255,255,255,0.04); --aw-logo-filter: none;
+      --aw-eu-nav-bg: rgba(255,255,255,0.04); --aw-eu-nav-border: rgba(217,217,217,0.30);
+      --aw-eu-glass-card: rgba(255,255,255,0.04); --aw-eu-glass-bd: rgba(217,217,217,0.30); --aw-eu-ink-strong: #FDFDFD;
+      --aw-chat-bg: rgba(21,19,26,0.62); --aw-chat-surface: rgba(255,255,255,0.04); --aw-chat-recv: rgba(255,255,255,0.07); --aw-chat-field: rgba(255,255,255,0.04); --aw-chat-bd: rgba(217,217,217,0.22);
+    }
+    [data-theme="light"] {
+      --aw-primary: #9B59B6; --aw-primary-dark: #7E4FA2; --aw-primary-light: #C39BD3; --aw-primary-bg: rgba(155,89,182,0.08);
+      --aw-secondary: #00C853; --aw-secondary-dark: #00A844; --aw-accent: #B83D9E; --aw-danger: #ef4444; --aw-danger-bg: rgba(239,68,68,0.08);
+      --aw-bg-app: #F5F3FA; --aw-bg-card: #FFFFFF; --aw-bg-card-hover: #F0ECF9; --aw-bg-input: #EDE8F5; --aw-bg-header: rgba(245,243,250,0.95); --aw-bg-modal: #FFFFFF;
+      --aw-text-primary: #1A1335; --aw-text-secondary: #5E4F7A; --aw-text-muted: #9A8CB5;
+      --aw-border: rgba(100,70,150,0.12); --aw-border-light: rgba(100,70,150,0.06); --aw-shadow: 0 4px 24px rgba(100,70,150,0.10); --aw-shadow-sm: 0 2px 8px rgba(100,70,150,0.08);
+      --aw-bubble-sent: linear-gradient(135deg, #B83D9E, #7E5FAA); --aw-bubble-sent-solid: #9B59B6; --aw-bubble-recv: #EDE8F5;
+      --aw-online: #00C853; --aw-offline: #9A8CB5;
+      --aw-eu-primary: #7E5FAA; --aw-eu-primary-dark: #6A4E92; --aw-eu-bg: #F5F3FA; --aw-eu-card: #FFFFFF; --aw-logo-filter: none;
+      --aw-chat-bg: rgba(240,238,250,0.62); --aw-chat-surface: #FFFFFF; --aw-chat-recv: #FFFFFF; --aw-chat-field: #EDE8F5; --aw-chat-bd: rgba(100,70,150,0.12);
+    }
+    [data-theme="bw"] {
+      --aw-primary: #555555; --aw-primary-dark: #333333; --aw-primary-light: #888888; --aw-primary-bg: rgba(80,80,80,0.06);
+      --aw-secondary: #666666; --aw-secondary-dark: #444444; --aw-accent: #555555; --aw-danger: #D32F2F; --aw-danger-bg: rgba(211,47,47,0.08);
+      --aw-bg-app: #FFFFFF; --aw-bg-card: #F5F5F5; --aw-bg-card-hover: #EEEEEE; --aw-bg-input: #E8E8E8; --aw-bg-header: rgba(255,255,255,0.95); --aw-bg-modal: #FFFFFF;
+      --aw-text-primary: #111111; --aw-text-secondary: #555555; --aw-text-muted: #999999;
+      --aw-border: rgba(0,0,0,0.12); --aw-border-light: rgba(0,0,0,0.05); --aw-shadow: 0 4px 24px rgba(0,0,0,0.08); --aw-shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+      --aw-bubble-sent: linear-gradient(135deg, #444444, #222222); --aw-bubble-sent-solid: #333333; --aw-bubble-recv: #EEEEEE;
+      --aw-online: #4CAF50; --aw-offline: #999999;
+      --aw-eu-primary: #555555; --aw-eu-primary-dark: #333333; --aw-eu-bg: #FFFFFF; --aw-eu-card: #F5F5F5; --aw-logo-filter: grayscale(100%) contrast(1.2);
+    }
+    [data-theme="glass"] {
+      --aw-primary: #7b62fc; --aw-primary-dark: #5c4abd; --aw-primary-light: #a599fc; --aw-primary-bg: rgba(123,98,252,0.12);
+      --aw-secondary: #00C853; --aw-secondary-dark: #00A844; --aw-accent: #8169ff; --aw-danger: #ef4444; --aw-danger-bg: rgba(239,68,68,0.10);
+      --aw-bg-app: #ededf2; --aw-bg-card: rgba(255,255,255,0.45); --aw-bg-card-hover: rgba(255,255,255,0.65); --aw-bg-input: rgba(255,255,255,0.55); --aw-bg-header: rgba(255,255,255,0.25); --aw-bg-modal: rgba(255,255,255,0.78);
+      --aw-text-primary: #565656; --aw-text-secondary: #737373; --aw-text-muted: #8f8f8f;
+      --aw-border: rgba(255,255,255,0.75); --aw-border-light: rgba(255,255,255,0.45); --aw-shadow: 0 4px 24px rgba(123,98,252,0.20); --aw-shadow-sm: 0 4px 4px rgba(123,98,252,0.20);
+      --aw-bubble-sent: linear-gradient(135deg, #8169ff, #5c4abd); --aw-bubble-sent-solid: #7b62fc; --aw-bubble-recv: rgba(255,255,255,0.55);
+      --aw-online: #00C853; --aw-offline: #8f8f8f;
+      --aw-eu-primary: #7b62fc; --aw-eu-primary-dark: #5c4abd; --aw-eu-bg: #ededf2; --aw-eu-card: rgba(255,255,255,0.45); --aw-logo-filter: none;
+      --aw-eu-nav-bg: rgba(255,255,255,0.2); --aw-eu-nav-border: rgba(255,255,255,0.5);
+      --aw-chat-bg: rgba(240,238,250,0.55); --aw-chat-surface: rgba(255,255,255,0.5); --aw-chat-recv: rgba(255,255,255,0.7); --aw-chat-field: rgba(255,255,255,0.55); --aw-chat-bd: rgba(255,255,255,0.8);
+    }
+    [data-theme="glass"] header, [data-theme="glass"] nav, [data-theme="glass"] aside,
+    [data-theme="dark"] header, [data-theme="dark"] nav, [data-theme="dark"] aside {
+      backdrop-filter: blur(20px) saturate(1.2); -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    }
+    /* Dark theme = glass structure, recoloured per Figma dark sample */
+    [data-theme="dark"] .aw-glass-bg { background: #15131A; }
+    [data-theme="dark"] .aw-glass-bg .blob-1 { background: #7b62fc; opacity: 0.42; }
+    [data-theme="dark"] .aw-glass-bg .blob-2 { background: #b83d9e; opacity: 0.30; }
+    [data-theme="dark"] .aw-glass-bg .blob-3 { background: #5c4abd; opacity: 0.38; }
+    [data-theme="dark"] .aw-glass-bg .blob-4 { background: #38bdf8; opacity: 0.20; }
+    [data-theme="dark"] .aw-glass-bg .blob-5 { background: #8169ff; opacity: 0.30; }
+    [data-theme="dark"] .aw-glass-bg .blob-6 { background: linear-gradient(135deg, #5c4abd, #b83d9e); opacity: 0.32; }
+    [data-theme="dark"] .aw-bg-card, [data-theme="dark"] .aw-bg-modal { backdrop-filter: blur(14px) saturate(1.1); -webkit-backdrop-filter: blur(14px) saturate(1.1); }
+    .aw-glass-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #ededf2; }
+    .aw-glass-bg .blob { position: absolute; filter: blur(60px); border-radius: 9999px; }
+    .aw-glass-bg .blob-1 { width: 200px; height: 200px; background: #8169ff; top: 8%; left: -10%; opacity: 0.55; }
+    .aw-glass-bg .blob-2 { width: 160px; height: 320px; background: #e2e0ed; top: 0; left: 48%; opacity: 0.9; }
+    .aw-glass-bg .blob-3 { width: 120px; height: 120px; background: #5c4abd; top: 55%; right: -6%; opacity: 0.45; }
+    .aw-glass-bg .blob-4 { width: 180px; height: 90px; background: #5c4abd; bottom: 6%; left: 30%; opacity: 0.4; }
+    .aw-glass-bg .blob-5 { width: 150px; height: 150px; background: #dcdcdc; top: 35%; left: 35%; opacity: 0.7; }
+    .aw-glass-bg .blob-6 { width: 220px; height: 100px; bottom: 22%; left: -12%; opacity: 0.5; background: linear-gradient(135deg, #5c4abd, #8f8f8f); }
+    html { background: var(--aw-bg-app) !important; }
+    body { background: var(--aw-bg-app) !important; color: var(--aw-text-primary) !important; overflow: hidden; font-family: 'Vazirmatn', 'Neogrey', system-ui, sans-serif; }
+    /* Native dropdowns: match theme so the OS-rendered option list is legible
+       (fixes white-on-white text in dark theme) + glassy trigger. */
+    :root select, [data-theme="dark"] select { color-scheme: dark; }
+    [data-theme="light"] select, [data-theme="bw"] select, [data-theme="glass"] select { color-scheme: light; }
+    .aw-app select { background: var(--aw-bg-input); color: var(--aw-text-primary); border-radius: 12px; backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3); }
+    .aw-app select option { background: var(--aw-bg-modal); color: var(--aw-text-primary); }
+
+    /* Admin panel: recolour purple/lilac → cyan-blue (logo palette) */
+    .neura-admin {
+      --aw-primary: #2E86FF; --aw-primary-dark: #1B4FE8; --aw-primary-light: #5FD2EC; --aw-primary-bg: rgba(46,134,255,0.10);
+      --aw-accent: #22A6F0;
+      --aw-eu-primary: #2E86FF; --aw-eu-primary-dark: #1B4FE8;
+      --aw-bubble-sent: linear-gradient(135deg, #3FD9E8, #1E6BFF); --aw-bubble-sent-solid: #2E86FF;
+    }
+    [data-theme="dark"] .neura-admin {
+    }
+    .neura-admin .aw-bg-purple { background: linear-gradient(135deg,#3FD9E8,#1E6BFF) !important; }
+    .neura-admin .aw-bg-indigo { background: linear-gradient(135deg,#22A6F0,#1B4FE8) !important; }
+    .neura-admin .aw-bg-pink { background: linear-gradient(135deg,#3FD9E8,#22A6F0) !important; }
+
+    /* Designed icon-pack: recolour per theme (icons are purple by default) */
+    .nav-icon-img { transition: filter 0.2s; }
+    .neura-admin .nav-icon-img { filter: hue-rotate(-32deg) saturate(1.12); }
+    [data-theme="dark"] .nav-icon-img { filter: brightness(1.12) saturate(1.05); }
+    [data-theme="dark"] .neura-admin .nav-icon-img { filter: hue-rotate(-32deg) saturate(1.12) brightness(1.12); }
+    [data-theme="bw"] .nav-icon-img { filter: grayscale(1) brightness(0.85); }
+    [data-theme="bw"] .letter-avatar { filter: grayscale(1) brightness(0.92); }
+    .neura-admin .letter-avatar { filter: hue-rotate(-26deg) saturate(1.08); }
+
+    /* لوگوی نورا: در تمِ تیره (پیش‌فرضِ :root هم تیره است) سفید شود تا روی هدرِ بنفشِ تیره محو نشود؛
+       در تم‌های روشن (light/glass) بنفشِ اصلی و در bw خاکستری بماند. !important تا استایلِ inlineِ
+       filter:var(--aw-logo-filter) روی لوگوی ادمین را هم override کند. */
+    .neura-logo { filter: brightness(0) invert(1) !important; }
+    [data-theme="light"] .neura-logo, [data-theme="glass"] .neura-logo { filter: none !important; }
+    [data-theme="bw"] .neura-logo { filter: grayscale(100%) contrast(1.2) !important; }
+
+    /* ── Global text-fit safety net ──────────────────────────────
+       Keeps long text from overflowing or clipping its card/frame,
+       without touching individual components. */
+    .aw-app * { min-width: 0; }                         /* let flex children shrink so truncate works */
+    .aw-app p, .aw-app span, .aw-app div, .aw-app h1, .aw-app h2, .aw-app h3, .aw-app h4, .aw-app label, .aw-app button {
+      overflow-wrap: anywhere;                           /* break long unbroken strings (URLs, big numbers) */
+    }
+    /* don't break the tiny round badges / numeric chips */
+    .aw-app .truncate { overflow-wrap: normal; }
+    /* numerals & latin in mixed RTL keep their own direction so they don't smear */
+    .aw-num { unicode-bidi: plaintext; }
+
+    /* Admin glass background blobs → blue/cyan */
+    .aw-glass-bg.admin-bg .blob-1 { background: #3FD9E8; }
+    .aw-glass-bg.admin-bg .blob-2 { background: #dceaff; }
+    .aw-glass-bg.admin-bg .blob-3 { background: #1E6BFF; }
+    .aw-glass-bg.admin-bg .blob-4 { background: #1B4FE8; }
+    .aw-glass-bg.admin-bg .blob-5 { background: #cfe4ff; }
+    .aw-glass-bg.admin-bg .blob-6 { background: linear-gradient(135deg, #1E6BFF, #3FD9E8); }
+    [data-theme="dark"] .aw-glass-bg.admin-bg .blob-1 { background: #2E86FF; opacity: 0.42; }
+    [data-theme="dark"] .aw-glass-bg.admin-bg .blob-2 { background: #22A6F0; opacity: 0.30; }
+    [data-theme="dark"] .aw-glass-bg.admin-bg .blob-3 { background: #1B4FE8; opacity: 0.38; }
+    [data-theme="dark"] .aw-glass-bg.admin-bg .blob-4 { background: #38bdf8; opacity: 0.22; }
+    [data-theme="dark"] .aw-glass-bg.admin-bg .blob-5 { background: #3FD9E8; opacity: 0.28; }
+    [data-theme="dark"] .aw-glass-bg.admin-bg .blob-6 { background: linear-gradient(135deg, #1B4FE8, #3FD9E8); opacity: 0.32; }
+    [data-theme="dark"] body { background:
+        radial-gradient(640px 440px at 50% -8%, rgba(123,98,252,0.22), transparent 62%),
+        radial-gradient(540px 380px at 96% 6%, rgba(255,56,60,0.10), transparent 60%),
+        radial-gradient(560px 380px at 2% 20%, rgba(184,61,158,0.12), transparent 60%),
+        #15131A !important; }
+    .aw-bg-blue{background:linear-gradient(135deg,#3b82f6,#1d4ed8)} .aw-bg-green{background:linear-gradient(135deg,#00e676,#00c853)}
+    .aw-bg-purple{background:linear-gradient(135deg,#9b59b6,#7e4fa2)} .aw-bg-pink{background:linear-gradient(135deg,#b83d9e,#9b2d84)}
+    .aw-bg-orange{background:linear-gradient(135deg,#f97316,#c2410c)} .aw-bg-teal{background:linear-gradient(135deg,#14b8a6,#0d9488)}
+    .aw-bg-indigo{background:linear-gradient(135deg,#7e5faa,#5b3e8a)} .aw-bg-rose{background:linear-gradient(135deg,#f43f5e,#be123c)}
+    .aw-bg-sky{background:linear-gradient(135deg,#0ea5e9,#0369a1)} .aw-bg-amber{background:linear-gradient(135deg,#f59e0b,#b45309)}
+    .aw-bg-emerald{background:linear-gradient(135deg,#34d399,#059669)} .aw-bg-red{background:linear-gradient(135deg,#ef4444,#b91c1c)}
+    .aw-bg-cyan{background:linear-gradient(135deg,#06b6d4,#0e7490)}
+
+    /* Squircle theme chip — unify every monogram/icon avatar tile app-wide */
+    .aw-bg-blue,.aw-bg-green,.aw-bg-purple,.aw-bg-pink,.aw-bg-orange,.aw-bg-teal,.aw-bg-indigo,.aw-bg-rose,.aw-bg-sky,.aw-bg-amber,.aw-bg-emerald,.aw-bg-red,.aw-bg-cyan{
+      --aw-chip: var(--aw-eu-primary, var(--aw-primary, #9b59b6));
+      background: linear-gradient(135deg, color-mix(in srgb, var(--aw-chip) 62%, white) 0%, var(--aw-chip) 34%, color-mix(in srgb, var(--aw-chip) 78%, white) 52%, var(--aw-chip) 68%, color-mix(in srgb, var(--aw-chip) 84%, black) 100%) !important;
+      -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M100.00%2050.00%20L99.93%2064.88%20L99.71%2070.67%20L99.34%2075.01%20L98.82%2078.58%20L98.15%2081.65%20L97.33%2084.33%20L96.34%2086.70%20L95.20%2088.82%20L93.89%2090.71%20L92.39%2092.39%20L90.71%2093.89%20L88.82%2095.20%20L86.70%2096.34%20L84.33%2097.33%20L81.65%2098.15%20L78.58%2098.82%20L75.01%2099.34%20L70.67%2099.71%20L64.88%2099.93%20L50.00%20100.00%20L35.12%2099.93%20L29.33%2099.71%20L24.99%2099.34%20L21.42%2098.82%20L18.35%2098.15%20L15.67%2097.33%20L13.30%2096.34%20L11.18%2095.20%20L9.29%2093.89%20L7.61%2092.39%20L6.11%2090.71%20L4.80%2088.82%20L3.66%2086.70%20L2.67%2084.33%20L1.85%2081.65%20L1.18%2078.58%20L0.66%2075.01%20L0.29%2070.67%20L0.07%2064.88%20L0.00%2050.00%20L0.07%2035.12%20L0.29%2029.33%20L0.66%2024.99%20L1.18%2021.42%20L1.85%2018.35%20L2.67%2015.67%20L3.66%2013.30%20L4.80%2011.18%20L6.11%209.29%20L7.61%207.61%20L9.29%206.11%20L11.18%204.80%20L13.30%203.66%20L15.67%202.67%20L18.35%201.85%20L21.42%201.18%20L24.99%200.66%20L29.33%200.29%20L35.12%200.07%20L50.00%200.00%20L64.88%200.07%20L70.67%200.29%20L75.01%200.66%20L78.58%201.18%20L81.65%201.85%20L84.33%202.67%20L86.70%203.66%20L88.82%204.80%20L90.71%206.11%20L92.39%207.61%20L93.89%209.29%20L95.20%2011.18%20L96.34%2013.30%20L97.33%2015.67%20L98.15%2018.35%20L98.82%2021.42%20L99.34%2024.99%20L99.71%2029.33%20L99.93%2035.12%20L100.00%2050.00%20Z'%20fill%3D'black'%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%20preserveAspectRatio%3D'none'%3E%3Cpath%20d%3D'M100.00%2050.00%20L99.93%2064.88%20L99.71%2070.67%20L99.34%2075.01%20L98.82%2078.58%20L98.15%2081.65%20L97.33%2084.33%20L96.34%2086.70%20L95.20%2088.82%20L93.89%2090.71%20L92.39%2092.39%20L90.71%2093.89%20L88.82%2095.20%20L86.70%2096.34%20L84.33%2097.33%20L81.65%2098.15%20L78.58%2098.82%20L75.01%2099.34%20L70.67%2099.71%20L64.88%2099.93%20L50.00%20100.00%20L35.12%2099.93%20L29.33%2099.71%20L24.99%2099.34%20L21.42%2098.82%20L18.35%2098.15%20L15.67%2097.33%20L13.30%2096.34%20L11.18%2095.20%20L9.29%2093.89%20L7.61%2092.39%20L6.11%2090.71%20L4.80%2088.82%20L3.66%2086.70%20L2.67%2084.33%20L1.85%2081.65%20L1.18%2078.58%20L0.66%2075.01%20L0.29%2070.67%20L0.07%2064.88%20L0.00%2050.00%20L0.07%2035.12%20L0.29%2029.33%20L0.66%2024.99%20L1.18%2021.42%20L1.85%2018.35%20L2.67%2015.67%20L3.66%2013.30%20L4.80%2011.18%20L6.11%209.29%20L7.61%207.61%20L9.29%206.11%20L11.18%204.80%20L13.30%203.66%20L15.67%202.67%20L18.35%201.85%20L21.42%201.18%20L24.99%200.66%20L29.33%200.29%20L35.12%200.07%20L50.00%200.00%20L64.88%200.07%20L70.67%200.29%20L75.01%200.66%20L78.58%201.18%20L81.65%201.85%20L84.33%202.67%20L86.70%203.66%20L88.82%204.80%20L90.71%206.11%20L92.39%207.61%20L93.89%209.29%20L95.20%2011.18%20L96.34%2013.30%20L97.33%2015.67%20L98.15%2018.35%20L98.82%2021.42%20L99.34%2024.99%20L99.71%2029.33%20L99.93%2035.12%20L100.00%2050.00%20Z'%20fill%3D'black'%2F%3E%3C%2Fsvg%3E");
+      -webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-mode:alpha;mask-mode:alpha;
+      border-radius:0 !important;
+      box-shadow: inset 0 1px 1.5px rgba(255,255,255,0.55), inset 0 0 0 1px color-mix(in srgb, var(--aw-chip) 40%, white) !important;
+    }
+    [data-theme="bw"] .aw-bg-blue,[data-theme="bw"] .aw-bg-green,[data-theme="bw"] .aw-bg-purple,[data-theme="bw"] .aw-bg-pink,[data-theme="bw"] .aw-bg-orange,[data-theme="bw"] .aw-bg-teal,[data-theme="bw"] .aw-bg-indigo,[data-theme="bw"] .aw-bg-rose,[data-theme="bw"] .aw-bg-sky,[data-theme="bw"] .aw-bg-amber,[data-theme="bw"] .aw-bg-emerald,[data-theme="bw"] .aw-bg-red,[data-theme="bw"] .aw-bg-cyan { filter: grayscale(100%); }
+    @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-8px); } }
+    .typing-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--aw-text-muted); animation: typingBounce 1.4s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; } .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    /* Fully-rounded (pill) corners across the app — buttons, tabs, inputs, chat & search bars */
+    .aw-app button:not(.aw-no-pill):not([class*="rounded-full"]) { border-radius: 9999px !important; }
+    .aw-app input:not([type="checkbox"]):not([type="radio"]):not(.aw-no-pill) { border-radius: 9999px !important; }
+    .aw-app div:has(> input:not([type="checkbox"]):not([type="radio"])):has(> i):not(.aw-no-pill) { border-radius: 9999px !important; }
+    .aw-app button:has(> i.fa-arrow-right):not(.aw-no-pill):not([class*="rounded-full"]),
+    .aw-app button:has(> i.fa-times):not(.aw-no-pill):not([class*="rounded-full"]),
+    .aw-app button:has(> i.fa-xmark):not(.aw-no-pill):not([class*="rounded-full"]) { border-radius: 10px !important; }
+    .aw-scroll::-webkit-scrollbar { width: 4px; } .aw-scroll::-webkit-scrollbar-track { background: transparent; } .aw-scroll::-webkit-scrollbar-thumb { background: var(--aw-border); border-radius: 4px; }
+    .aw-noscroll { scrollbar-width: none; -ms-overflow-style: none; }
+    .aw-noscroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
+    @keyframes toastSlideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    .aw-toast { animation: toastSlideUp 0.3s ease-out; }
+    .has-glass-footer { position: relative; }
+    @media (max-width: 767px) {
+      .has-glass-footer .glass-footer-mount { position: absolute; left: 0; right: 0; bottom: 0; z-index: 40; pointer-events: none; }
+      .has-glass-footer .glass-footer-mount > * { pointer-events: auto; }
+      .has-glass-footer .aw-scroll:not([class*="overflow-x"]),
+      .has-glass-footer .flex-1.overflow-y-auto:not([class*="overflow-x"]) { padding-bottom: 92px !important; scroll-padding-bottom: 92px; }
+    }
+    @keyframes avatarFade { from { opacity: 0; } to { opacity: 1; } }
+    .aw-avatar-fade { animation: avatarFade 0.6s ease-out; }
+    @keyframes avatarOut { from { opacity: 1; } to { opacity: 0; } }
+    .aw-avatar-out { animation: avatarOut 0.6s ease-out forwards; }
+
+    /* Chat background pattern — purple in personal, blue in admin */
+    .aw-chat-pattern { position: fixed; }
+    .aw-chat-pattern::before {
+      content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background-image: url('/src/assets/chat-pattern.png');
+      background-size: 360px auto; background-repeat: repeat;
+      background-position: top center;
+      opacity: 0.6;
+    }
+    [data-theme="dark"] .aw-chat-pattern::before { opacity: 0.25; filter: invert(1) hue-rotate(180deg) brightness(1.1); }
+    .neura-admin .aw-chat-pattern::before { filter: hue-rotate(-48deg) saturate(1.2); }
+    [data-theme="dark"].neura-admin .aw-chat-pattern::before,
+    .neura-admin[data-theme="dark"] .aw-chat-pattern::before { filter: invert(1) hue-rotate(132deg) brightness(1.1) saturate(1.2); }
+    .aw-chat-pattern > * { position: relative; z-index: 1; }
+
+    /* موقعِ تایپ در شیتِ چت: شیت تمام‌صفحه شود تا پشتِ کیبورد فشرده/بی‌ریخت نشود.
+       (کلاسِ kb-typing را App روی <html> می‌گذارد؛ روی مقدارِ inline top غلبه می‌کند.) */
+    html.kb-typing [data-chat-sheet] {
+      top: var(--vv-top, 0px) !important;
+      border-radius: 0 !important;
+    }
+    /* موقعِ تایپ (کیبوردِ باز) نوارِ نویگیشنِ پایین مخفی شود تا با کیبورد روی‌هم نیفتد و به ورودی جا بدهد.
+       چون کیبورد کفِ صفحه را می‌پوشاند، نوار در این حالت به‌هرحال قابلِ استفاده نیست. */
+    html.kb-typing .glass-footer-mount { display: none !important; }
+    html.kb-typing .has-glass-footer { padding-bottom: 0 !important; }
+    /* المان‌های hero (آواتارِ بزرگِ بالای صفحهٔ ورود) موقعِ بازشدنِ کیبورد جمع شوند تا فرم/فیلد
+       به‌طورِ طبیعی بالای کیبورد و روی پس‌زمینهٔ خودش (با کنتراست) دیده شود — نه با translateِ هکی. */
+    html.kb-typing .neura-kbhide { display: none !important; }
+    .aw-pattern-sm::before { background-size: 170px auto !important; opacity: 0.6 !important; }
+
+    /* boot overlay */
+    #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: #0f0d16; color: #ece9f6; font-family: 'Vazirmatn', system-ui, sans-serif; z-index: 9999; }
+    #boot::before { content: ''; position: absolute; width: 340px; height: 340px; top: -12%; right: -18%; border-radius: 50%; background: radial-gradient(circle at 42% 42%, rgba(123,98,252,0.28), transparent 70%); filter: blur(56px); }
+    #boot::after { content: ''; position: absolute; width: 280px; height: 280px; bottom: -10%; left: -14%; border-radius: 50%; background: radial-gradient(circle at 55% 55%, rgba(236,72,153,0.14), transparent 70%); filter: blur(56px); }
+    #boot .bw { font-family: 'Neogrey', 'Space Grotesk', system-ui, sans-serif; font-weight: 600; font-size: 27px; letter-spacing: 1.5px; color: #ece9f6; position: relative; z-index: 1; }
+    #boot .bt { font-size: 12.5px; color: #a39fb6; position: relative; z-index: 1; }
+    #boot .ring { width: 40px; height: 40px; border-radius: 50%; border: 3px solid rgba(123,98,252,0.22); border-top-color: #7B62FC; animation: spin 0.9s linear infinite; position: relative; z-index: 1; }
+    #boot .err { max-width: 720px; padding: 0 24px; white-space: pre-wrap; direction: ltr; text-align: left; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.6; color: #ffb4b4; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
+/* قفلِ اسکرولِ صفحه — ریشهٔ پریدنِ کیبورد روی iOS:
+   روی iOS Safari صرفِ overflow:hidden جلوی اسکرولِ layout viewport را هنگامِ بازشدنِ کیبورد نمی‌گیرد؛
+   صفحه به بالا اسکرول می‌شد و نوارِ ورودی می‌پرید بالا با فضای خالیِ تیره زیرش. body را position:fixed
+   می‌کنیم تا صفحه اصلاً قابلِ اسکرول نباشد (اسکرولِ داخلیِ .aw-scroll دست‌نخورده می‌ماند). */
+body { position: fixed; inset: 0; width: 100%; background: var(--aw-bg-app); color: var(--aw-text-primary); font-family: 'Vazirmatn','Neogrey',system-ui,sans-serif; -webkit-tap-highlight-color: transparent; }
+#root { position: fixed; inset: 0; overflow: hidden; }
+
+/* وقتی کیبورد باز است (کلاسِ kb-open روی <html> توسطِ هوکِ کیبورد ست می‌شود): بلوکِ آواتار/ایجنت را
+   جمع کن تا فیلدِ نوشتن دقیقاً بالای کیبورد و واضح دیده شود (رفعِ افتادنِ تصویرِ ایجنت روی جای نوشته). */
+html.kb-open [data-chat-top-anchor] {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  pointer-events: none !important;
+  transition: max-height .22s ease, opacity .16s ease;
+}

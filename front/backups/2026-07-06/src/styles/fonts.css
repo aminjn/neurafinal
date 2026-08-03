@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
+
+/* Neura Brand Fonts */
+/* Neogrey: geometric sans-serif for English/brand text — using Space Grotesk as base */
+@font-face {
+  font-family: 'Neogrey';
+  src: local('Space Grotesk');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* Kamand: Persian display font from Neura brandbook — using Vazirmatn as base */
+@font-face {
+  font-family: 'Kamand';
+  src: local('Vazirmatn');
+  font-weight: 100 900;
+  font-display: swap;
+}

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @font-face { font-family: 'Kamand'; src: url('src/fonts/Kamand-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+    @font-face { font-family: 'Kamand'; src: url('src/fonts/Kamand-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+    @font-face { font-family: 'Kamand'; src: url('src/fonts/Kamand-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+  </style>
+</helmet>
+
+<div style="min-height:100vh; background:#F4F2FC; padding:40px 24px 72px; box-sizing:border-box; font-family:'Kamand','Vazirmatn',system-ui,sans-serif; direction:rtl;">
+  <div style="max-width:1100px; margin:0 auto;">
+
+    <div style="display:flex; align-items:center; gap:14px; margin-bottom:8px;">
+      <div style="width:46px; height:46px; border-radius:13px; background:linear-gradient(150deg,#9c8bff,#6e54fc); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(110,84,252,0.35);">
+        <div style="width:20px; height:20px; border-radius:6px; background:rgba(255,255,255,0.92);"></div>
+      </div>
+      <div>
+        <h1 style="margin:0; font-size:24px; font-weight:700; color:#211B3B;">آیکون‌پک کامل Neura</h1>
+        <p style="margin:3px 0 0; font-size:13px; color:#7A739A;">۲۴ آیکون اصلی شما + آواتار حرف‌اول — در ۴ دسته</p>
+      </div>
+    </div>
+    <div style="height:1px; background:linear-gradient(90deg,rgba(110,84,252,0.25),transparent); margin:22px 0 30px;"></div>
+
+    <sc-for list="{{ cats }}" as="cat" hint-placeholder-count="5">
+      <div style="margin-bottom:14px; display:flex; align-items:center; gap:10px;">
+        <span style="width:26px; height:26px; border-radius:8px; background:linear-gradient(150deg,#9c8bff,#6e54fc); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;">{{ cat.n }}</span>
+        <h2 style="margin:0; font-size:17px; font-weight:700; color:#211B3B;">{{ cat.title }}</h2>
+        <span style="font-size:12px; color:#9A93B6;">{{ cat.sub }}</span>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:14px; margin-bottom:40px;">
+        <sc-for list="{{ cat.items }}" as="ic">
+          <div style="background:#fff; border:1px solid #ECE8FB; border-radius:16px; padding:18px 8px 12px; display:flex; flex-direction:column; align-items:center; box-shadow:0 2px 10px rgba(94,72,200,0.05);">
+            <div style="width:58px; height:58px; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
+              <img src="{{ ic.src }}" alt="{{ ic.fa }}" style="max-width:100%; max-height:100%; object-fit:contain;" />
+            </div>
+            <div style="font-size:12px; font-weight:700; color:#231D40; text-align:center;">{{ ic.fa }}</div>
+            <div style="font-size:9.5px; color:#9A93B6; margin-top:2px; direction:ltr;">{{ ic.en }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+
+    <!-- Letter avatars -->
+    <div style="margin-bottom:14px; display:flex; align-items:center; gap:10px;">
+      <span style="width:26px; height:26px; border-radius:8px; background:linear-gradient(150deg,#9c8bff,#6e54fc); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;">۶</span>
+      <h2 style="margin:0; font-size:17px; font-weight:700; color:#211B3B;">آواتار مخاطبین بدون عکس</h2>
+      <span style="font-size:12px; color:#9A93B6;">حرف اول نام، جای عکس</span>
+    </div>
+    <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; background:linear-gradient(135deg,#efe9ff,#e3edff); border:1px solid #ECE8FB; border-radius:16px; padding:26px 22px; box-shadow:0 2px 10px rgba(94,72,200,0.05);">
+      <sc-for list="{{ avatars }}" as="av">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:9px;">
+          <div style="position:relative; width:62px; height:62px; border-radius:22px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:{{ av.bg }}; box-shadow:inset 0 1px 1px rgba(255,255,255,0.55), inset 0 0 0 1px rgba(255,255,255,0.35), 0 8px 20px rgba(110,84,252,0.22); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);">
+            <div style="position:absolute; left:-20%; top:-30%; width:90%; height:90%; border-radius:50%; background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%);"></div>
+            <div style="position:absolute; right:-10%; bottom:-15%; width:60%; height:60%; border-radius:50%; background:radial-gradient(circle, {{ av.glow }}, rgba(255,255,255,0) 70%);"></div>
+            <span style="position:relative; display:flex; align-items:center; justify-content:center; width:100%; height:100%; line-height:1; color:rgba(255,255,255,0.96); font-size:25px; font-weight:700; text-shadow:0 1px 3px rgba(70,45,150,0.30);">{{ av.letter }}</span>
+          </div>
+          <span style="font-size:11px; color:#7A739A;">{{ av.name }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <p style="text-align:center; font-size:12px; color:#A39CBE; margin-top:30px;">اگر تأیید کنی، این آیکون‌ها و آواتارها را در سراسر اپ جاگذاری می‌کنم.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const b = 'src/icons/png/';
+    const I = (en, fa) => ({ en, fa, src: b + en + '.png' });
+    const G = (en, fa) => ({ en, fa, src: 'src/icons/svg2/' + en + '.svg' });
+    const grads = [
+      'linear-gradient(155deg,rgba(140,123,255,0.78),rgba(110,84,252,0.62))',
+      'linear-gradient(155deg,rgba(127,180,255,0.78),rgba(63,107,245,0.62))',
+      'linear-gradient(155deg,rgba(183,156,255,0.78),rgba(126,84,232,0.62))',
+      'linear-gradient(155deg,rgba(111,214,232,0.78),rgba(44,143,201,0.62))',
+      'linear-gradient(155deg,rgba(167,139,255,0.78),rgba(92,70,216,0.62))',
+    ];
+    const glows = ['rgba(180,165,255,0.7)','rgba(150,195,255,0.7)','rgba(200,180,255,0.7)','rgba(150,225,235,0.7)','rgba(185,165,255,0.7)'];
+    return {
+      cats: [
+        { n: '۱', title: 'بالای صفحات ایجنت‌ها', sub: 'سرصفحهٔ هر صفحه (زیر دکمهٔ پنل)',
+          items: [I('profile','پروفایل'), I('search','جستجو'), I('reports-charts','گزارش‌ها'), I('wallet','کیف پول'), I('setting','تنظیمات'), I('home','خانه')] },
+        { n: '۲', title: 'آیکون ایجنت‌ها', sub: 'هویت هر عامل هوشمند',
+          items: [I('marketing','بازاریابی'), I('seller-cashier','فروش'), I('finance','مالی'), I('secretary','منشی'), I('logistics','تدارکات'), I('food','رستوران'), I('support','پشتیبانی'), I('chat','دستیار')] },
+        { n: '۳', title: 'منوی فوتر', sub: 'نوار ناوبری پایین',
+          items: [I('chat','گفتگو'), I('marketing','کمپین'), I('reports-charts','گزارش'), I('calendar','برنامه'), I('finance','مالی'), I('wallet','کیف پول'), I('shop-market','محصولات'), I('logistics','تدارکات'), I('mail','صندوق'), I('location','آدرس')] },
+        { n: '۴', title: 'آیکون‌های فرعی', sub: 'داخل صفحات',
+          items: [I('phone','تماس'), I('calendar','تقویم'), I('location','موقعیت'), I('discount','تخفیف'), I('food','سفارش غذا'), I('delivery','ارسال'), I('bell','اعلان'), I('mail','پیام'), I('shop-market','مارکت'), I('website','وب‌سایت'), I('postal-code','کد پستی')] },
+        { n: '۵', title: 'آیکون‌های تکمیلی', sub: 'ساخته‌شده هم‌سبک برای صفحاتی که طرح آماده نداشتند',
+          items: [G('dashboard','داشبورد'), G('tasks','وظایف'), G('orders','سفارشات'), G('invoice','فاکتور'), G('audience','مخاطبان'), G('requests','درخواست‌ها'), G('delivery2','تحویل'), G('warehouse2','انبار'), G('coins','مالی روزانه'), G('assistant','دستیار')] },
+      ],
+      avatars: [
+        { name: 'علی رضایی', letter: 'ع', bg: grads[0], glow: glows[0] },
+        { name: 'Sara M.', letter: 'S', bg: grads[1], glow: glows[1] },
+        { name: 'مریم احمدی', letter: 'م', bg: grads[2], glow: glows[2] },
+        { name: 'حسن کریمی', letter: 'ح', bg: grads[3], glow: glows[3] },
+        { name: 'Reza T.', letter: 'R', bg: grads[4], glow: glows[4] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

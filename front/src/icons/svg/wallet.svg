@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="481.49" viewBox="0 0 512 481.49" fill="none">
+<defs>
+<linearGradient id="dark" x1="0" y1="481.49" x2="92.2" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#6E54FC"></stop><stop offset="0.55" stop-color="#8270FC"></stop><stop offset="1" stop-color="#B7AEFD"></stop>
+</linearGradient>
+<linearGradient id="light" x1="0" y1="481.49" x2="0" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#DAD5FB"></stop><stop offset="1" stop-color="#FAF9FF"></stop>
+</linearGradient>
+</defs>
+<g transform="translate(348.56 226.73)"><path d="M 78.15 0 L 30.61 0 C 13.705 0 0 13.705 0 30.61 L 0 78.15 C 0 95.055 13.705 108.76 30.61 108.76 L 78.15 108.76 C 95.055 108.76 108.76 95.055 108.76 78.15 L 108.76 30.61 C 108.76 13.705 95.055 0 78.15 0 Z" fill="url(#light)" fill-rule="nonzero"></path></g><g transform="translate(0 0)"><path d="M 348.56 257.36 L 348.56 304.89 C 348.56 321.79 362.25 335.48 379.15 335.48 L 380.21 335.48 L 380.21 384.4 C 380.21 438.04 336.76 481.49 283.12 481.49 L 97.13 481.49 C 43.49 481.49 0 438.04 0 384.4 L 0 97.13 C 0 85.48 2.07 74.31 5.81 63.98 C 19.35 26.67 55.11 0 97.13 0 L 283.12 0 C 324.08 0 359.09 25.38 373.38 61.26 C 375.83 67.45 377.68 73.97 378.81 80.72 C 379.75 86.04 380.21 91.54 380.21 97.13 L 380.21 226.73 L 379.15 226.73 C 362.25 226.73 348.56 240.42 348.56 257.36 Z" fill="url(#light)" fill-rule="nonzero"></path></g><g transform="translate(0.01 80.72)"><path d="M 506.18 63.97 C 492.64 26.67 456.88 0 414.9 0 L 97.12 0 C 56.16 0 21.12 25.35 6.86 61.22 C 2.45 72.35 0 84.45 0 97.09 L 0 303.68 C 0 357.32 43.49 400.77 97.13 400.77 L 414.91 400.77 C 468.51 400.77 512 357.32 512 303.68 L 512 97.09 C 512 85.47 509.96 74.31 506.19 63.97 L 506.18 63.97 Z M 457.3 224.16 C 457.3 241.06 443.61 254.75 426.71 254.75 L 379.15 254.75 C 362.25 254.75 348.56 241.06 348.56 224.16 L 348.56 176.63 C 348.56 159.7 362.25 146 379.15 146 L 426.71 146 C 443.61 146 457.3 159.69 457.3 176.63 L 457.3 224.16 Z" fill="url(#dark)" fill-rule="nonzero"></path></g>
+</svg>

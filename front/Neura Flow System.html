@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Neura — سیستم کامل فلوی UX</title>
+<template id="__bundler_thumbnail" data-bg-color="#2a1d5e">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="600" cy="150" r="60" fill="#fff"/>
+    <line x1="600" y1="210" x2="600" y2="300" stroke="#fff" stroke-width="9"/>
+    <rect x="470" y="300" width="260" height="120" rx="26" fill="#fff"/>
+    <rect x="150" y="520" width="230" height="110" rx="22" fill="#fff" opacity=".85"/>
+    <rect x="485" y="520" width="230" height="110" rx="22" fill="#fff" opacity=".85"/>
+    <rect x="820" y="520" width="230" height="110" rx="22" fill="#fff" opacity=".85"/>
+    <line x1="600" y1="420" x2="600" y2="470" stroke="#fff" stroke-width="9"/>
+    <line x1="265" y1="470" x2="935" y2="470" stroke="#fff" stroke-width="9" opacity=".6"/>
+    <line x1="265" y1="470" x2="265" y2="520" stroke="#fff" stroke-width="9" opacity=".6"/>
+    <line x1="600" y1="470" x2="600" y2="520" stroke="#fff" stroke-width="9" opacity=".6"/>
+    <line x1="935" y1="470" x2="935" y2="520" stroke="#fff" stroke-width="9" opacity=".6"/>
+    <text x="600" y="405" font-family="sans-serif" font-size="70" font-weight="800" fill="#4a2fce" text-anchor="middle">neura</text>
+  </svg>
+</template>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
+
+  :root{
+    --ink:#141024; --ink2:#443f5e; --muted:#8b86a0; --line:#e5e1f0;
+    --bg:#f4f2fa; --card:#ffffff;
+    --navy:#1e3a8a; --navy2:#2748a6;      /* screen nodes */
+    --brand:#7B62FC; --brand-ink:#4a2fce;
+    --amber:#f59e0b;                        /* decisions */
+    --red:#e0402f;                          /* errors */
+    --green:#12a150;                        /* success */
+    --agent:#64748b;                        /* agent/system dashed */
+    --purple:#8b3ffc;                       /* cross-flow jumps */
+    --input:#0e7490;                        /* user input parallelogram */
+    --approve:#b7791f;                      /* approval hexagon */
+    --shadow:0 1px 3px rgba(30,20,60,.06), 0 8px 24px rgba(30,20,60,.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:'Vazirmatn',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1220px;margin:0 auto;padding:0 26px 120px;}
+  h1,h2,h3,h4{margin:0;}
+
+  /* ---------- Cover ---------- */
+  .cover{background:linear-gradient(135deg,#1a1240 0%, #3a1f8e 42%, #6d4ff5 100%);
+    color:#fff;padding:58px 26px 66px;position:relative;overflow:hidden;}
+  .cover::after{content:'';position:absolute;inset:0;background:
+    radial-gradient(620px 320px at 88% -12%, rgba(255,255,255,.16), transparent 60%),
+    radial-gradient(520px 260px at 4% 122%, rgba(255,255,255,.12), transparent 60%);}
+  .cover-inner{max-width:1220px;margin:0 auto;position:relative;z-index:1;}
+  .cover .logo{font-weight:900;font-size:15px;letter-spacing:.4px;opacity:.92;display:flex;align-items:center;gap:9px;}
+  .cover .logo .dot{width:23px;height:23px;border-radius:7px;background:#fff;color:var(--brand-ink);
+    display:grid;place-items:center;font-size:14px;font-weight:900;}
+  .cover h1{font-size:42px;font-weight:900;margin:22px 0 8px;letter-spacing:-.5px;}
+  .cover .tag{font-size:18px;opacity:.95;font-weight:700;margin:0 0 8px;}
+  .cover p{font-size:15px;opacity:.9;max-width:720px;margin:0;line-height:1.75;}
+  .cover .stats{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap;}
+  .cover .stat{background:rgba(255,255,255,.12);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.22);border-radius:15px;padding:12px 18px;min-width:104px;}
+  .cover .stat b{display:block;font-size:26px;font-weight:900;line-height:1;}
+  .cover .stat span{font-size:12px;opacity:.86;}
+
+  /* ---------- Tabs ---------- */
+  .tabs{position:sticky;top:0;z-index:50;display:flex;gap:11px;align-items:center;
+    background:linear-gradient(var(--bg) 80%,rgba(244,242,250,0));padding:14px 0 12px;margin-bottom:8px;}
+  .tabs-lbl{font-weight:900;font-size:13px;color:var(--ink2);display:inline-flex;align-items:center;gap:7px;flex:none;}
+  .tabs-lbl i{color:var(--brand);}
+  .tab-select{position:relative;flex:1;max-width:520px;}
+  .tab-select select{width:100%;font-family:inherit;font-weight:800;font-size:14px;color:var(--brand-ink);
+    background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 44px 12px 16px;
+    cursor:pointer;box-shadow:var(--shadow);appearance:none;-webkit-appearance:none;transition:.15s;direction:rtl;}
+  .tab-select select:hover{border-color:var(--brand);}
+  .tab-select select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(109,79,245,.15);}
+  .tab-select-caret{position:absolute;inset-inline-start:16px;top:50%;transform:translateY(-50%);
+    pointer-events:none;color:var(--brand);font-size:13px;}
+  .view{display:none;animation:fade .25s ease;}
+  .view.active{display:block;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+
+  /* ---------- Artboard header ---------- */
+  .ab-head{display:flex;align-items:center;gap:15px;margin:26px 0 6px;padding-bottom:15px;border-bottom:2px solid var(--line);}
+  .ab-code{font-family:ui-monospace,monospace;font-size:11px;font-weight:800;color:#fff;background:var(--brand-ink);
+    border-radius:8px;padding:5px 10px;direction:ltr;letter-spacing:.5px;flex:none;}
+  .ab-head h2{font-size:23px;font-weight:900;letter-spacing:-.3px;}
+  .ab-head .sub{font-size:13px;color:var(--muted);font-weight:600;margin-top:2px;}
+
+  /* ---------- Legend ---------- */
+  .legend{display:flex;gap:7px;flex-wrap:wrap;align-items:center;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;padding:11px 15px;margin:16px 0 26px;box-shadow:var(--shadow);}
+  .legend .lg-title{font-weight:900;font-size:12px;color:var(--ink2);margin-inline-end:4px;}
+  .lg{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--ink2);
+    padding:3px 4px;}
+  .lgs{width:22px;height:15px;flex:none;border:1.5px solid var(--ink2);background:#fff;}
+  .lgs.term{border-radius:999px;background:var(--brand-ink);border-color:var(--brand-ink);}
+  .lgs.screen{border-radius:5px;border:1px solid var(--line);border-top:3px solid var(--navy);}
+  .lgs.dec{width:14px;height:14px;transform:rotate(45deg);background:var(--amber);border-color:var(--amber);border-radius:3px;}
+  .lgs.inp{transform:skewX(-16deg);border:1px solid var(--line);border-top:3px solid var(--input);border-radius:2px;}
+  .lgs.agent{border:1.5px dashed var(--agent);background:#f8fafc;border-radius:3px;}
+  .lgs.appr{background:var(--approve);border-color:var(--approve);clip-path:polygon(15% 0,85% 0,100% 50%,85% 100%,15% 100%,0 50%);border:0;}
+  .lgs.jump{background:var(--purple);border-color:var(--purple);border-radius:4px;}
+  .lgs.err{background:var(--red);border-color:var(--red);border-radius:4px;}
+  .lgs.ok{background:var(--green);border-color:var(--green);border-radius:4px;}
+
+  /* ---------- Flow engine ---------- */
+  .flow-scroll{overflow-x:auto;padding:8px 2px 22px;}
+  .vflow{width:max-content;margin-inline:auto;display:flex;flex-direction:column;align-items:center;min-width:min(100%,280px);}
+
+  .link{width:2px;height:30px;background:var(--line);position:relative;flex:none;}
+  .link::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+    border:6px solid transparent;border-top-color:var(--line);border-bottom:0;}
+  .link.plain::after{display:none;}
+  .link.back{background:repeating-linear-gradient(var(--line) 0 5px,transparent 5px 10px);}
+  .link-lbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);white-space:nowrap;
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:10.5px;font-weight:800;color:var(--ink2);}
+
+  .fn{position:relative;background:var(--card);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);
+    font-weight:800;font-size:13.5px;color:var(--ink);display:inline-flex;align-items:flex-start;gap:10px;
+    padding:12px 15px;text-align:right;max-width:340px;flex:none;}
+  .fn small{display:block;font-weight:600;font-size:10.5px;color:var(--muted);direction:ltr;text-align:right;margin-top:1px;}
+  .fn .note{display:block;font-weight:600;font-size:11px;color:var(--ink2);margin-top:4px;line-height:1.5;}
+  .fn .fn-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:13px;flex:none;color:#fff;}
+  .fn .fn-tx{padding-top:1px;}
+
+  /* lane badge (swimlane tag) */
+  .lane-tag{position:absolute;top:-9px;inset-inline-end:11px;font-size:9px;font-weight:900;letter-spacing:.4px;
+    padding:2px 7px;border-radius:6px;direction:ltr;color:#fff;box-shadow:var(--shadow);}
+  .lane-U{background:#1e3a8a;} .lane-UI{background:#0e7490;} .lane-AI{background:#64748b;} .lane-BE{background:#475569;}
+
+  /* connector id badge */
+  .cid{position:absolute;top:-9px;inset-inline-start:11px;font-family:ui-monospace,monospace;font-size:9.5px;font-weight:900;
+    background:var(--purple);color:#fff;padding:2px 7px;border-radius:6px;direction:ltr;box-shadow:var(--shadow);}
+  /* persistence badge */
+  .pbadge{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:10px;font-weight:800;color:#6d4ff5;
+    background:#f2eefe;border:1px solid #e0d5fc;border-radius:7px;padding:2px 8px;}
+  .pbadge i{font-size:9px;}
+
+  .fn.terminator{border:0;border-radius:999px;color:#fff;font-weight:900;padding:11px 22px;align-items:center;}
+  .fn.terminator.start{background:var(--brand-ink);}
+  .fn.terminator.end{background:var(--green);}
+  .fn.terminator i{font-size:12px;opacity:.95;}
+  .fn.screen{border-top:4px solid var(--sc,var(--navy));}
+  .fn.screen .fn-ic{background:var(--sc,var(--navy));}
+  .fn.input{border-top:4px solid var(--input);transform:skewX(-9deg);}
+  .fn.input .fn-in{display:flex;align-items:flex-start;gap:9px;transform:skewX(9deg);}
+  .fn.input .fn-in > i{color:var(--input);font-size:13px;margin-top:2px;}
+  .fn.agent{border:1.5px dashed var(--agent);background:#f8fafc;}
+  .fn.agent .fn-ic{background:var(--agent);border-radius:50%;}
+  .fn.approval{background:#fffaf0;border:1.5px solid var(--approve);
+    clip-path:polygon(3% 0,97% 0,100% 50%,97% 100%,3% 100%,0 50%);padding:12px 26px;}
+  .fn.approval > i{color:var(--approve);font-size:14px;margin-top:2px;}
+  .fn.jump{background:linear-gradient(135deg,#8b3ffc,#6d28d9);color:#fff;border:0;font-weight:900;}
+  .fn.jump small{color:rgba(255,255,255,.8);}
+  .fn.jump > i{font-size:14px;margin-top:2px;}
+  .fn.error{background:#fef2f1;border:1.5px solid var(--red);color:#8f1d12;}
+  .fn.error > i{color:var(--red);font-size:14px;margin-top:2px;}
+  .fn.success{background:#effaf3;border:1.5px solid var(--green);color:#0a6b34;}
+  .fn.success > i{color:var(--green);font-size:14px;margin-top:2px;}
+  .fn.action{padding:8px 14px;font-size:12.5px;background:#faf9fe;color:var(--ink2);border-radius:999px;align-items:center;}
+  .fn.action i{color:var(--agent);font-size:12px;}
+
+  .fn.decision{background:transparent;border:0;box-shadow:none;padding:0;width:168px;height:168px;position:relative;justify-content:center;align-items:center;}
+  .fn.decision::before{content:'';position:absolute;inset:26px;background:var(--amber);transform:rotate(45deg);
+    border-radius:14px;box-shadow:var(--shadow);}
+  .fn.decision span{position:relative;z-index:1;color:#3a2600;font-weight:900;font-size:12px;text-align:center;max-width:128px;line-height:1.4;}
+
+  /* branch split */
+  .branches{display:inline-flex;gap:24px;position:relative;padding-top:38px;align-self:center;align-items:flex-start;}
+  .branches-rail{position:absolute;top:0;height:2px;background:var(--line);left:var(--half);right:var(--half);}
+  .lane-col{display:flex;flex-direction:column;align-items:center;position:relative;}
+  .lane-drop{position:absolute;top:-38px;left:50%;width:2px;height:38px;background:var(--line);transform:translateX(-50%);}
+  .lane-drop::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+    border:6px solid transparent;border-top-color:var(--line);border-bottom:0;}
+  .lane-drop .br{position:absolute;top:10px;left:50%;transform:translateX(-50%);white-space:nowrap;
+    background:#fff;border:1px solid var(--amber);border-radius:999px;padding:2px 10px;font-size:10px;font-weight:800;color:#7a5200;}
+
+  /* loop-back note */
+  .loopnote{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:var(--ink2);
+    background:#fff;border:1.5px dashed var(--agent);border-radius:10px;padding:6px 12px;align-self:center;margin:2px 0;}
+  .loopnote i{color:var(--agent);}
+
+  /* ---------- Matrix ---------- */
+  .matrix-wrap{overflow-x:auto;margin:8px 0 26px;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);}
+  table.matrix{border-collapse:collapse;width:100%;min-width:640px;background:var(--card);font-size:12.5px;}
+  table.matrix th,table.matrix td{border:1px solid var(--line);padding:11px 12px;text-align:center;}
+  table.matrix thead th{background:#f4f2fa;font-weight:900;color:var(--ink);font-size:12px;}
+  table.matrix tbody th{background:#faf9ff;font-weight:800;text-align:right;color:var(--ink);white-space:nowrap;}
+  table.matrix td.on{background:#f2eefe;color:var(--brand-ink);font-weight:900;}
+  table.matrix td .cid-in{font-family:ui-monospace,monospace;font-size:10px;font-weight:900;color:#fff;background:var(--purple);border-radius:5px;padding:1px 5px;}
+  table.matrix td.dash{color:var(--muted);}
+
+  /* IA tree cards */
+  .ia-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:13px;margin:6px 0 24px;}
+  .ia-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:var(--shadow);border-top:4px solid var(--c,var(--navy));break-inside:avoid;}
+  .ia-card h4{font-size:14px;font-weight:900;display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+  .ia-card h4 .ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:#fff;background:var(--c,var(--navy));font-size:13px;flex:none;}
+  .ia-card h4 .cd{margin-inline-start:auto;font-family:ui-monospace,monospace;font-size:9.5px;font-weight:800;color:var(--muted);direction:ltr;}
+  .ia-card ul{margin:0;padding:0;list-style:none;}
+  .ia-card li{font-size:12px;color:var(--ink2);padding:3px 0;display:flex;gap:7px;align-items:flex-start;}
+  .ia-card li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--c,var(--navy));flex:none;margin-top:7px;opacity:.6;}
+
+  /* swimlane model */
+  .swim{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 24px;}
+  .swim-col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow);border-top:4px solid var(--c);}
+  .swim-col h4{font-size:13.5px;font-weight:900;display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+  .swim-col .tag{font-family:ui-monospace,monospace;font-size:10px;font-weight:900;color:#fff;background:var(--c);padding:2px 7px;border-radius:6px;direction:ltr;}
+  .swim-col p{font-size:11.5px;color:var(--ink2);margin:0;line-height:1.6;}
+
+  .callout{background:#fff;border:1px dashed var(--line);border-radius:12px;padding:12px 15px;font-size:12.5px;color:var(--ink2);margin:2px 0 22px;display:flex;gap:10px;align-items:flex-start;}
+  .callout i{color:var(--brand);font-size:14px;margin-top:2px;}
+  .callout b{color:var(--ink);}
+
+  footer.pg{text-align:center;color:var(--muted);font-size:12px;margin-top:50px;padding-top:22px;border-top:1px solid var(--line);}
+
+  @media(max-width:820px){
+    .swim{grid-template-columns:repeat(2,1fr);}
+    .fn{max-width:75vw;}
+    .branches{gap:14px;}
+    .cover h1{font-size:32px;}
+  }
+  @media print{
+    .tabs{display:none;}
+    .view{display:block!important;page-break-before:always;}
+    .view:first-of-type{page-break-before:avoid;}
+    .flow-scroll{overflow:visible;}
+    body{background:#fff;}
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-inner">
+    <div class="logo"><span class="dot">n</span> Neura · UX Flow System</div>
+    <h1>سیستم کامل فلوی UX</h1>
+    <p class="tag">«همیشه روشن، همیشه همراه»</p>
+    <p>معماری کامل تعامل برای پلتفرم مالی/اداری فارسی Neura با شش عامل هوشمند همکار — از بازاریابی و فروش تا تدارکات و حسابداری. راست‌به‌چپ، دولاینه (فارسی + انگلیسی)، با سواِم‌لِین‌ها، نقاط تأیید انسانی، هندآف بین عامل‌ها، و حالت‌های خطا/آفلاین/مهمان.</p>
+    <div class="stats">
+      <div class="stat"><b>۱۱</b><span>آرت‌بورد</span></div>
+      <div class="stat"><b>۶</b><span>عامل هوشمند</span></div>
+      <div class="stat"><b>۴</b><span>سواِم‌لِین</span></div>
+      <div class="stat"><b>۵</b><span>هندآف اجباری</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <nav class="tabs" id="tabs">
+    <span class="tabs-lbl"><i class="fa-solid fa-layer-group"></i> آرت‌بورد:</span>
+    <div class="tab-select">
+      <select id="tabSelect"></select>
+      <i class="fa-solid fa-chevron-down tab-select-caret"></i>
+    </div>
+  </nav>
+  <div id="stage"></div>
+  <footer class="pg">Neura — سیستم فلوی UX · راست‌به‌چپ · قابل چاپ در PDF (هر آرت‌بورد یک صفحه)</footer>
+</div>
+
+<script>
+const FA = s=>'fa-solid '+s;
+function toFa(n){return String(n).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);}
+
+/* ---------- node + connector renderers ---------- */
+function badges(s){
+  let b='';
+  if(s.lane) b+=`<span class="lane-tag lane-${s.lane}">${s.lane}</span>`;
+  if(s.cid)  b+=`<span class="cid">${s.cid}</span>`;
+  return b;
+}
+function extras(s){
+  let e = s.en?`<small>${s.en}</small>`:'';
+  if(s.note) e+=`<span class="note">${s.note}</span>`;
+  if(s.persist) e+=`<span class="pbadge"><i class="fa-solid fa-database"></i>${s.persist}</span>`;
+  return e;
+}
+function fnode(s){
+  const ic = s.ic||'';
+  switch(s.k){
+    case 'start': case 'end':
+      return `<div class="fn terminator ${s.k}"><i class="fa-solid ${ic||(s.k==='start'?'fa-circle-play':'fa-flag-checkered')}"></i>${s.t}</div>`;
+    case 'decision':
+      return `<div class="fn decision">${badges(s)}<span>${s.t}</span></div>`;
+    case 'input':
+      return `<div class="fn input">${badges(s)}<span class="fn-in"><i class="fa-solid ${ic||'fa-i-cursor'}"></i><span class="fn-tx">${s.t}${extras(s)}</span></span></div>`;
+    case 'agent':
+      return `<div class="fn agent">${badges(s)}<span class="fn-ic"><i class="fa-solid ${ic||'fa-robot'}"></i></span><span class="fn-tx">${s.t}${extras(s)}</span></div>`;
+    case 'approval':
+      return `<div class="fn approval">${badges(s)}<i class="fa-solid ${ic||'fa-user-check'}"></i><span class="fn-tx">${s.t}${extras(s)}</span></div>`;
+    case 'jump':
+      return `<div class="fn jump">${badges(s)}<i class="fa-solid ${ic||'fa-arrow-right-arrow-left'}"></i><span class="fn-tx">${s.t}${extras(s)}</span></div>`;
+    case 'error':
+      return `<div class="fn error">${badges(s)}<i class="fa-solid ${ic||'fa-triangle-exclamation'}"></i><span class="fn-tx">${s.t}${extras(s)}</span></div>`;
+    case 'success':
+      return `<div class="fn success">${badges(s)}<i class="fa-solid ${ic||'fa-circle-check'}"></i><span class="fn-tx">${s.t}${extras(s)}</span></div>`;
+    case 'action':
+      return `<div class="fn action">${badges(s)}<i class="fa-solid ${ic||'fa-bolt'}"></i><span>${s.t}</span></div>`;
+    case 'loop':
+      return `<div class="loopnote"><i class="fa-solid ${ic||'fa-rotate-left'}"></i>${s.t}</div>`;
+    default:
+      return `<div class="fn screen" style="--sc:${s.c||'var(--navy)'}">${badges(s)}<span class="fn-ic"><i class="fa-solid ${ic||'fa-window-maximize'}"></i></span><span class="fn-tx">${s.t}${extras(s)}</span></div>`;
+  }
+}
+function link(lbl,cls){return `<div class="link ${cls||''}">${lbl?`<span class="link-lbl">${lbl}</span>`:''}</div>`;}
+function renderStep(s){return s.k==='split'?renderSplit(s):fnode(s);}
+function renderSeq(steps){return steps.map((s,i)=>(i>0?link(s.into,s.back?'back':''):'')+renderStep(s)).join('');}
+function renderSplit(s){
+  const n=s.lanes.length, half=`calc((100% - ${(n-1)*24}px)/${n}/2)`;
+  const lanes=s.lanes.map(l=>`<div class="lane-col"><div class="lane-drop">${l.label?`<span class="br">${l.label}</span>`:''}</div>${renderSeq(l.steps)}</div>`).join('');
+  return `${fnode({k:'decision',t:s.q,lane:s.lane,cid:s.cid})}${link('','plain')}<div class="branches" style="--half:${half}">${'<div class="branches-rail"></div>'}${lanes}</div>`;
+}
+function renderFlow(steps){return `<div class="flow-scroll"><div class="vflow">${renderSeq(steps)}</div></div>`;}
+
+/* ---------- legend ---------- */
+const LEGEND_ITEMS=[
+  ['term','شروع / پایان'],['screen','صفحه'],['dec','تصمیم'],['inp','ورودی کاربر'],
+  ['agent','پردازش عامل (سیستم)'],['appr','تأیید انسانی'],['jump','پرش بین‌فلو'],['err','خطا'],['ok','موفقیت']
+];
+function legend(){
+  return `<div class="legend"><span class="lg-title">نمادها:</span>`+
+    LEGEND_ITEMS.map(([c,t])=>`<span class="lg"><span class="lgs ${c}"></span>${t}</span>`).join('')+
+    `<span class="lg-title" style="margin-inline-start:8px">لِین‌ها:</span>
+     <span class="lg"><span class="lane-tag lane-U" style="position:static;box-shadow:none">U</span>کاربر</span>
+     <span class="lg"><span class="lane-tag lane-UI" style="position:static;box-shadow:none">UI</span>رابط</span>
+     <span class="lg"><span class="lane-tag lane-AI" style="position:static;box-shadow:none">AI</span>عامل</span>
+     <span class="lg"><span class="lane-tag lane-BE" style="position:static;box-shadow:none">BE</span>بک‌اند</span></div>`;
+}
+</script>
+<script>
+/* ============================ ARTBOARD DATA ============================ */
+const AGENTS = {
+  sec:{c:'#22A6F0', ic:'fa-headset',        name:'منشی',          en:'Secretary'},
+  mkt:{c:'#E0402F', ic:'fa-bullhorn',       name:'بازاریاب',      en:'Marketer'},
+  sell:{c:'#12A150', ic:'fa-store',         name:'فروشنده',       en:'Seller / Cashier'},
+  proc:{c:'#F59E0B', ic:'fa-truck-ramp-box',name:'خرید و تدارکات',en:'Procurement'},
+  acc:{c:'#8B3FFC', ic:'fa-calculator',     name:'حسابدار',       en:'Accountant'},
+  pa:{c:'#0E7490',  ic:'fa-wand-magic-sparkles',name:'دستیار شخصی',en:'Personal Assistant'},
+};
+
+const ART = [];
+
+/* ---------- NORA-00 · Master ---------- */
+ART.push({code:'NORA-00', title:'نقشهٔ کلان و مدل تعامل', sub:'Master · IA map + swimlanes + relationship matrix', kind:'master'});
+
+/* ---------- NORA-0F · Comprehensive end-to-end flowchart ---------- */
+ART.push({code:'NORA-0F', title:'فلوچارت جامع سرتاسری', sub:'End-to-end flowchart · launch → auth → hub → agent cycle → handoff → follow-up', kind:'flow', steps:[
+  {k:'start', t:'باز شدن اپ', en:'App launch'},
+  {k:'screen', ic:'fa-bolt', t:'اسپلش + بارگذاری', en:'Splash', c:'#4a2fce', lane:'UI'},
+  {k:'agent', ic:'fa-key', t:'بررسی نشست', en:'Session check', lane:'BE', persist:'localStorage: token'},
+  {k:'split', q:'کاربر وارد شده؟', en:'Authenticated?', lane:'AI', into:'', lanes:[
+    {label:'خیر', steps:[
+      {k:'screen', ic:'fa-hand-sparkles', t:'ولکام / احراز هویت', en:'Welcome / Auth', c:'#4a2fce'},
+      {k:'split', q:'مسیر ورود', en:'Entry path', lanes:[
+        {label:'ورود/ثبت‌نام', steps:[{k:'action', ic:'fa-shield-halved', t:'OTP یا ساخت حساب', into:''}]},
+        {label:'مهمان (سقف ۱۰)', steps:[{k:'action', ic:'fa-user-secret', t:'نشست موقت مهمان', into:''}]},
+      ]},
+      {k:'loop', ic:'fa-arrow-down', t:'ورود موفق → ادامه به هاب'},
+    ]},
+    {label:'بله', steps:[{k:'action', ic:'fa-forward', t:'ورود مستقیم'}]},
+  ]},
+  {k:'screen', ic:'fa-house', t:'هاب / خانه', en:'Hub', c:'#0E7490', into:'', note:'پیام شروع‌کننده: «دنبال چی می‌گردی؟»'},
+  {k:'input', ic:'fa-magnifying-glass', t:'جستجو یا انتخاب عامل', en:'Search / pick agent', lane:'U'},
+  {k:'agent', ic:'fa-diagram-project', t:'مسیریابی نیت به یکی از ۶ عامل', en:'Intent routing', lane:'AI', note:'منشی · بازاریاب · فروشنده · تدارکات · حسابدار · دستیار'},
+  {k:'screen', ic:'fa-robot', t:'فضای کاری عامل انتخاب‌شده', en:'Agent workspace', c:'#7B62FC', lane:'UI'},
+  {k:'input', ic:'fa-keyboard', t:'ثبت درخواست', en:'Task intake', lane:'U'},
+  {k:'agent', ic:'fa-brain', t:'برداشت نیت + استخراج پارامترها', en:'Parse intent + slots', lane:'AI'},
+  {k:'split', q:'اطلاعات کافی است؟', en:'Enough info?', lane:'AI', lanes:[
+    {label:'خیر', steps:[
+      {k:'agent', ic:'fa-circle-question', t:'شفاف‌سازی', en:'Clarify', lane:'AI'},
+      {k:'loop', ic:'fa-rotate-left', t:'پاسخ کاربر → بازبینی مجدد'},
+    ]},
+    {label:'بله', steps:[{k:'action', ic:'fa-gears', t:'پردازش و تولید پیش‌نویس'}]},
+  ]},
+  {k:'screen', ic:'fa-eye', t:'پیش‌نمایش نتیجه', en:'Preview draft', c:'#7B62FC', into:''},
+  {k:'split', q:'نیازمند تأیید انسانی؟', en:'Needs approval?', lane:'AI', lanes:[
+    {label:'بله', steps:[
+      {k:'approval', ic:'fa-user-check', t:'تأیید کاربر', en:'Human approval', lane:'U'},
+      {k:'split', q:'تأیید شد؟', en:'Approved?', lanes:[
+        {label:'رد', steps:[{k:'loop', ic:'fa-pen', t:'ویرایش و بازتولید'}]},
+        {label:'تأیید', steps:[{k:'action', ic:'fa-lock', t:'قفل نسخهٔ نهایی'}]},
+      ]},
+    ]},
+    {label:'خیر', steps:[{k:'action', ic:'fa-forward', t:'اجرای مستقیم'}]},
+  ]},
+  {k:'agent', ic:'fa-paper-plane', t:'اجرای عملیات', en:'Execute', lane:'BE', into:'', persist:'DB: records'},
+  {k:'split', q:'اجرا موفق بود؟', en:'Success?', lane:'BE', lanes:[
+    {label:'خطا', steps:[
+      {k:'error', ic:'fa-triangle-exclamation', t:'خطا / آفلاین', en:'Failure', note:'ثبت لاگ + صف آفلاین'},
+      {k:'loop', ic:'fa-rotate-right', t:'تلاش مجدد یا مسیر جایگزین'},
+    ]},
+    {label:'موفق', steps:[
+      {k:'success', ic:'fa-circle-check', t:'تحویل نتیجه', en:'Delivered'},
+      {k:'split', q:'هندآف بین‌عاملی لازم است؟', en:'Cross-agent handoff?', lane:'AI', lanes:[
+        {label:'بله', steps:[{k:'jump', ic:'fa-arrow-right-arrow-left', t:'انتقال به عامل مقصد', en:'→ NORA-09 (H-1…H-5)', cid:'C-0F'}]},
+        {label:'خیر', steps:[{k:'action', ic:'fa-list-check', t:'خلاصه و اقدام بعدی'}]},
+      ]},
+      {k:'action', ic:'fa-bell', t:'پیگیری / یادآوری خودکار', en:'Auto follow-up'},
+    ]},
+  ]},
+  {k:'end', t:'پایان چرخهٔ کار', en:'Cycle complete'},
+]});
+
+/* ---------- NORA-01 · Splash / Auth / Guest ---------- */
+ART.push({code:'NORA-01', title:'ورود، ثبت‌نام و حالت مهمان', sub:'Splash → Auth → Guest (cap at 10)', kind:'flow', steps:[
+  {k:'start', t:'باز شدن اپ', en:'App launch'},
+  {k:'screen', ic:'fa-bolt', t:'اسپلش', en:'Splash', c:'#4a2fce', lane:'UI', into:'', note:'لوگو + بارگذاری اولیه'},
+  {k:'agent', ic:'fa-key', t:'بررسی نشست ذخیره‌شده', en:'Check stored session', lane:'BE', into:'۱ ثانیه', persist:'localStorage: token'},
+  {k:'split', q:'نشست معتبر؟', en:'Valid session?', lane:'AI', into:'', lanes:[
+    {label:'بله', steps:[{k:'jump', ic:'fa-house', t:'رفتن به هاب', en:'→ NORA-02', cid:'C-01'}]},
+    {label:'خیر', steps:[
+      {k:'screen', ic:'fa-hand-sparkles', t:'ولکام / معرفی', en:'Welcome carousel', c:'#4a2fce'},
+      {k:'split', q:'انتخاب کاربر', en:'User choice', lanes:[
+        {label:'ورود', steps:[
+          {k:'input', ic:'fa-mobile-screen', t:'شماره موبایل', en:'Phone number', lane:'U'},
+          {k:'agent', ic:'fa-comment-sms', t:'ارسال کد یک‌بارمصرف', en:'Send OTP', lane:'BE'},
+          {k:'input', ic:'fa-shield-halved', t:'کد تأیید', en:'OTP code', lane:'U'},
+          {k:'split', q:'کد درست؟', en:'OTP valid?', lanes:[
+            {label:'بله', steps:[{k:'jump', ic:'fa-house', t:'هاب', en:'→ NORA-02', cid:'C-02'}]},
+            {label:'خیر ×۳', steps:[{k:'error', t:'قفل موقت ۶۰ ثانیه', en:'Rate-limited', note:'شمارش معکوس + امکان ارسال مجدد'}]},
+          ]},
+        ]},
+        {label:'ثبت‌نام', steps:[
+          {k:'input', ic:'fa-id-card', t:'نام، کسب‌وکار، نقش', en:'Name, business, role', lane:'U'},
+          {k:'agent', ic:'fa-circle-check', t:'ساخت حساب + پروفایل عامل‌ها', en:'Create account', lane:'BE', persist:'DB: user, agents'},
+          {k:'jump', ic:'fa-house', t:'هاب (آنبوردینگ)', en:'→ NORA-02', cid:'C-03'},
+        ]},
+        {label:'مهمان', steps:[
+          {k:'agent', ic:'fa-user-secret', t:'نشست مهمان موقت', en:'Ephemeral guest session', lane:'BE', persist:'session: guestCount=0'},
+          {k:'screen', ic:'fa-house', t:'هاب با نوار مهمان', en:'Hub (guest banner)', c:'#8b86a0'},
+          {k:'loop', ic:'fa-arrow-up-9-1', t:'هر تعامل: guestCount++ (سقف ۱۰)'},
+          {k:'split', q:'به سقف ۱۰ رسید؟', en:'Reached cap 10?', lanes:[
+            {label:'خیر', steps:[{k:'action', ic:'fa-repeat', t:'ادامهٔ استفاده'}]},
+            {label:'بله', steps:[
+              {k:'error', ic:'fa-lock', t:'مسدودسازی نرم', en:'Soft paywall', note:'ادامه نیازمند حساب است'},
+              {k:'approval', ic:'fa-user-plus', t:'دعوت به ساخت حساب', en:'Convert to sign-up'},
+              {k:'jump', ic:'fa-user-pen', t:'مسیر ثبت‌نام (داده مهمان منتقل می‌شود)', en:'→ Sign-up', cid:'C-04'},
+            ]},
+          ]},
+        ]},
+      ]},
+    ]},
+  ]},
+  {k:'end', t:'ورود کامل → هاب فعال', en:'Authenticated'},
+]});
+
+/* ---------- NORA-02 · Hub + routing ---------- */
+ART.push({code:'NORA-02', title:'هاب و مسیریابی به عامل‌ها', sub:'Home hub → routing diamond → 6 agents', kind:'flow', steps:[
+  {k:'start', t:'ورود به هاب', en:'Enter hub'},
+  {k:'screen', ic:'fa-house', t:'خانه / دستیار شخصی', en:'Home', c:'#0E7490', note:'پیام شروع‌کننده: «دنبال چی می‌گردی؟»'},
+  {k:'input', ic:'fa-magnifying-glass', t:'جستجو یا انتخاب عامل', en:'Search / pick agent', lane:'U'},
+  {k:'agent', ic:'fa-diagram-project', t:'تحلیل نیت کاربر', en:'Intent routing', lane:'AI'},
+  {k:'split', q:'کدام عامل؟', en:'Route to which agent?', lane:'AI', lanes:[
+    {label:'منشی', steps:[{k:'jump', c:'#22A6F0', ic:'fa-headset', t:'منشی', en:'→ NORA-03', cid:'C-10'}]},
+    {label:'بازاریاب', steps:[{k:'jump', ic:'fa-bullhorn', t:'بازاریاب', en:'→ NORA-04', cid:'C-11'}]},
+    {label:'فروشنده', steps:[{k:'jump', ic:'fa-store', t:'فروشنده', en:'→ NORA-05', cid:'C-12'}]},
+    {label:'تدارکات', steps:[{k:'jump', ic:'fa-truck-ramp-box', t:'خرید و تدارکات', en:'→ NORA-06', cid:'C-13'}]},
+    {label:'حسابدار', steps:[{k:'jump', ic:'fa-calculator', t:'حسابدار', en:'→ NORA-07', cid:'C-14'}]},
+    {label:'دستیار', steps:[{k:'jump', ic:'fa-wand-magic-sparkles', t:'دستیار شخصی', en:'→ NORA-08', cid:'C-15'}]},
+  ]},
+  {k:'end', t:'ورود به فضای عامل', en:'In agent workspace'},
+]});
+
+/* ---------- generic agent sub-flow generator ---------- */
+function agentFlow(a, code, extra){
+  const g = AGENTS[a];
+  return {code, title:g.name+' — فلوی کامل', sub:g.en+' · intake → clarify → process → approve → execute → deliver → follow-up', kind:'flow', accent:g.c, steps:[
+    {k:'start', t:'ورود از هاب', en:'From hub'},
+    {k:'screen', ic:g.ic, t:'فضای کاری '+g.name, en:g.en+' workspace', c:g.c, lane:'UI'},
+    {k:'input', ic:'fa-keyboard', t:extra.intake, en:'Intake request', lane:'U', into:''},
+    {k:'agent', ic:'fa-brain', t:'برداشت نیت + استخراج پارامترها', en:'Parse intent + slots', lane:'AI', into:''},
+    {k:'split', q:'اطلاعات کافی است؟', en:'Enough info?', lane:'AI', lanes:[
+      {label:'خیر', steps:[
+        {k:'agent', ic:'fa-circle-question', t:'پرسش شفاف‌سازی', en:'Clarifying question', lane:'AI'},
+        {k:'input', ic:'fa-reply', t:'پاسخ کاربر', en:'User answers', lane:'U'},
+        {k:'loop', ic:'fa-rotate-left', t:'بازگشت به بررسی کفایت اطلاعات'},
+      ]},
+      {label:'بله', steps:[
+        {k:'agent', ic:'fa-gears', t:extra.process, en:'Process', lane:'AI', into:'', persist:extra.persist},
+        {k:'screen', ic:'fa-eye', t:extra.preview, en:'Preview draft', c:g.c},
+        {k:'split', q:'نیازمند تأیید انسانی؟', en:'Needs approval?', lane:'AI', lanes:[
+          {label:'بله', steps:[
+            {k:'approval', ic:'fa-user-check', t:extra.approve, en:'Human approval', lane:'U'},
+            {k:'split', q:'تأیید شد؟', en:'Approved?', lanes:[
+              {label:'رد', steps:[{k:'loop', ic:'fa-pen', t:'ویرایش و بازتولید'}]},
+              {label:'تأیید', steps:[{k:'action', ic:'fa-check', t:'قفل نسخهٔ نهایی'}]},
+            ]},
+          ]},
+          {label:'خیر', steps:[{k:'action', ic:'fa-forward', t:'اجرای مستقیم'}]},
+        ]},
+        {k:'agent', ic:'fa-paper-plane', t:extra.execute, en:'Execute', lane:'BE', into:''},
+        {k:'split', q:'اجرا موفق بود؟', en:'Success?', lane:'BE', lanes:[
+          {label:'خطا', steps:[
+            {k:'error', ic:'fa-triangle-exclamation', t:extra.error, en:'Failure', note:'ثبت لاگ + تلاش مجدد / گزارش به کاربر'},
+            {k:'loop', ic:'fa-rotate-right', t:'تلاش مجدد یا مسیر جایگزین'},
+          ]},
+          {label:'موفق', steps:[
+            {k:'success', ic:'fa-circle-check', t:extra.deliver, en:'Delivered', note:'نمایش نتیجه + خروجی/گزارش'},
+            {k:'screen', ic:'fa-list-check', t:'خلاصه و اقدام بعدی', en:'Summary + next action', c:g.c},
+            ...(extra.handoff?[{k:'jump', ic:'fa-arrow-right-arrow-left', t:extra.handoff.t, en:'→ '+extra.handoff.to, cid:extra.handoff.cid}]:[]),
+            {k:'action', ic:'fa-bell', t:'پیگیری / یادآوری خودکار', en:'Auto follow-up'},
+          ]},
+        ]},
+      ]},
+    ]},
+    {k:'end', t:'پایان چرخهٔ '+g.name, en:'Cycle complete'},
+  ]};
+}
+
+ART.push(agentFlow('sec','NORA-03',{
+  intake:'درخواست: تقویم، جلسه، یادآوری، گزارش', process:'برنامه‌ریزی و هماهنگی زمان', preview:'پیش‌نمایش رویداد/گزارش',
+  approve:'تأیید زمان‌بندی', execute:'ثبت در تقویم + اعلان به شرکت‌کنندگان', error:'تداخل زمانی / عدم دسترسی',
+  deliver:'رویداد ثبت شد', persist:'DB: events, reminders',
+  handoff:{t:'گزارش هزینهٔ رویداد به حسابدار', to:'NORA-07', cid:'H-1'} }));
+
+ART.push(agentFlow('mkt','NORA-04',{
+  intake:'درخواست: کمپین، محتوا، تحلیل', process:'انتخاب نوع کمپین + کانال‌ها + تولید محتوا', preview:'پیش‌نمایش کمپین چندکاناله',
+  approve:'تأیید متن، بودجه و زمان‌بندی', execute:'زمان‌بندی انتشار در کانال‌ها', error:'رد شبکهٔ اجتماعی / بودجهٔ ناکافی',
+  deliver:'کمپین فعال شد', persist:'DB: campaigns, schedule',
+  handoff:{t:'ثبت بودجهٔ کمپین در حسابداری', to:'NORA-07', cid:'H-2'} }));
+
+ART.push(agentFlow('sell','NORA-05',{
+  intake:'درخواست: فروش، سفارش، شیفت صندوق', process:'ساخت فاکتور + بررسی موجودی', preview:'پیش‌نمایش فاکتور و سبد',
+  approve:'تأیید نهایی سفارش توسط مشتری/فروشنده', execute:'ثبت فروش + کسر موجودی + دریافت وجه', error:'موجودی ناکافی / پرداخت ناموفق',
+  deliver:'فروش ثبت و رسید صادر شد', persist:'DB: orders, inventory, cash',
+  handoff:{t:'کاهش موجودی → درخواست تأمین', to:'NORA-06', cid:'H-3'} }));
+
+ART.push(agentFlow('proc','NORA-06',{
+  intake:'درخواست: تأمین کالا، سفارش خرید', process:'محاسبهٔ ضریب اضطرار + صف تأمین + انتخاب تأمین‌کننده', preview:'پیش‌نمایش سفارش خرید',
+  approve:'تأیید خرید (سقف بودجه)', execute:'ثبت سفارش نزد تأمین‌کننده + رهگیری تحویل', error:'تأمین‌کننده در دسترس نیست / قیمت بالاتر از سقف',
+  deliver:'سفارش خرید ثبت و در انتظار تحویل', persist:'DB: purchase_orders, suppliers',
+  handoff:{t:'ثبت فاکتور خرید در حسابداری', to:'NORA-07', cid:'H-4'} }));
+
+ART.push(agentFlow('acc','NORA-07',{
+  intake:'درخواست: ثبت سند، تسویه، گزارش مالی', process:'ثبت تراکنش + محاسبهٔ بدهی/اعتبار', preview:'پیش‌نمایش سند و تراز',
+  approve:'تأیید سند مالی', execute:'ثبت در دفتر + به‌روزرسانی تسویه‌ها', error:'مغایرت تراز / سند ناقص',
+  deliver:'سند ثبت و گزارش به‌روز شد', persist:'DB: ledger, invoices, settlements',
+  handoff:null }));
+
+ART.push(agentFlow('pa','NORA-08',{
+  intake:'درخواست آزاد: مارکت، سفارش غذا، خرید خدمت', process:'جستجوی سرویس/عامل + مقایسه', preview:'پیش‌نمایش گزینه‌ها و سبد',
+  approve:'تأیید سفارش و پرداخت', execute:'ثبت سفارش نزد فروشنده/سرویس', error:'سرویس در دسترس نیست / پرداخت ناموفق',
+  deliver:'سفارش ثبت و در حال پیگیری', persist:'session/DB: orders',
+  handoff:{t:'ارجاع سفارش به فروشندهٔ مربوطه', to:'NORA-05', cid:'H-5'} }));
+
+/* ---------- NORA-09 · Cross-agent handoffs ---------- */
+ART.push({code:'NORA-09', title:'هندآف‌های بین‌عاملی', sub:'5 mandatory cross-agent handoffs', kind:'handoff'});
+
+/* ---------- NORA-10 · Settings / Profile / Billing ---------- */
+ART.push({code:'NORA-10', title:'تنظیمات، پروفایل و صورتحساب', sub:'Settings · Profile · Billing · Agent config', kind:'flow', steps:[
+  {k:'start', t:'باز کردن تنظیمات', en:'Open settings'},
+  {k:'screen', ic:'fa-gear', t:'تنظیمات', en:'Settings home', c:'#64748b', lane:'UI'},
+  {k:'split', q:'کدام بخش؟', en:'Which section?', lanes:[
+    {label:'پروفایل', steps:[
+      {k:'input', ic:'fa-user-pen', t:'ویرایش نام، کسب‌وکار، آواتار', en:'Edit profile', lane:'U'},
+      {k:'agent', ic:'fa-floppy-disk', t:'ذخیره', en:'Save', lane:'BE', persist:'DB: profile'},
+      {k:'success', t:'پروفایل به‌روز شد', en:'Saved'},
+    ]},
+    {label:'تنظیمات عامل', steps:[
+      {k:'input', ic:'fa-palette', t:'انتخاب رنگ تم + رفتار عامل', en:'Theme color + agent config', lane:'U'},
+      {k:'action', ic:'fa-wand-sparkles', t:'اعمال زندهٔ رنگ تم', en:'Live theme apply', note:'بک‌گراند روشن هماهنگ با تم'},
+      {k:'agent', ic:'fa-floppy-disk', t:'ذخیره ترجیحات', en:'Persist prefs', lane:'BE', persist:'localStorage: theme'},
+    ]},
+    {label:'صورتحساب', steps:[
+      {k:'screen', ic:'fa-file-invoice-dollar', t:'پلن و مصرف', en:'Plan & usage', c:'#8b3ffc'},
+      {k:'split', q:'ارتقای پلن؟', en:'Upgrade?', lanes:[
+        {label:'بله', steps:[
+          {k:'approval', ic:'fa-credit-card', t:'تأیید پرداخت', en:'Confirm payment', lane:'U'},
+          {k:'agent', ic:'fa-money-check-dollar', t:'پردازش پرداخت', en:'Process payment', lane:'BE'},
+          {k:'split', q:'پرداخت موفق؟', en:'Paid?', lanes:[
+            {label:'خطا', steps:[{k:'error', t:'پرداخت ناموفق', en:'Failed', note:'تلاش مجدد یا روش دیگر'}]},
+            {label:'موفق', steps:[{k:'success', t:'پلن ارتقا یافت', en:'Upgraded', persist:'DB: subscription'}]},
+          ]},
+        ]},
+        {label:'خیر', steps:[{k:'action', ic:'fa-xmark', t:'انصراف'}]},
+      ]},
+    ]},
+    {label:'خروج', steps:[
+      {k:'approval', ic:'fa-right-from-bracket', t:'تأیید خروج', en:'Confirm logout', lane:'U'},
+      {k:'agent', ic:'fa-trash-can', t:'پاک‌سازی نشست', en:'Clear session', lane:'BE'},
+      {k:'jump', ic:'fa-arrow-left', t:'بازگشت به ورود', en:'→ NORA-01', cid:'C-90'},
+    ]},
+  ]},
+  {k:'end', t:'تنظیمات ذخیره شد', en:'Settings saved'},
+]});
+</script>
+<script>
+/* ============================ SPECIAL VIEWS ============================ */
+function masterView(){
+  const ia = [
+    {c:'#4a2fce', ic:'fa-key',   cd:'NORA-01', h:'ورود و احراز هویت', li:['اسپلش','ولکام/معرفی','ورود با OTP','ثبت‌نام','حالت مهمان (سقف ۱۰)']},
+    {c:'#0E7490', ic:'fa-house', cd:'NORA-02', h:'هاب و مسیریابی', li:['خانه + پیام شروع‌کننده','جستجوی سراسری','مسیریابی نیت به عامل']},
+    {c:AGENTS.sec.c, ic:AGENTS.sec.ic, cd:'NORA-03', h:'منشی', li:['تقویم و جلسات','یادآوری‌ها','گزارش‌های درخواستی','تنخواه']},
+    {c:AGENTS.mkt.c, ic:AGENTS.mkt.ic, cd:'NORA-04', h:'بازاریاب', li:['کمپین چندکاناله','تولید محتوا','تقویم انتشار','تحلیل عملکرد']},
+    {c:AGENTS.sell.c, ic:AGENTS.sell.ic, cd:'NORA-05', h:'فروشنده / صندوقدار', li:['فروش و فاکتور','شیفت صندوق','سفارشات','مالی فروش']},
+    {c:AGENTS.proc.c, ic:AGENTS.proc.ic, cd:'NORA-06', h:'خرید و تدارکات', li:['تأمین + ضریب اضطرار','انبار','تحویل','مالی و گزارش']},
+    {c:AGENTS.acc.c, ic:AGENTS.acc.ic, cd:'NORA-07', h:'حسابدار', li:['دفتر کل','تسویه‌ها','بدهی/اعتبار','گزارش مالی']},
+    {c:AGENTS.pa.c, ic:AGENTS.pa.ic, cd:'NORA-08', h:'دستیار شخصی', li:['مارکت','سفارش غذا','خرید خدمت','چت عامل']},
+    {c:'#64748b', ic:'fa-gear', cd:'NORA-10', h:'تنظیمات', li:['پروفایل','تنظیمات عامل + تم','صورتحساب','خروج']},
+  ];
+  const iaCards = ia.map(x=>`<div class="ia-card" style="--c:${x.c}"><h4><span class="ic"><i class="fa-solid ${x.ic}"></i></span>${x.h}<span class="cd">${x.cd}</span></h4><ul>${x.li.map(l=>`<li>${l}</li>`).join('')}</ul></div>`).join('');
+
+  const swim = [
+    {c:'#1e3a8a', tag:'U',  h:'کاربر', p:'ورودی‌ها، انتخاب‌ها و تأییدهای انسانی. هر نقطهٔ تصمیمِ حساس نیازمند تأیید کاربر است.'},
+    {c:'#0e7490', tag:'UI', h:'رابط کاربری', p:'صفحات، پاپ‌آپ‌ها، فرم‌ها و بازخورد بصری. راست‌به‌چپ و هماهنگ با تم انتخابی.'},
+    {c:'#64748b', tag:'AI', h:'عامل هوشمند', p:'برداشت نیت، شفاف‌سازی، تولید پیش‌نویس، مسیریابی و پیشنهاد اقدام بعدی.'},
+    {c:'#475569', tag:'BE', h:'بک‌اند', p:'اجرای عملیات، ماندگاری داده، تراکنش‌ها، اعلان‌ها و یکپارچگی بین عامل‌ها.'},
+  ].map(x=>`<div class="swim-col" style="--c:${x.c}"><h4><span class="tag">${x.tag}</span>${x.h}</h4><p>${x.p}</p></div>`).join('');
+
+  const rows = [
+    ['منشی','NORA-03','—','—','—','H-1 → حسابدار','—'],
+    ['بازاریاب','NORA-04','—','—','—','H-2 → حسابدار','—'],
+    ['فروشنده','NORA-05','—','H-3 → تدارکات','—','—','—'],
+    ['تدارکات','NORA-06','—','—','—','H-4 → حسابدار','—'],
+    ['حسابدار','NORA-07','—','—','—','—','—'],
+    ['دستیار','NORA-08','—','H-5 → فروشنده','—','—','—'],
+  ];
+  const cols=['عامل مبدأ','آرت‌بورد','→ منشی','→ فروشنده/تدارکات','→ بازاریاب','→ حسابدار','→ دستیار'];
+  const matrix = `<div class="matrix-wrap"><table class="matrix"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${
+    rows.map(r=>`<tr><th>${r[0]}</th>`+r.slice(1).map((v,i)=>{
+      if(i===0) return `<td class="dash" style="font-family:ui-monospace;font-weight:800">${v}</td>`;
+      const on=v!=='—'; const m=on?v.match(/H-\d/):null;
+      return `<td class="${on?'on':'dash'}">${on?`<span class="cid-in">${m?m[0]:''}</span> ${v.replace(/H-\d → /,'')}`:'—'}</td>`;
+    }).join('')+'</tr>').join('')
+  }</tbody></table></div>`;
+
+  return `${legend()}
+    <div class="ab-head"><span class="ab-code">MAP</span><div><h2>نقشهٔ معماری اطلاعات</h2><div class="sub">۱۱ آرت‌بورد · ۶ عامل هوشمند · ۴ سواِم‌لِین</div></div></div>
+    <div class="ia-grid">${iaCards}</div>
+    <div class="ab-head"><span class="ab-code">LANES</span><div><h2>مدل سواِم‌لِین</h2><div class="sub">مسئولیت‌ها در چهار لایه</div></div></div>
+    <div class="swim">${swim}</div>
+    <div class="ab-head"><span class="ab-code">MATRIX</span><div><h2>ماتریس هندآف بین‌عاملی</h2><div class="sub">۵ هندآف اجباری (H-1…H-5)</div></div></div>
+    <div class="callout"><i class="fa-solid fa-circle-info"></i><span>هر هندآف با شناسهٔ <b>H-n</b> در فلوی عامل مبدأ (پرش بنفش) و در آرت‌بورد <b>NORA-09</b> مستند شده است. حسابدار پایانهٔ اغلب هندآف‌های مالی است.</span></div>
+    ${matrix}`;
+}
+
+function handoffView(){
+  const hs = [
+    {id:'H-1', from:AGENTS.sec, to:AGENTS.acc, trig:'ثبت رویداد دارای هزینه (مثل جلسه با پذیرایی)', pass:'شناسهٔ رویداد، مبلغ، تاریخ', res:'ثبت سند هزینه در دفتر کل'},
+    {id:'H-2', from:AGENTS.mkt, to:AGENTS.acc, trig:'فعال‌سازی کمپین با بودجه', pass:'شناسهٔ کمپین، بودجهٔ تخصیصی، کانال‌ها', res:'رزرو بودجه + پیگیری هزینهٔ واقعی'},
+    {id:'H-3', from:AGENTS.sell, to:AGENTS.proc, trig:'افت موجودی زیر آستانه پس از فروش', pass:'کد کالا، موجودی فعلی، سرعت فروش', res:'ساخت درخواست تأمین + محاسبهٔ ضریب اضطرار'},
+    {id:'H-4', from:AGENTS.proc, to:AGENTS.acc, trig:'ثبت سفارش خرید نزد تأمین‌کننده', pass:'شناسهٔ سفارش، مبلغ، تأمین‌کننده، سررسید', res:'ثبت بدهی/فاکتور خرید + برنامهٔ تسویه'},
+    {id:'H-5', from:AGENTS.pa, to:AGENTS.sell, trig:'ثبت سفارش کاربر روی محصول یک فروشنده', pass:'سبد خرید، شناسهٔ فروشنده، آدرس/زمان', res:'ورود سفارش به صف فروش فروشنده'},
+  ];
+  const cards = hs.map(h=>`
+    <div class="ho-card">
+      <div class="ho-top"><span class="ho-id">${h.id}</span>
+        <span class="ho-ag" style="--c:${h.from.c}"><i class="fa-solid ${h.from.ic}"></i>${h.from.name}</span>
+        <i class="fa-solid fa-arrow-left-long ho-arrow"></i>
+        <span class="ho-ag" style="--c:${h.to.c}"><i class="fa-solid ${h.to.ic}"></i>${h.to.name}</span>
+      </div>
+      <div class="ho-row"><b>ماشه:</b> ${h.trig}</div>
+      <div class="ho-row"><b>داده منتقل‌شده:</b> ${h.pass}</div>
+      <div class="ho-row ok"><b>نتیجه:</b> ${h.res}</div>
+    </div>`).join('');
+  return `${legend()}
+    <div class="ab-head"><span class="ab-code">FLOW</span><div><h2>هندآف‌های بین‌عاملی</h2><div class="sub">۵ انتقال اجباری بین عامل‌ها — با ماشه، داده و نتیجه</div></div></div>
+    <div class="callout"><i class="fa-solid fa-arrow-right-arrow-left"></i><span>هندآف‌ها به‌صورت خودکار و بدون خروج کاربر از فضای عامل جاری اجرا می‌شوند؛ کاربر تنها یک اعلان تأیید می‌بیند.</span></div>
+    <div class="ho-grid">${cards}</div>`;
+}
+</script>
+<style>
+  .ho-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));margin:6px 0 24px;}
+  .ho-card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:15px 17px;box-shadow:var(--shadow);}
+  .ho-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:11px;padding-bottom:11px;border-bottom:1px solid var(--line);}
+  .ho-id{font-family:ui-monospace,monospace;font-size:11px;font-weight:900;color:#fff;background:var(--purple);border-radius:7px;padding:3px 9px;direction:ltr;}
+  .ho-ag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:900;color:#fff;background:var(--c);border-radius:9px;padding:5px 11px;}
+  .ho-arrow{color:var(--muted);font-size:15px;}
+  .ho-row{font-size:12px;color:var(--ink2);padding:3px 0;line-height:1.6;}
+  .ho-row b{color:var(--ink);font-weight:800;}
+  .ho-row.ok b{color:var(--green);}
+</style>
+<script>
+/* ============================ BUILD ============================ */
+const tabSelect = document.getElementById('tabSelect');
+const stageEl = document.getElementById('stage');
+
+ART.forEach((a,i)=>{
+  const opt=document.createElement('option');
+  opt.value=i;
+  opt.textContent=`${a.code} — ${a.title}`;
+  tabSelect.appendChild(opt);
+
+  const v=document.createElement('section');
+  v.className='view'+(i===0?' active':'');
+  v.id='v'+i;
+  let body;
+  if(a.kind==='master') body=masterView();
+  else if(a.kind==='handoff') body=handoffView();
+  else body=legend()+`<div class="ab-head"><span class="ab-code">${a.code}</span><div><h2>${a.title}</h2><div class="sub">${a.sub}</div></div></div>`+renderFlow(a.steps);
+  v.innerHTML=body;
+  stageEl.appendChild(v);
+});
+tabSelect.onchange=e=>show(+e.target.value);
+
+function show(i){
+  tabSelect.value=i;
+  document.querySelectorAll('.view').forEach((v,j)=>v.classList.toggle('active',i===j));
+  window.scrollTo({top:0});
+}
+
+/* Persian-ize the cover stat + code numerals already literal; convert any latin digits in codes shown */
+document.querySelectorAll('.cd, .ab-code').forEach(el=>{});
+</script>
+</body>
+</html>

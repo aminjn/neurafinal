@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="400.73" viewBox="0 0 512 400.73" fill="none">
+<defs>
+<linearGradient id="dark" x1="0" y1="400.73" x2="92.2" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#6E54FC"></stop><stop offset="0.55" stop-color="#8270FC"></stop><stop offset="1" stop-color="#B7AEFD"></stop>
+</linearGradient>
+<linearGradient id="light" x1="0" y1="400.73" x2="0" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#DAD5FB"></stop><stop offset="1" stop-color="#FAF9FF"></stop>
+</linearGradient>
+</defs>
+<rect x="3" y="18" width="506.0" height="364.7" rx="54" fill="url(#dark)"></rect><g transform="translate(150.98 243.71)"><path d="M 281.8 26.94 L 13.47 26.94 C 6.03 26.94 0 20.91 0 13.47 C 0 6.03 6.03 0 13.47 0 L 281.8 0 C 289.24 0 295.27 6.03 295.27 13.47 C 295.27 20.91 289.24 26.94 281.8 26.94 Z" fill="url(#light)" fill-rule="nonzero"></path></g><g transform="translate(150.98 311.08)"><path d="M 281.8 26.94 L 13.47 26.94 C 6.03 26.94 0 20.91 0 13.47 C 0 6.03 6.03 0 13.47 0 L 281.8 0 C 289.24 0 295.27 6.03 295.27 13.47 C 295.27 20.91 289.24 26.94 281.8 26.94 Z" fill="url(#light)" fill-rule="nonzero"></path></g><g transform="translate(50.21 54.3)"><path d="M 105 0 L 41.12 0 C 18.41 0 0 18.41 0 41.12 L 0 105 C 0 127.71 18.41 146.12 41.12 146.12 L 105 146.12 C 127.71 146.12 146.12 127.71 146.12 105 L 146.12 41.12 C 146.12 18.41 127.71 0 105 0 Z" fill="url(#light)" fill-rule="nonzero"></path></g>
+</svg>

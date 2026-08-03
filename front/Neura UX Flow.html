@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Neura — نقشه کامل فلوی UX</title>
+<link rel="icon" href="data:," />
+<template id="__bundler_thumbnail" data-bg-color="#7B62FC">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect x="500" y="120" width="200" height="110" rx="24" fill="#ffffff"/>
+    <line x1="600" y1="230" x2="360" y2="360" stroke="#ffffff" stroke-width="8"/>
+    <line x1="600" y1="230" x2="840" y2="360" stroke="#ffffff" stroke-width="8"/>
+    <rect x="240" y="360" width="240" height="110" rx="24" fill="#ffffff" opacity="0.85"/>
+    <rect x="720" y="360" width="240" height="110" rx="24" fill="#ffffff" opacity="0.85"/>
+    <line x1="360" y1="470" x2="360" y2="580" stroke="#ffffff" stroke-width="8" opacity="0.6"/>
+    <line x1="840" y1="470" x2="840" y2="580" stroke="#ffffff" stroke-width="8" opacity="0.6"/>
+    <rect x="260" y="580" width="200" height="90" rx="20" fill="#ffffff" opacity="0.6"/>
+    <rect x="740" y="580" width="200" height="90" rx="20" fill="#ffffff" opacity="0.6"/>
+    <text x="600" y="190" font-family="sans-serif" font-size="64" font-weight="700" fill="#7B62FC" text-anchor="middle">neura</text>
+  </svg>
+</template>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
+
+  :root{
+    --ink:#1a1725; --ink2:#4a4560; --muted:#8b86a0; --line:#e6e2f0;
+    --bg:#f4f2fa; --card:#ffffff; --brand:#7B62FC; --brand-ink:#4a2fce;
+    --screen:#5b8def; --tab:#14b8a6; --popup:#f5a524; --form:#ec4899; --action:#8b86a0;
+    --shadow:0 1px 3px rgba(30,20,60,.06), 0 8px 24px rgba(30,20,60,.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Vazirmatn',system-ui,sans-serif; background:var(--bg); color:var(--ink);
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:0 28px 120px;}
+
+  /* ---------- Cover ---------- */
+  .cover{
+    background:linear-gradient(135deg,#2a1d5e 0%, #4a2fce 45%, #7B62FC 100%);
+    color:#fff; padding:64px 28px 72px; margin-bottom:44px;
+    position:relative; overflow:hidden;
+  }
+  .cover::after{content:'';position:absolute;inset:0;background:
+    radial-gradient(600px 300px at 85% -10%, rgba(255,255,255,.18), transparent 60%),
+    radial-gradient(500px 260px at 5% 120%, rgba(255,255,255,.12), transparent 60%);}
+  .cover-inner{max-width:1180px;margin:0 auto;position:relative;z-index:1;}
+  .cover .logo{font-weight:900;font-size:15px;letter-spacing:.5px;opacity:.9;display:flex;align-items:center;gap:9px;}
+  .cover .logo .dot{width:22px;height:22px;border-radius:7px;background:#fff;color:var(--brand-ink);
+    display:grid;place-items:center;font-size:14px;font-weight:900;}
+  .cover h1{font-size:44px;font-weight:900;margin:26px 0 10px;letter-spacing:-.5px;}
+  .cover p{font-size:17px;opacity:.92;max-width:640px;margin:0;}
+  .cover .stats{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap;}
+  .cover .stat{background:rgba(255,255,255,.13);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.22);border-radius:16px;padding:14px 20px;min-width:120px;}
+  .cover .stat b{display:block;font-size:30px;font-weight:900;line-height:1;}
+  .cover .stat span{font-size:12.5px;opacity:.85;}
+
+  /* ---------- Legend ---------- */
+  .legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--card);
+    border:1px solid var(--line);border-radius:16px;padding:14px 18px;margin:-30px auto 40px;
+    max-width:1124px;box-shadow:var(--shadow);position:relative;z-index:2;}
+  .legend .lg-title{font-weight:800;font-size:13px;color:var(--ink2);margin-left:6px;}
+  .chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;
+    padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:#fbfaff;}
+  .chip .sw{width:11px;height:11px;border-radius:4px;}
+
+  /* ---------- Section ---------- */
+  section{margin-bottom:14px;}
+  .sec-head{display:flex;align-items:center;gap:14px;margin:44px 0 20px;padding-bottom:14px;
+    border-bottom:2px solid var(--line);}
+  .sec-num{width:40px;height:40px;border-radius:12px;flex:none;display:grid;place-items:center;
+    color:#fff;font-weight:900;font-size:17px;box-shadow:var(--shadow);}
+  .sec-head h2{font-size:24px;font-weight:900;margin:0;letter-spacing:-.3px;}
+  .sec-head .sub{font-size:13.5px;color:var(--muted);font-weight:600;margin-top:2px;}
+  .sec-head .count{margin-inline-start:auto;font-size:12.5px;font-weight:800;color:var(--ink2);
+    background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 13px;white-space:nowrap;}
+
+  /* ---------- Flow lane ---------- */
+  .lane{display:grid;grid-template-columns:repeat(auto-fill,minmax(226px,1fr));gap:16px;}
+  .node{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    box-shadow:var(--shadow);break-inside:avoid;}
+  .node-h{padding:12px 14px 11px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px;}
+  .node-h .ic{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;
+    color:#fff;font-size:14px;}
+  .node-h .tt{font-weight:800;font-size:14.5px;line-height:1.35;}
+  .node-h .tt small{display:block;font-weight:600;font-size:11px;color:var(--muted);direction:ltr;text-align:right;margin-top:1px;}
+  .node-b{padding:10px 13px 13px;}
+  .row{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.8px;color:var(--ink2);}
+  .row .b{width:7px;height:7px;border-radius:3px;flex:none;}
+  .row.sub{padding-inline-start:14px;font-size:12px;color:var(--muted);}
+  .grp-label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.4px;margin:9px 0 3px;}
+  .grp-label:first-child{margin-top:0;}
+
+  .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px;}
+  .tag{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:8px;background:#f4f2fa;
+    color:var(--ink2);border:1px solid var(--line);}
+
+  /* entry flow horizontal */
+  .entry{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;}
+  .entry .node{flex:1;min-width:200px;}
+  .arrow{align-self:center;color:var(--muted);font-size:20px;padding:0 6px;flex:none;}
+
+  /* modal appendix */
+  .mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+  .mod-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;
+    box-shadow:var(--shadow);break-inside:avoid;}
+  .mod-card h4{margin:0 0 9px;font-size:14px;font-weight:900;display:flex;align-items:center;gap:8px;}
+  .mod-card h4 .ic{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;color:#fff;font-size:12px;flex:none;}
+  .mod-list{margin:0;padding:0;list-style:none;}
+  .mod-list li{font-size:12.5px;color:var(--ink2);padding:3px 0 3px 0;display:flex;gap:8px;align-items:flex-start;}
+  .mod-list li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--popup);flex:none;margin-top:8px;}
+
+  .note{background:#fff;border:1px dashed var(--line);border-radius:12px;padding:12px 16px;
+    font-size:12.8px;color:var(--ink2);margin-top:8px;}
+  .note b{color:var(--ink);}
+
+  footer.pg{text-align:center;color:var(--muted);font-size:12px;margin-top:60px;padding-top:24px;border-top:1px solid var(--line);}
+
+  /* ---------- Tabs ---------- */
+  .tabs{position:sticky;top:0;z-index:40;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    background:linear-gradient(var(--bg) 78%,rgba(244,242,250,0));padding:16px 0 13px;margin-bottom:6px;}
+  .tab-btn{display:inline-flex;align-items:center;gap:9px;font-family:inherit;font-weight:800;font-size:14px;
+    color:var(--ink2);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 17px;
+    cursor:pointer;transition:.15s;box-shadow:var(--shadow);}
+  .tab-btn i{font-size:13.5px;}
+  .tab-btn:hover{border-color:var(--brand);color:var(--brand-ink);}
+  .tab-btn.active{background:var(--brand);color:#fff;border-color:var(--brand);}
+  .view{display:none;}
+  .view.active{display:block;}
+  .flow-intro{font-size:13px;color:var(--ink2);background:var(--card);border:1px dashed var(--line);
+    border-radius:12px;padding:12px 16px;margin:4px 0 30px;display:flex;align-items:center;gap:10px;}
+  .flow-intro i{color:var(--brand);font-size:15px;}
+
+  /* ---------- Flowchart (professional task-flow) ---------- */
+  .flow-sec{margin-bottom:56px;}
+  .flow-scroll{overflow-x:auto;padding:10px 2px 20px;}
+  .vflow{width:max-content;margin-inline:auto;display:flex;flex-direction:column;align-items:center;min-width:min(100%,300px);}
+
+  /* connector line + arrowhead */
+  .link{width:2px;height:30px;background:var(--line);position:relative;flex:none;}
+  .link::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+    border:6px solid transparent;border-top-color:var(--line);border-bottom:0;}
+  .link.plain::after{display:none;}
+  .link-lbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);white-space:nowrap;
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 11px;font-size:11px;font-weight:800;color:var(--ink2);}
+
+  /* base node */
+  .fn{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+    font-weight:800;font-size:14px;color:var(--ink);display:inline-flex;align-items:center;gap:10px;
+    padding:13px 18px;text-align:right;max-width:330px;flex:none;}
+  .fn small{display:block;font-weight:600;font-size:11px;color:var(--muted);direction:ltr;text-align:right;margin-top:1px;}
+  .fn .note{display:block;font-weight:600;font-size:11.5px;color:var(--ink2);margin-top:3px;line-height:1.5;}
+
+  /* terminator (start / end) */
+  .fn.terminator{border:0;border-radius:999px;color:#fff;font-weight:900;padding:12px 24px;}
+  .fn.terminator.start{background:#4a2fce;}
+  .fn.terminator.end{background:#10B981;}
+  .fn.terminator i{font-size:13px;opacity:.95;}
+
+  /* screen / process */
+  .fn.screen{border-top:4px solid var(--sc,var(--screen));align-items:flex-start;}
+  .fn.screen .fn-ic{width:31px;height:31px;border-radius:9px;background:var(--sc,var(--screen));color:#fff;
+    display:grid;place-items:center;font-size:14px;flex:none;}
+  .fn.screen .fn-tx{padding-top:1px;}
+
+  /* decision diamond */
+  .fn.decision{background:transparent;border:0;box-shadow:none;padding:0;width:158px;height:158px;
+    position:relative;justify-content:center;}
+  .fn.decision::before{content:'';position:absolute;inset:24px;background:#1a1725;transform:rotate(45deg);
+    border-radius:14px;box-shadow:var(--shadow);}
+  .fn.decision span{position:relative;z-index:1;color:#fff;font-weight:800;font-size:12.5px;
+    text-align:center;max-width:120px;line-height:1.45;}
+
+  /* form / input (parallelogram) */
+  .fn.form{transform:skewX(-9deg);border-top:4px solid var(--form);}
+  .fn.form .fn-in{display:flex;align-items:center;gap:9px;transform:skewX(9deg);}
+  .fn.form .fn-in > i{color:var(--form);font-size:13px;}
+
+  /* popup / modal (dashed) */
+  .fn.popup{border:1.5px dashed var(--popup);background:#fffdf7;align-items:flex-start;}
+  .fn.popup > i{color:var(--popup);font-size:14px;margin-top:2px;}
+
+  /* action (pill) */
+  .fn.action{padding:9px 15px;font-size:13px;background:#faf9fe;color:var(--ink2);border-radius:999px;}
+  .fn.action i{color:var(--action);font-size:12px;}
+
+  /* branch split */
+  .branches{display:inline-flex;gap:26px;position:relative;padding-top:36px;align-items:flex-start;align-self:center;}
+  .branches-rail{position:absolute;top:0;height:2px;background:var(--line);
+    left:calc(var(--lane-w)/2);right:calc(var(--lane-w)/2);}
+  .lane{--lane-w:196px;width:196px;display:flex;flex-direction:column;align-items:center;position:relative;}
+  .branches{--lane-w:196px;}
+  .lane-drop{position:absolute;top:-36px;left:50%;width:2px;height:36px;background:var(--line);transform:translateX(-50%);}
+  .lane-drop::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+    border:6px solid transparent;border-top-color:var(--line);border-bottom:0;}
+  .lane-drop .br{position:absolute;top:9px;left:50%;transform:translateX(-50%);white-space:nowrap;
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 11px;font-size:11px;font-weight:800;color:var(--ink2);}
+
+  /* shapes legend */
+  .flow-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;background:var(--card);
+    border:1px solid var(--line);border-radius:16px;padding:14px 18px;margin:4px 0 34px;box-shadow:var(--shadow);}
+  .fl-title{font-weight:900;font-size:13px;color:var(--ink2);}
+  .fl-item{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--ink2);}
+  .sh{width:22px;height:15px;flex:none;border:1.5px solid var(--ink2);}
+  .sh.term{border-radius:999px;background:#4a2fce;border-color:#4a2fce;}
+  .sh.proc{border-radius:5px;border:1px solid var(--line);border-top:3px solid var(--screen);background:#fff;}
+  .sh.dec{width:14px;height:14px;transform:rotate(45deg);background:#1a1725;border-color:#1a1725;border-radius:3px;}
+  .sh.frm{transform:skewX(-14deg);border:1px solid var(--line);border-top:3px solid var(--form);background:#fff;border-radius:2px;}
+  .sh.pop{border:1.5px dashed var(--popup);background:#fffdf7;border-radius:3px;}
+  .sh.act{border-radius:999px;background:#faf9fe;border-color:var(--action);}
+
+  @media(max-width:720px){
+    .fn{max-width:74vw;}
+    .fn.decision{width:150px;height:150px;}
+    .branches{gap:16px;--lane-w:150px;}
+    .lane{--lane-w:150px;width:150px;}
+  }
+
+  @media print{
+    .tabs{display:none;}
+    .view{display:block !important;}
+    .flow-scroll{overflow:visible;}
+    .flow-sec{page-break-inside:auto;}
+    .hub-node{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    body{background:#fff;}
+    .wrap{padding-bottom:0;}
+    .legend{position:static;box-shadow:none;}
+    .node,.mod-card{box-shadow:none;}
+    section{page-break-inside:auto;}
+    .sec-head{page-break-after:avoid;}
+    .node,.mod-card{page-break-inside:avoid;}
+    .cover{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-inner">
+    <div class="logo"><span class="dot">n</span> neura · UX FLOW MAP</div>
+    <h1>نقشه کامل فلوی تجربه کاربری</h1>
+    <p>مرجع صفحه‌به‌صفحهٔ اپلیکیشن Neura برای طراحی در Figma — شامل فلوی ورود، پنل دستیار شخصی، ۶ ایجنت اداری، سیستم تنظیمات و فهرست کامل پاپ‌آپ‌ها.</p>
+    <div class="stats" id="cover-stats"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab-btn active" data-view="view-map"><i class="fa-solid fa-layer-group"></i> نقشهٔ ساختاری</button>
+    <button class="tab-btn" data-view="view-flow"><i class="fa-solid fa-diagram-project"></i> فلوچارت UX</button>
+    <span style="margin-inline-start:auto"></span>
+    <button class="tab-btn" onclick="window.print()"><i class="fa-solid fa-file-arrow-down"></i> خروجی PDF</button>
+  </div>
+
+  <div id="view-map" class="view active">
+  <div class="legend">
+    <span class="lg-title">راهنمای نمادها:</span>
+    <span class="chip"><span class="sw" style="background:var(--screen)"></span>صفحه (Screen)</span>
+    <span class="chip"><span class="sw" style="background:var(--tab)"></span>تب / حالت</span>
+    <span class="chip"><span class="sw" style="background:var(--popup)"></span>پاپ‌آپ / مودال</span>
+    <span class="chip"><span class="sw" style="background:var(--form)"></span>فرم / ویزارد</span>
+    <span class="chip"><span class="sw" style="background:var(--action)"></span>اکشن / درایور</span>
+  </div>
+
+  <div id="app"></div>
+  </div><!-- /view-map -->
+
+  <div id="view-flow" class="view"></div>
+
+  <footer class="pg">Neura UX Flow Map · تولیدشده از سورس واقعی اپ · نسخهٔ ۱</footer>
+</div>
+
+<script>
+const T = {screen:'var(--screen)', tab:'var(--tab)', popup:'var(--popup)', form:'var(--form)', action:'var(--action)'};
+
+// ============ DATA MODEL (extracted from source) ============
+const SECTIONS = [];
+
+// ---- 1. ENTRY FLOW ----
+SECTIONS.push({
+  color:'#4a2fce', title:'فلوی ورود', sub:'Splash → Landing → Auth → Routing', kind:'entry',
+  nodes:[
+    {ic:'fa-bolt', color:'#4a2fce', tt:'اسپلش', en:'SplashScreen', rows:[
+      {t:'انیمیشن لوگو + اسپکتروم', c:T.screen},
+      {t:'بارگذاری اولیه', c:T.action},
+    ]},
+    {ic:'fa-hand-sparkles', color:'#4a2fce', tt:'صفحه ولکام', en:'WelcomeScreen', rows:[
+      {t:'آواتار ایجنت پیش‌فرض', c:T.screen},
+      {t:'اسپکتروم زنده + تم ایجنت', c:T.screen},
+      {t:'«برای صحبت کلیک کنید»', c:T.action},
+      {t:'دکمه ورود', c:T.action},
+      {t:'قابل روشن/خاموش از تنظیمات', c:T.action},
+    ]},
+    {ic:'fa-right-to-bracket', color:'#4a2fce', tt:'ورود / ثبت‌نام', en:'AuthFlow', rows:[
+      {g:'حالت‌ها'},
+      {t:'ورود با رمز عبور', c:T.tab},
+      {t:'ورود با رمز یک‌بار مصرف (OTP)', c:T.tab},
+      {t:'ثبت‌نام', c:T.tab},
+      {t:'فراموشی رمز عبور', c:T.tab},
+    ]},
+    {ic:'fa-diagram-project', color:'#4a2fce', tt:'مسیریابی پنل', en:'Routing', rows:[
+      {t:'پیش‌فرض → دستیار شخصی', c:T.screen},
+      {t:'انتخابگر ایجنت → پنل اداری', c:T.action},
+      {t:'دراپ‌دان اسم ایجنت (هدر)', c:T.action},
+    ]},
+  ],
+});
+
+// ---- 2. PERSONAL ASSISTANT (EU) ----
+SECTIONS.push({
+  color:'#7E5FAA', title:'دستیار شخصی', sub:'Personal Assistant — پنل شخصی کاربر', kind:'panel',
+  nodes:[
+    {ic:'fa-home', color:'#7E5FAA', tt:'خانه', en:'euHomeScreen', badge:'فوتر ۱', rows:[
+      {t:'ویدئو معرفی', c:T.screen},
+      {t:'پیام شروع‌کننده چت‌بات', c:T.action},
+      {t:'کارت‌های ایجنت (دستیار/پشتیبانی/غذا/مارکت)', c:T.screen},
+      {t:'میان‌برها + کیف پول + پروموشن', c:T.screen},
+      {t:'فعالیت‌های اخیر', c:T.screen},
+    ]},
+    {ic:'fa-calendar-check', color:'#7E5FAA', tt:'روزمرگی', en:'euPlannerScreen', badge:'فوتر ۲', rows:[
+      {g:'تب‌ها'},
+      {t:'تسک‌ها', c:T.tab},{t:'To-do', c:T.tab},{t:'تقویم', c:T.tab},
+      {g:'اکشن'},
+      {t:'ایجاد برنامه/تسک جدید', c:T.form},
+    ]},
+    {ic:'fa-comments', color:'#7E5FAA', tt:'گفتگو', en:'euChatListScreen', badge:'فوتر ۳', rows:[
+      {g:'تب‌ها (واتساپی)'},
+      {t:'همه', c:T.tab},{t:'تماس‌ها', c:T.tab},{t:'نخوانده‌ها', c:T.tab},
+      {t:'مورد علاقه‌ها', c:T.tab},{t:'گروه‌ها', c:T.tab},{t:'+ دسته سفارشی', c:T.action},
+      {g:'مقصد'},
+      {t:'چت‌اورلی (اسپکتروم/صوت/TTS)', c:T.screen},
+      {t:'تاریخچه گفتگو (درایور)', c:T.popup},
+    ]},
+    {ic:'fa-chart-pie', color:'#7E5FAA', tt:'گزارش', en:'euReportScreen', badge:'فوتر ۴', rows:[
+      {t:'نمودارها + دورهٔ تجمیع', c:T.screen},
+      {t:'خلاصه فعالیت', c:T.screen},
+    ]},
+    {ic:'fa-utensils', color:'#F59E0B', tt:'سفارش غذا', en:'euDineScreen', rows:[
+      {t:'دسته‌بندی رستوران (ایرانی/فست‌فود/…)', c:T.screen},
+      {t:'صفحهٔ رستوران + دسته‌بندی غذا', c:T.screen},
+      {t:'پاپ‌آپ معرفی غذا', c:T.popup},
+      {t:'گفتگو: مشاور تغذیه', c:T.action},
+    ]},
+    {ic:'fa-store', color:'#00E676', tt:'مارکت', en:'euMarketScreen', rows:[
+      {t:'دسته‌بندی فروشگاه‌ها', c:T.screen},
+      {t:'صفحهٔ فروشگاه (جدا)', c:T.screen},
+      {t:'صفحهٔ محصول (جدا)', c:T.screen},
+      {t:'پروموشن', c:T.screen},
+    ]},
+    {ic:'fa-magnifying-glass', color:'#7E5FAA', tt:'جستجوی پیشرفته', en:'euSearchScreen', rows:[
+      {t:'جستجوی جنرال (هدر)', c:T.screen},
+      {t:'چت‌بات: «چه کاری انجام بدم؟»', c:T.action},
+    ]},
+    {ic:'fa-headset', color:'#3B82F6', tt:'پشتیبانی', en:'euSupportScreen', rows:[
+      {t:'تیکت‌ها + سوالات متداول', c:T.screen},
+      {t:'دکمه بازگشت', c:T.action},
+    ]},
+    {ic:'fa-bag-shopping', color:'#7E5FAA', tt:'سفارشات', en:'euOrdersScreen', rows:[
+      {g:'فیلترها'},
+      {t:'همه / در انتظار', c:T.tab},
+      {t:'در حال آماده‌سازی / تحویل شده', c:T.tab},
+    ]},
+    {ic:'fa-cart-shopping', color:'#7E5FAA', tt:'سبد خرید', en:'euCartScreen', rows:[
+      {t:'سبد جنرال (مارکت + غذا)', c:T.screen},
+      {t:'پرداخت → سفارشات مربوطه', c:T.action},
+    ]},
+    {ic:'fa-percent', color:'#7E5FAA', tt:'پیشنهادها', en:'euOffersScreen', rows:[
+      {t:'سوییچ مارکت / سفارش غذا', c:T.tab},
+    ]},
+    {ic:'fa-compass', color:'#7E5FAA', tt:'کشف عامل', en:'euDiscoverAgents', rows:[
+      {t:'مرور و استخدام ایجنت‌ها', c:T.screen},
+    ]},
+  ],
+});
+
+// ---- 3. SECRETARY ----
+SECTIONS.push({
+  color:'#22A6F0', title:'منشی', sub:'Secretary — مرکز فرماندهی، تقویم و هماهنگی', kind:'panel',
+  nodes:[
+    {ic:'fa-house', color:'#22A6F0', tt:'امروز من', en:'secTodayScreen', badge:'فوتر ۱', rows:[
+      {t:'خلاصهٔ تسک‌های روز', c:T.screen},
+      {t:'گزارش روز گذشته', c:T.screen},
+      {t:'تسک‌های اولویت‌بالای سایر ایجنت‌ها', c:T.screen},
+      {t:'کارت تنخواه → کیف پول', c:T.popup},
+    ]},
+    {ic:'fa-comments', color:'#22A6F0', tt:'گفتگو', en:'chatsScreen', badge:'فوتر ۲', rows:[
+      {g:'تب‌ها'},
+      {t:'همه/تماس/نخوانده/علاقه/گروه‌ها', c:T.tab},
+      {t:'جلسات', c:T.tab},
+    ]},
+    {ic:'fa-calendar-days', color:'#22A6F0', tt:'برنامه‌ریزی', en:'secPlanningScreen', badge:'فوتر ۳', rows:[
+      {t:'تقویم (روز/هفته/ماه/سال)', c:T.screen},
+      {g:'پاپ‌آپ روی تاریخ'},
+      {t:'تسک‌ها / To-do / جلسات / یادآوری', c:T.popup},
+      {t:'یادآوری (۵ رویداد + مشاهده بیشتر)', c:T.screen},
+      {g:'اکشن‌ها'},
+      {t:'ایجاد تسک / جلسه / رویداد', c:T.form},
+    ]},
+    {ic:'fa-chart-simple', color:'#22A6F0', tt:'گزارشات', en:'secPerformanceScreen', badge:'فوتر ۴', rows:[
+      {g:'دوره'},
+      {t:'روزانه / هفتگی / ماهانه', c:T.tab},
+      {g:'دسته'},
+      {t:'تسک‌ها / تنخواه', c:T.tab},
+      {t:'گزارش‌های درخواستی سایر ایجنت‌ها', c:T.popup},
+    ]},
+  ],
+});
+
+// ---- 4. MARKETING ----
+SECTIONS.push({
+  color:'#3B82F6', title:'بازاریابی', sub:'Marketing — کمپین، تحلیل بازار و جذب مشتری', kind:'panel',
+  nodes:[
+    {ic:'fa-bolt', color:'#3B82F6', tt:'اقدامات', en:'mktActionsScreen', badge:'فوتر ۱', rows:[
+      {t:'۳ آیکون: نرخ تبدیل/لید جدید/لیدهای داغ', c:T.screen},
+      {t:'اقدامات اخیر (۳ + مشاهده بیشتر)', c:T.screen},
+      {t:'کمپین‌های نیازمند اقدام', c:T.screen},
+    ]},
+    {ic:'fa-comments', color:'#3B82F6', tt:'گفتگو', en:'mktConversationsScreen', badge:'فوتر ۲', rows:[
+      {t:'لاگ صحبت با لیدها و مخاطبان', c:T.screen},
+      {t:'ایجاد گفتگوی جدید (زیر تب)', c:T.form},
+    ]},
+    {ic:'fa-address-book', color:'#3B82F6', tt:'CRM', en:'mktCrmScreen', badge:'فوتر ۳', rows:[
+      {g:'تب‌ها'},
+      {t:'لیدها (سرد/نیمه‌گرم/گرم)', c:T.tab},
+      {t:'مخاطبین (سگمنت/پرسونا/هدف)', c:T.tab},
+      {g:'اکشن'},
+      {t:'افزودن لید / مخاطب / سگمنت', c:T.form},
+      {t:'پاپ‌آپ پروفایل لید', c:T.popup},
+    ]},
+    {ic:'fa-bullhorn', color:'#3B82F6', tt:'کمپین‌ها', en:'campaignScreen', badge:'فوتر ۴', rows:[
+      {g:'تب وضعیت'},
+      {t:'همه/فعال/زمان‌بندی/تکمیل/متوقف/پیش‌نویس', c:T.tab},
+      {t:'تقویم بازاریابی + افزودن رویداد', c:T.screen},
+      {g:'ساخت کمپین (ویزارد ۳ مرحله)'},
+      {t:'۱: نام/هدف/محصولات', c:T.form},
+      {t:'۲: سگمنت/کانال/محتوا', c:T.form},
+      {t:'۳: زمان‌بندی/بودجه/انتشار', c:T.form},
+    ]},
+    {ic:'fa-chart-line', color:'#3B82F6', tt:'گزارش', en:'mktPerformanceScreen', badge:'فوتر ۵', rows:[
+      {t:'کارت‌های KPI (۳ در ردیف)', c:T.screen},
+      {t:'ساخت گزارش مدیریتی + نمودار', c:T.popup},
+      {t:'Export', c:T.action},
+    ]},
+  ],
+});
+
+// ---- 5. FINANCE ----
+SECTIONS.push({
+  color:'#8B5CF6', title:'مالی / اداری', sub:'Finance — حسابداری، فاکتور و گزارش مالی', kind:'panel',
+  nodes:[
+    {ic:'fa-comments', color:'#8B5CF6', tt:'گفتگوها', en:'chatsScreen', badge:'فوتر ۱', rows:[
+      {t:'گفتگو با مشتری/پرسنل/عامل', c:T.screen},
+    ]},
+    {ic:'fa-table-cells-large', color:'#8B5CF6', tt:'داشبورد', en:'dashboardScreen', badge:'فوتر ۲', rows:[
+      {t:'کارت‌های KPI + نمودار', c:T.screen},
+      {t:'جداول با جزئیات', c:T.screen},
+    ]},
+    {ic:'fa-wallet', color:'#8B5CF6', tt:'مالی', en:'financeScreen', badge:'فوتر ۳', rows:[
+      {g:'تب‌ها'},
+      {t:'تسویه شده/نشده/بدهی/اعتبار', c:T.tab},
+      {t:'تراکنش‌ها + جزئیات', c:T.popup},
+    ]},
+    {ic:'fa-file-invoice-dollar', color:'#8B5CF6', tt:'فاکتورها', en:'reportsScreen', badge:'فوتر ۴', rows:[
+      {t:'لیست فاکتورها', c:T.screen},
+      {t:'افزودن فاکتور جدید', c:T.form},
+      {t:'جزئیات فاکتور', c:T.popup},
+    ]},
+    {ic:'fa-list-check', color:'#8B5CF6', tt:'وظایف', en:'tasksScreen', badge:'فوتر ۵', rows:[
+      {t:'لیست وظایف', c:T.screen},
+    ]},
+  ],
+});
+
+// ---- 6. PROCUREMENT ----
+SECTIONS.push({
+  color:'#F97316', title:'خرید / تدارکات', sub:'Procurement — درخواست → سفارش → تحویل → انبار → پرداخت', kind:'panel',
+  nodes:[
+    {ic:'fa-warehouse', color:'#F97316', tt:'انبار', en:'inventoryScreen', badge:'فوتر ۱', rows:[
+      {g:'حالت‌ها'},
+      {t:'ورودی / خروجی / موجودی', c:T.tab},
+      {t:'فیلتر ناموجود', c:T.tab},
+      {t:'کارت: ضریب اضطرار + صف انتظار', c:T.screen},
+    ]},
+    {ic:'fa-comments', color:'#F97316', tt:'گفتگو', en:'chatsScreen', badge:'فوتر ۲', rows:[
+      {t:'گفتگو با تامین‌کننده/تیم', c:T.screen},
+    ]},
+    {ic:'fa-truck-field', color:'#F97316', tt:'تامین', en:'procSupplyScreen', badge:'فوتر ۳', rows:[
+      {g:'تب‌ها'},
+      {t:'درخواست‌ها / سفارشات / تحویل', c:T.tab},
+      {g:'فرم‌ها'},
+      {t:'درخواست خرید جدید (RFQ)', c:T.form},
+      {t:'ثبت سفارش خرید', c:T.form},
+      {t:'جزئیات درخواست/سفارش + استپر', c:T.popup},
+      {t:'پیش‌فاکتور', c:T.popup},
+    ]},
+    {ic:'fa-ship', color:'#F97316', tt:'عملیات واردات', en:'procImportScreen', badge:'فوتر ۴', rows:[
+      {t:'کارت‌های فیلتر (وضعیت محموله)', c:T.screen},
+      {g:'استپر ۴ مرحله (راست‌به‌چپ)'},
+      {t:'ثبت/تخصیص ارز/مراجعه', c:T.tab},
+      {t:'هماهنگی/حمل', c:T.tab},
+      {t:'ترخیص/گمرک', c:T.tab},
+      {t:'بارگیری/مسیر انبار', c:T.tab},
+      {t:'جزئیات محموله', c:T.popup},
+    ]},
+    {ic:'fa-money-check-dollar', color:'#F97316', tt:'مالی', en:'procFinanceScreen', badge:'فوتر ۵', rows:[
+      {g:'کارت‌های فیلتر'},
+      {t:'تسویه/تسویه‌نشده/بدهی/اعتبار', c:T.tab},
+      {g:'تب‌ها'},
+      {t:'مالی / گزارش', c:T.tab},
+      {t:'فاکتور جدید + جستجو', c:T.form},
+      {t:'ساخت گزارش (سند PDF) + Export', c:T.popup},
+      {t:'مقایسه تأمین‌کنندگان', c:T.screen},
+    ]},
+  ],
+});
+
+// ---- 7. SALES ----
+SECTIONS.push({
+  color:'#10B981', title:'فروشنده / صندوقدار', sub:'Sales — فروش، فاکتور و ارتباط با مشتری', kind:'panel',
+  nodes:[
+    {ic:'fa-headset', color:'#10B981', tt:'گفتگو', en:'salesConversationsScreen', badge:'فوتر ۱', rows:[
+      {g:'تب‌ها'},
+      {t:'همه/مشتریان/عامل‌ها/پرسنل/تامین‌کنندگان', c:T.tab},
+      {t:'+ افزودن دسته‌بندی', c:T.action},
+    ]},
+    {ic:'fa-receipt', color:'#10B981', tt:'سفارش', en:'salesOrdersScreen', badge:'فوتر ۲', rows:[
+      {t:'سوییچ سفارشات / فاکتورها', c:T.tab},
+      {t:'کارت افزودن فاکتور / سفارش دستی', c:T.form},
+      {t:'ثبت سفارش (انتخاب سریع محصول)', c:T.form},
+      {t:'جزئیات سفارش + استپر', c:T.popup},
+      {t:'گزارشات سفارشات', c:T.screen},
+    ]},
+    {ic:'fa-cash-register', color:'#10B981', tt:'مالی', en:'salesQuickReportScreen', badge:'فوتر ۳', rows:[
+      {g:'تب‌ها'},
+      {t:'گزارش سریع / شیفت و صندوق', c:T.tab},
+    ]},
+    {ic:'fa-store', color:'#10B981', tt:'محصولات / منو', en:'salesMenuScreen', badge:'فوتر ۴', rows:[
+      {t:'دسته‌بندی (بر اساس نوع کسب‌وکار)', c:T.screen},
+      {t:'افزودن / ویرایش محصول', c:T.form},
+      {t:'نام‌گذاری پویا: منو / لیست خدمات', c:T.action},
+    ]},
+    {ic:'fa-warehouse', color:'#10B981', tt:'انبار', en:'inventoryScreen', badge:'فوتر ۵', rows:[
+      {t:'ورودی / خروجی / موجودی', c:T.tab},
+    ]},
+    {ic:'fa-address-book', color:'#10B981', tt:'CRM', en:'salesCustomersScreen', badge:'فوتر ۶', rows:[
+      {t:'پایپ‌لاین مشتریان', c:T.screen},
+      {t:'کمپین (پیشنهاد ویژه)', c:T.screen},
+      {t:'پاپ‌آپ پروفایل مشتری', c:T.popup},
+    ]},
+  ],
+});
+
+// ---- 8. SETTINGS HUB ----
+SECTIONS.push({
+  color:'#5b5570', title:'تنظیمات', sub:'Settings — مرکز تنظیمات (مشترک همهٔ پنل‌ها)', kind:'panel',
+  nodes:[
+    {ic:'fa-user', color:'#5b5570', tt:'پروفایل من', en:'Profile', rows:[
+      {t:'حساب کاربری + ویرایش پروفایل', c:T.screen},
+      {t:'مالی + تراکنش‌ها', c:T.screen},
+      {t:'اعلان‌ها', c:T.screen},
+    ]},
+    {ic:'fa-robot', color:'#5b5570', tt:'تنظیمات عامل‌ها', en:'Agents', rows:[
+      {t:'دسته‌بندی بر اساس ۶ نقش', c:T.screen},
+      {t:'تنظیمات + شخصی‌سازی عامل (ادغام)', c:T.popup},
+      {t:'تم رنگی اختصاصی عامل', c:T.action},
+      {t:'عامل پیش‌فرض / حذف عامل', c:T.action},
+      {t:'دوربین/گالری/آواتار', c:T.form},
+    ]},
+    {ic:'fa-palette', color:'#5b5570', tt:'تم‌ها', en:'Themes', rows:[
+      {g:'حالت نمایش'},
+      {t:'روشن / تیره / سیاه‌سفید / UTC خودکار', c:T.tab},
+      {t:'پالت رنگ تم (۹ رنگ)', c:T.action},
+      {t:'ولکام: روشن/خاموش + ویرایش', c:T.action},
+    ]},
+    {ic:'fa-building', color:'#5b5570', tt:'شرکت‌ها', en:'Companies', rows:[
+      {t:'دراپ‌دان + افزودن شرکت', c:T.form},
+      {t:'صفحهٔ تنظیمات هر شرکت', c:T.screen},
+      {t:'لوگو + رنگ تم + نوع فعالیت', c:T.form},
+      {t:'حذف شرکت', c:T.action},
+    ]},
+    {ic:'fa-shield-halved', color:'#5b5570', tt:'امنیت', en:'Security', rows:[
+      {t:'پسورد / دو مرحله‌ای', c:T.tab},
+      {t:'اکانت‌های ثالث / لاگ امنیتی', c:T.tab},
+    ]},
+    {ic:'fa-crown', color:'#5b5570', tt:'اشتراک و پلن‌ها', en:'Plans', rows:[
+      {t:'مدیریت پلن‌ها', c:T.screen},
+      {t:'خرید پروموشن (دستهٔ جدا)', c:T.screen},
+    ]},
+    {ic:'fa-wallet', color:'#5b5570', tt:'کیف پول / تنخواه', en:'Wallet', rows:[
+      {t:'کارت‌ها/تراکنش‌ها/اشتراک/کش‌بک', c:T.tab},
+      {t:'واریز / برداشت + گزارش', c:T.screen},
+    ]},
+    {ic:'fa-circle-question', color:'#5b5570', tt:'پشتیبانی و قوانین', en:'Support', rows:[
+      {t:'سوالات متداول / گزارش مشکل', c:T.popup},
+      {t:'قوانین و حریم خصوصی', c:T.popup},
+    ]},
+  ],
+});
+
+// ============ CROSS-CUTTING ============
+const CROSS = [
+  {ic:'fa-wand-magic-sparkles', tt:'چت‌اورلی مشترک', d:'آواتار اسپکتروم زنده، ورودی صوت، خواندن متن (TTS) با اسپکتروم ری‌اکتیو، پول‌آپ/پول‌دان تمام‌صفحه.'},
+  {ic:'fa-clock-rotate-left', tt:'تاریخچهٔ گفتگو', d:'درایور/پاپ‌آپ مرکزی با جستجو، تعداد نامحدود، ویرایش و حذف — یکسان در همهٔ چت‌ها.'},
+  {ic:'fa-palette', tt:'سیستم تم', d:'۴ حالت نمایش + ۹ رنگ لهجه؛ رنگ هر ایجنت کل تم (آیکون/اسپکتروم/پترن/گرادیان) را بازتعریف می‌کند.'},
+  {ic:'fa-wallet', tt:'کیف پول / تنخواه', d:'کارت کیف پول (شخصی) = تنخواه (اداری)؛ پاپ‌آپ مشترک با تب‌ها و گزارش تراکنش.'},
+];
+
+// ============ MODAL APPENDIX (96 unique) ============
+const MODALS = [
+  {ic:'fa-plus', tt:'ایجاد و افزودن', items:['گفتگوی جدید','افزودن چت','افزودن گفتگو به دسته','دسته جدید / دسته‌بندی جدید','افزودن بلاک جدید','افزودن رویداد','ایجاد جلسه جدید','یادآوری جدید','افزودن وظیفه','افزودن لید جدید','ثبت سرنخ جدید','افزودن مخاطب جدید','افزودن پرسنل جدید','ساخت سگمنت جدید','ساخت کمپین جدید','افزودن شرکت','درخواست خرید جدید','ثبت سفارش خرید / سفارش دستی','فاکتور جدید','ثبت دریافت جدید','ثبت پرداخت (جدید)']},
+  {ic:'fa-circle-info', tt:'جزئیات', items:['جزئیات تسک','جزئیات جلسه','جزئیات یادآوری','جزئیات درخواست','جزئیات سفارش','جزئیات محموله','جزئیات فاکتور','جزئیات تراکنش','جزئیات آیتم','پیش‌فاکتور']},
+  {ic:'fa-pen', tt:'ویرایش و مدیریت', items:['ویرایش پروفایل','ویرایش لید','ویرایش جلسه','ویرایش رویداد','ویرایش یادآوری','ویرایش آیتم','تغییر زمان','تغییر نام دسته‌بندی','مدیریت دسته','مدیریت گفتگوها','تنظیمات گروه']},
+  {ic:'fa-gear', tt:'تنظیمات', items:['تنظیمات','تنظیمات عامل / عامل‌ها','شخصی‌سازی ایجنت / دستیار','تنظیمات شرکت‌ها','تنظیمات امنیتی','تنظیمات برنامه','پروفایل من','شرکت‌ها']},
+  {ic:'fa-chart-column', tt:'گزارش‌ها', items:['ساخت گزارش','گزارش مدیریتی','گزارش مالی','گزارش CRM','گزارش عملکرد عامل‌ها','گزارش اقدامات (Log)','گزارش فعالیت','فعالیت کاربران','گزارش مشکل']},
+  {ic:'fa-money-bill-wave', tt:'مالی و پرداخت', items:['کیف پول','کیف پول و پرداخت','تنخواه منشی','بخش مالی','ثبت پرداخت','ثبت ترخیص گمرک','فاکتور','فرآیند کامل ثبت سفارش','نتیجه ثبت سفارش','ثبت درخواست برای مالی‌اداری']},
+  {ic:'fa-bag-shopping', tt:'خرید و اشتراک', items:['استخدام ایجنت','خرید تم رنگی','اشتراک و پلن‌ها','فعال‌سازی']},
+  {ic:'fa-shield', tt:'تأیید و امنیت', items:['احراز هویت','تأیید','تأیید اقدام حساس','تأیید مرجوعی','خروج','ارسال فایل','اعلان‌ها','جلسه / برگزاری جلسه']},
+  {ic:'fa-circle-question', tt:'پشتیبانی', items:['پشتیبانی','راهنما','سوالات متداول','قوانین و حریم خصوصی','جستجو']},
+];
+
+// ============ RENDER ============
+const app = document.getElementById('app');
+let screenCount=0, tabCount=0;
+
+function nodeHTML(n){
+  let body='';
+  (n.rows||[]).forEach(r=>{
+    if(r.g){ body += `<div class="grp-label">${r.g}</div>`; return; }
+    if(r.c===T.screen) screenCount++;
+    if(r.c===T.tab) tabCount++;
+    body += `<div class="row"><span class="b" style="background:${r.c}"></span><span>${r.t}</span></div>`;
+  });
+  const badge = n.badge ? `<span class="tag" style="margin-inline-start:auto">${n.badge}</span>` : '';
+  return `<div class="node">
+    <div class="node-h">
+      <span class="ic" style="background:${n.color}"><i class="fa-solid ${n.ic}"></i></span>
+      <span class="tt">${n.tt}${n.en?`<small>${n.en}</small>`:''}</span>${badge}
+    </div>
+    <div class="node-b">${body}</div>
+  </div>`;
+}
+
+SECTIONS.forEach((s,i)=>{
+  const nodeCount = s.nodes.length;
+  const laneClass = s.kind==='entry' ? 'entry' : 'lane';
+  let inner='';
+  if(s.kind==='entry'){
+    s.nodes.forEach((n,j)=>{
+      inner += nodeHTML(n);
+      if(j<s.nodes.length-1) inner += `<span class="arrow"><i class="fa-solid fa-arrow-left-long"></i></span>`;
+    });
+  } else {
+    inner = s.nodes.map(nodeHTML).join('');
+  }
+  app.insertAdjacentHTML('beforeend', `
+    <section>
+      <div class="sec-head">
+        <span class="sec-num" style="background:${s.color}">${i+1}</span>
+        <div><h2>${s.title}</h2><div class="sub">${s.sub}</div></div>
+        <span class="count">${nodeCount} صفحهٔ اصلی</span>
+      </div>
+      <div class="${laneClass}">${inner}</div>
+    </section>`);
+});
+
+// cross-cutting
+app.insertAdjacentHTML('beforeend', `
+  <section>
+    <div class="sec-head">
+      <span class="sec-num" style="background:#111">◆</span>
+      <div><h2>سیستم‌های مشترک</h2><div class="sub">Cross-cutting — در همهٔ پنل‌ها حاضرند</div></div>
+    </div>
+    <div class="lane">
+      ${CROSS.map(c=>`<div class="node"><div class="node-h">
+        <span class="ic" style="background:#111"><i class="fa-solid ${c.ic}"></i></span>
+        <span class="tt">${c.tt}</span></div>
+        <div class="node-b"><div class="row" style="color:var(--ink2)">${c.d}</div></div></div>`).join('')}
+    </div>
+  </section>`);
+
+// modal appendix
+let modalTotal=0;
+MODALS.forEach(m=>modalTotal+=m.items.length);
+app.insertAdjacentHTML('beforeend', `
+  <section>
+    <div class="sec-head">
+      <span class="sec-num" style="background:var(--popup)"><i class="fa-solid fa-layer-group" style="font-size:15px"></i></span>
+      <div><h2>پیوست: پاپ‌آپ‌ها و مودال‌ها</h2><div class="sub">Modal Inventory — ${modalTotal} مودال یکتا، گروه‌بندی موضوعی</div></div>
+      <span class="count">${modalTotal} مودال</span>
+    </div>
+    <div class="mod-grid">
+      ${MODALS.map(m=>`<div class="mod-card">
+        <h4><span class="ic" style="background:var(--popup)"><i class="fa-solid ${m.ic}"></i></span>${m.tt}
+        <span class="tag" style="margin-inline-start:auto">${m.items.length}</span></h4>
+        <ul class="mod-list">${m.items.map(x=>`<li><span>${x}</span></li>`).join('')}</ul>
+      </div>`).join('')}
+    </div>
+    <div class="note"><b>یادداشت طراح:</b> هر مودال معمولاً روی هر پنل با رنگ تم همان ایجنت رندر می‌شود و در حالت‌های تم (روشن/تیره/سیاه‌سفید) ظاهر متفاوت دارد. برای پوشش کامل Figma، هر مودال × تعداد حالت‌های موردنیاز ضرب می‌شود.</div>
+  </section>`);
+
+// ============ FLOWCHART VIEW (task flows) ============
+const flow = document.getElementById('view-flow');
+
+flow.insertAdjacentHTML('beforeend', `
+  <div class="flow-intro"><i class="fa-solid fa-circle-info"></i>
+  <span>فلوهای وظیفه‌محور به سبک فلوچارت استاندارد: خواندن از <b>بالا به پایین</b>، لوزی‌ها نقطهٔ تصمیم و شاخه‌ها برچسب‌دارند. روی موبایل هر نمودار به‌صورت افقی اسکرول می‌شود.</span></div>
+  <div class="flow-legend">
+    <span class="fl-title">راهنمای نمادها:</span>
+    <span class="fl-item"><span class="sh term"></span>شروع / پایان</span>
+    <span class="fl-item"><span class="sh proc"></span>صفحه</span>
+    <span class="fl-item"><span class="sh dec"></span>تصمیم</span>
+    <span class="fl-item"><span class="sh frm"></span>فرم / ویزارد</span>
+    <span class="fl-item"><span class="sh pop"></span>پاپ‌آپ</span>
+    <span class="fl-item"><span class="sh act"></span>اکشن</span>
+  </div>`);
+
+// ---- node / connector renderers ----
+function fnode(s){
+  const en   = s.en   ? `<small>${s.en}</small>` : '';
+  const note = s.note ? `<span class="note">${s.note}</span>` : '';
+  switch(s.k){
+    case 'decision':
+      return `<div class="fn decision"><span>${s.t}</span></div>`;
+    case 'start': case 'end':
+      return `<div class="fn terminator ${s.k}"><i class="fa-solid ${s.ic||(s.k==='start'?'fa-circle-play':'fa-flag-checkered')}"></i>${s.t}</div>`;
+    case 'form':
+      return `<div class="fn form"><span class="fn-in"><i class="fa-solid ${s.ic||'fa-pen-to-square'}"></i><span>${s.t}${note}</span></span></div>`;
+    case 'popup':
+      return `<div class="fn popup"><i class="fa-solid ${s.ic||'fa-window-restore'}"></i><span>${s.t}${note}</span></div>`;
+    case 'action':
+      return `<div class="fn action"><i class="fa-solid ${s.ic||'fa-bolt'}"></i><span>${s.t}</span></div>`;
+    default:
+      return `<div class="fn screen" style="--sc:${s.c||'var(--screen)'}"><span class="fn-ic"><i class="fa-solid ${s.ic||'fa-window-maximize'}"></i></span><span class="fn-tx">${s.t}${en}${note}</span></div>`;
+  }
+}
+function link(lbl,plain){
+  return `<div class="link${plain?' plain':''}">${lbl?`<span class="link-lbl">${lbl}</span>`:''}</div>`;
+}
+function renderStep(s){ return s.k==='split' ? renderSplit(s) : fnode(s); }
+function renderSeq(steps){
+  return steps.map((s,i)=> (i>0?link(s.into):'') + renderStep(s)).join('');
+}
+function renderSplit(s){
+  const lanes = s.lanes.map(l=>
+    `<div class="lane"><div class="lane-drop">${l.label?`<span class="br">${l.label}</span>`:''}</div>${renderSeq(l.steps)}</div>`
+  ).join('');
+  return `${fnode({k:'decision',t:s.q})}${link('',true)}<div class="branches"><div class="branches-rail"></div>${lanes}</div>`;
+}
+function renderFlow(steps){ return `<div class="vflow">${renderSeq(steps)}</div>`; }
+
+// ---- FLOWS (every action, from source) ----
+const FLOWS = [
+{ title:'ورود، احراز هویت و مسیریابی', sub:'Onboarding → Auth → Panel Routing', color:'#4a2fce', steps:[
+  {k:'start', t:'باز شدن اپ'},
+  {k:'screen', t:'اسپلش', en:'SplashScreen', ic:'fa-bolt', c:'#4a2fce', note:'انیمیشن لوگو + اسپکتروم + بارگذاری اولیه'},
+  {k:'split', q:'ولکام فعال است؟', lanes:[
+    {label:'بله', steps:[
+      {k:'screen', t:'صفحه ولکام', en:'WelcomeScreen', ic:'fa-hand-sparkles', c:'#4a2fce', note:'آواتار ایجنت پیش‌فرض + اسپکتروم زنده + تم ایجنت'},
+      {k:'action', into:'«برای صحبت کلیک کنید»', t:'دکمه ورود', ic:'fa-arrow-left-long'}]},
+    {label:'خیر', steps:[{k:'action', t:'رد شدن مستقیم', ic:'fa-forward'}]}
+  ]},
+  {k:'screen', t:'ورود / ثبت‌نام', en:'AuthFlow', ic:'fa-right-to-bracket', c:'#4a2fce'},
+  {k:'split', q:'روش احراز هویت؟', lanes:[
+    {label:'رمز عبور', steps:[{k:'form', t:'ورود با رمز', ic:'fa-key'}]},
+    {label:'OTP', steps:[{k:'form', t:'رمز یک‌بار مصرف', ic:'fa-mobile-screen-button'}]},
+    {label:'ثبت‌نام', steps:[{k:'form', t:'ساخت حساب', ic:'fa-user-plus'}]},
+    {label:'فراموشی', steps:[{k:'form', t:'بازیابی رمز', ic:'fa-unlock-keyhole'}]}
+  ]},
+  {k:'screen', t:'مسیریابی پنل', en:'Routing', ic:'fa-diagram-project', c:'#1a1725'},
+  {k:'split', q:'کدام پنل؟', lanes:[
+    {label:'پیش‌فرض', steps:[{k:'end', t:'دستیار شخصی', ic:'fa-user'}]},
+    {label:'انتخابگر ایجنت', steps:[
+      {k:'action', t:'دراپ‌دان اسم ایجنت (هدر)', ic:'fa-caret-down'},
+      {k:'end', t:'پنل اداری', ic:'fa-briefcase', note:'منشی · بازاریابی · مالی · تدارکات · فروش'}]}
+  ]}
+]},
+
+{ title:'دستیار شخصی — سفارش غذا', sub:'Personal Assistant · Food ordering', color:'#7E5FAA', steps:[
+  {k:'start', t:'ورود به دستیار'},
+  {k:'screen', t:'خانه', en:'euHomeScreen', ic:'fa-home', c:'#7E5FAA', note:'ویدئو معرفی + کارت‌های ایجنت + میان‌برها + کیف پول'},
+  {k:'screen', into:'کارت سفارش غذا', t:'سفارش غذا', en:'euDineScreen', ic:'fa-utensils', c:'#F59E0B', note:'دسته‌بندی رستوران: ایرانی/فست‌فود/…'},
+  {k:'screen', t:'صفحهٔ رستوران', ic:'fa-store', c:'#F59E0B', note:'دسته‌بندی غذا'},
+  {k:'popup', t:'پاپ‌آپ معرفی غذا', ic:'fa-bowl-food'},
+  {k:'split', q:'اقدام کاربر؟', lanes:[
+    {label:'افزودن', steps:[
+      {k:'action', t:'افزودن به سبد', ic:'fa-plus'},
+      {k:'screen', t:'سبد خرید', en:'euCartScreen', ic:'fa-cart-shopping', c:'#7E5FAA', note:'سبد جنرال (مارکت + غذا)'},
+      {k:'form', into:'پرداخت', t:'پرداخت سفارش', ic:'fa-credit-card'},
+      {k:'screen', t:'سفارشات', en:'euOrdersScreen', ic:'fa-bag-shopping', c:'#7E5FAA', note:'در انتظار / آماده‌سازی / تحویل شده'},
+      {k:'end', t:'پیگیری سفارش'}]},
+    {label:'مشاوره', steps:[{k:'action', t:'گفتگو: مشاور تغذیه', ic:'fa-comment-dots'}]}
+  ]}
+]},
+
+{ title:'دستیار شخصی — گفتگو و چت‌اورلی', sub:'Personal Assistant · Chat & voice overlay', color:'#7E5FAA', steps:[
+  {k:'start', t:'فوتر گفتگو'},
+  {k:'screen', t:'لیست گفتگوها', en:'euChatListScreen', ic:'fa-comments', c:'#7E5FAA', note:'تب‌ها: همه/تماس‌ها/نخوانده/علاقه/گروه‌ها + دستهٔ سفارشی'},
+  {k:'split', q:'اقدام کاربر؟', lanes:[
+    {label:'باز کردن چت', steps:[
+      {k:'screen', t:'چت‌اورلی', ic:'fa-wand-magic-sparkles', c:'#7E5FAA', note:'اسپکتروم زنده / پول‌آپ تمام‌صفحه'},
+      {k:'split', q:'نوع ورودی؟', lanes:[
+        {label:'صوت', steps:[{k:'action', t:'ضبط صوت', ic:'fa-microphone'}]},
+        {label:'متن', steps:[{k:'action', t:'تایپ پیام', ic:'fa-keyboard'}]},
+        {label:'خواندن', steps:[{k:'action', t:'TTS + اسپکتروم ری‌اکتیو', ic:'fa-volume-high'}]}
+      ]}]},
+    {label:'تاریخچه', steps:[{k:'popup', t:'درایور تاریخچه', ic:'fa-clock-rotate-left', note:'جستجو + ویرایش + حذف'}]}
+  ]}
+]},
+
+{ title:'دستیار شخصی — مارکت و خرید', sub:'Personal Assistant · Market', color:'#00A65A', steps:[
+  {k:'start', t:'ورود به دستیار'},
+  {k:'screen', t:'خانه', en:'euHomeScreen', ic:'fa-home', c:'#7E5FAA'},
+  {k:'screen', into:'کارت مارکت', t:'مارکت', en:'euMarketScreen', ic:'fa-store', c:'#00A65A', note:'دسته‌بندی فروشگاه‌ها + پروموشن'},
+  {k:'screen', t:'صفحهٔ فروشگاه', ic:'fa-shop', c:'#00A65A'},
+  {k:'screen', t:'صفحهٔ محصول', ic:'fa-box', c:'#00A65A'},
+  {k:'action', t:'افزودن به سبد', ic:'fa-plus'},
+  {k:'screen', t:'سبد خرید (جنرال)', en:'euCartScreen', ic:'fa-cart-shopping', c:'#7E5FAA'},
+  {k:'form', t:'پرداخت', ic:'fa-credit-card'},
+  {k:'end', t:'ثبت در سفارشات'}
+]},
+
+{ title:'منشی — تقویم و ساخت رویداد', sub:'Secretary · Planning & scheduling', color:'#22A6F0', steps:[
+  {k:'start', t:'ورود منشی'},
+  {k:'screen', t:'امروز من', en:'secTodayScreen', ic:'fa-house', c:'#22A6F0', note:'خلاصهٔ تسک‌های روز + تسک‌های اولویت‌بالای سایر ایجنت‌ها'},
+  {k:'screen', t:'برنامه‌ریزی', en:'secPlanningScreen', ic:'fa-calendar-days', c:'#22A6F0', note:'تقویم روز/هفته/ماه/سال + یادآوری'},
+  {k:'popup', t:'پاپ‌آپ روی تاریخ', ic:'fa-calendar-day'},
+  {k:'split', q:'نوع رویداد؟', lanes:[
+    {label:'تسک', steps:[{k:'form', t:'ایجاد تسک', ic:'fa-list-check'}]},
+    {label:'جلسه', steps:[{k:'form', t:'ایجاد جلسه', ic:'fa-users'}]},
+    {label:'یادآوری', steps:[{k:'form', t:'یادآوری جدید', ic:'fa-bell'}]},
+    {label:'رویداد', steps:[{k:'form', t:'رویداد جدید', ic:'fa-calendar-plus'}]}
+  ]},
+  {k:'action', t:'ثبت و بازگشت به تقویم', ic:'fa-check'}
+]},
+
+{ title:'بازاریابی — ویزارد ساخت کمپین', sub:'Marketing · Campaign wizard', color:'#3B82F6', steps:[
+  {k:'start', t:'ورود بازاریابی'},
+  {k:'screen', t:'اقدامات', en:'mktActionsScreen', ic:'fa-bolt', c:'#3B82F6', note:'نرخ تبدیل / لید جدید / لیدهای داغ'},
+  {k:'screen', t:'کمپین‌ها', en:'campaignScreen', ic:'fa-bullhorn', c:'#3B82F6', note:'تب وضعیت + تقویم بازاریابی'},
+  {k:'action', t:'ساخت کمپین جدید', ic:'fa-plus'},
+  {k:'form', t:'۱ — نام / هدف / محصولات', ic:'fa-1'},
+  {k:'form', t:'۲ — سگمنت / کانال / محتوا', ic:'fa-2'},
+  {k:'form', t:'۳ — زمان‌بندی / بودجه', ic:'fa-3'},
+  {k:'split', q:'وضعیت انتشار؟', lanes:[
+    {label:'اکنون', steps:[{k:'action', t:'انتشار', ic:'fa-paper-plane'}]},
+    {label:'زمان‌بندی', steps:[{k:'action', t:'زمان‌بندی', ic:'fa-clock'}]},
+    {label:'پیش‌نویس', steps:[{k:'action', t:'ذخیره پیش‌نویس', ic:'fa-floppy-disk'}]}
+  ]},
+  {k:'end', t:'کمپین در لیست'}
+]},
+
+{ title:'بازاریابی — CRM و مدیریت لید', sub:'Marketing · Lead management', color:'#3B82F6', steps:[
+  {k:'start', t:'ورود بازاریابی'},
+  {k:'screen', t:'CRM', en:'mktCrmScreen', ic:'fa-address-book', c:'#3B82F6'},
+  {k:'split', q:'کدام تب؟', lanes:[
+    {label:'لیدها', steps:[{k:'action', t:'سرد / نیمه‌گرم / گرم', ic:'fa-fire'},{k:'form', t:'افزودن لید', ic:'fa-user-plus'}]},
+    {label:'مخاطبین', steps:[{k:'action', t:'سگمنت / پرسونا / هدف', ic:'fa-users-viewfinder'},{k:'form', t:'افزودن مخاطب / سگمنت', ic:'fa-plus'}]}
+  ]},
+  {k:'popup', t:'پاپ‌آپ پروفایل لید', ic:'fa-id-card'},
+  {k:'end', t:'تبدیل به مشتری'}
+]},
+
+{ title:'مالی / اداری — فاکتور و پرداخت', sub:'Finance · Invoice & payment', color:'#8B5CF6', steps:[
+  {k:'start', t:'ورود مالی'},
+  {k:'screen', t:'داشبورد', en:'dashboardScreen', ic:'fa-table-cells-large', c:'#8B5CF6', note:'کارت‌های KPI + نمودار + جداول'},
+  {k:'screen', t:'مالی', en:'financeScreen', ic:'fa-wallet', c:'#8B5CF6', note:'تسویه‌شده / نشده / بدهی / اعتبار'},
+  {k:'screen', t:'فاکتورها', en:'reportsScreen', ic:'fa-file-invoice-dollar', c:'#8B5CF6'},
+  {k:'form', t:'افزودن فاکتور جدید', ic:'fa-plus'},
+  {k:'popup', t:'جزئیات فاکتور', ic:'fa-receipt'},
+  {k:'form', t:'ثبت پرداخت', ic:'fa-money-check-dollar'},
+  {k:'end', t:'به‌روزرسانی تراکنش'}
+]},
+
+{ title:'خرید / تدارکات — چرخهٔ کامل خرید', sub:'Procurement · RFQ → Order → Import → Warehouse → Payment', color:'#F97316', steps:[
+  {k:'start', t:'ورود تدارکات'},
+  {k:'screen', t:'تامین', en:'procSupplyScreen', ic:'fa-truck-field', c:'#F97316', note:'تب: درخواست‌ها / سفارشات / تحویل'},
+  {k:'form', t:'درخواست خرید (RFQ)', ic:'fa-file-circle-plus'},
+  {k:'form', t:'ثبت سفارش خرید', ic:'fa-cart-plus'},
+  {k:'popup', t:'پیش‌فاکتور + جزئیات (استپر)', ic:'fa-file-invoice'},
+  {k:'screen', t:'عملیات واردات', en:'procImportScreen', ic:'fa-ship', c:'#F97316', note:'استپر ۴ مرحله (راست‌به‌چپ)'},
+  {k:'action', into:'۱', t:'ثبت / تخصیص ارز', ic:'fa-money-bill-transfer'},
+  {k:'action', into:'۲', t:'هماهنگی / حمل', ic:'fa-truck-fast'},
+  {k:'action', into:'۳', t:'ترخیص / گمرک', ic:'fa-passport'},
+  {k:'action', into:'۴', t:'بارگیری / مسیر انبار', ic:'fa-dolly'},
+  {k:'screen', t:'انبار', en:'inventoryScreen', ic:'fa-warehouse', c:'#F97316', note:'ورودی / خروجی / موجودی + ضریب اضطرار'},
+  {k:'screen', t:'مالی', en:'procFinanceScreen', ic:'fa-money-check-dollar', c:'#F97316', note:'تسویه + مقایسه تأمین‌کنندگان'},
+  {k:'end', t:'پرداخت و بستن سفارش'}
+]},
+
+{ title:'فروشنده / صندوقدار — سفارش تا فاکتور', sub:'Sales · Order → Invoice', color:'#10B981', steps:[
+  {k:'start', t:'ورود فروش'},
+  {k:'screen', t:'سفارش', en:'salesOrdersScreen', ic:'fa-receipt', c:'#10B981'},
+  {k:'split', q:'سفارش یا فاکتور؟', lanes:[
+    {label:'سفارش', steps:[{k:'form', t:'ثبت سفارش (انتخاب سریع محصول)', ic:'fa-bolt'}]},
+    {label:'فاکتور', steps:[{k:'form', t:'افزودن فاکتور دستی', ic:'fa-file-invoice'}]}
+  ]},
+  {k:'popup', t:'جزئیات سفارش + استپر', ic:'fa-list-ol'},
+  {k:'screen', t:'مالی — گزارش سریع / شیفت', en:'salesQuickReportScreen', ic:'fa-cash-register', c:'#10B981'},
+  {k:'end', t:'بستن صندوق'}
+]},
+
+{ title:'تنظیمات — عامل، تم و شرکت', sub:'Settings · shared across panels', color:'#5b5570', steps:[
+  {k:'start', t:'ورود به تنظیمات'},
+  {k:'screen', t:'تنظیمات', ic:'fa-gear', c:'#5b5570'},
+  {k:'split', q:'کدام بخش؟', lanes:[
+    {label:'عامل‌ها', steps:[
+      {k:'screen', t:'تنظیمات عامل‌ها', ic:'fa-robot', c:'#5b5570', note:'۶ نقش'},
+      {k:'popup', t:'شخصی‌سازی عامل', ic:'fa-sliders'},
+      {k:'action', t:'تم رنگی + آواتار', ic:'fa-palette'}]},
+    {label:'تم‌ها', steps:[
+      {k:'screen', t:'تم‌ها', ic:'fa-palette', c:'#5b5570', note:'روشن/تیره/سیاه‌سفید/UTC'},
+      {k:'action', t:'پالت ۹ رنگ + ولکام', ic:'fa-swatchbook'}]},
+    {label:'شرکت‌ها', steps:[
+      {k:'screen', t:'شرکت‌ها', ic:'fa-building', c:'#5b5570'},
+      {k:'form', t:'افزودن شرکت (لوگو/تم/فعالیت)', ic:'fa-plus'}]}
+  ]}
+]}
+];
+
+FLOWS.forEach((f,i)=>{
+  flow.insertAdjacentHTML('beforeend', `
+    <section class="flow-sec">
+      <div class="sec-head">
+        <span class="sec-num" style="background:${f.color}">${toFa(i+1)}</span>
+        <div><h2>${f.title}</h2><div class="sub">${f.sub}</div></div>
+      </div>
+      <div class="flow-scroll">${renderFlow(f.steps)}</div>
+    </section>`);
+});
+
+// -- Tab switching --
+document.querySelectorAll('.tab-btn[data-view]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn[data-view]').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.view).classList.add('active');
+    window.scrollTo(0,0);
+  });
+});
+
+// cover stats
+const totalScreens = SECTIONS.reduce((a,s)=>a+s.nodes.length,0);
+document.getElementById('cover-stats').innerHTML = `
+  <div class="stat"><b>${toFa(totalScreens)}</b><span>صفحهٔ اصلی / فوتر</span></div>
+  <div class="stat"><b>${toFa(7)}</b><span>پنل (دستیار + ۶ ایجنت)</span></div>
+  <div class="stat"><b>${toFa(modalTotal)}</b><span>پاپ‌آپ یکتا</span></div>
+  <div class="stat"><b>${toFa(4)}</b><span>حالت تم</span></div>
+`;
+function toFa(n){return String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);}
+</script>
+
+</body>
+</html>

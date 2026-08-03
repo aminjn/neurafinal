@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none"><defs>
+<linearGradient id="dark" x1="0" y1="512" x2="92" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#6E54FC"></stop><stop offset="0.5" stop-color="#7E68FC"></stop><stop offset="1" stop-color="#A99CFD"></stop></linearGradient>
+<linearGradient id="light" x1="0" y1="512" x2="0" y2="0" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#D7D1FB"></stop><stop offset="1" stop-color="#FBFAFF"></stop></linearGradient>
+<linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffffff" stop-opacity="0.34"></stop><stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop></linearGradient></defs><path d="M 96 290 L 96 250 C 96 158 168 86 256 86 C 344 86 416 158 416 250 L 416 290" fill="none" stroke="url(#dark)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"></path><rect x="60" y="266" width="96" height="168" rx="42" fill="url(#dark)"></rect><rect x="356" y="266" width="96" height="168" rx="42" fill="url(#dark)"></rect><rect x="74" y="280" width="40" height="90" rx="20" fill="url(#gloss)"></rect><path d="M 416 350 C 416 408 372 432 320 432 L 300 432" fill="none" stroke="url(#dark)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"></path><rect x="248" y="410" width="72" height="46" rx="22" fill="url(#light)"></rect></svg>

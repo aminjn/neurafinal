@@ -1,0 +1,234 @@
+  const [viewMode, setViewMode] = useState('month');
+  const [popTab, setPopTab] = useState('tasks');
+  const [weekIdx, setWeekIdx] = useState(0);
+  const [dayCursor, setDayCursor] = useState(5);
+
+  const daysInMonth = calMonth <= 5 ? 31 : calMonth <= 10 ? 30 : 29;
+  const startDow = calMonth === 11 ? 0 : (calMonth * 2 + 1) % 7;
+  const todayNum = (calMonth === 11 && calYear === 1404) ? 5 : -1;
+  const weekCount = Math.ceil((startDow + daysInMonth) / 7);
+  const clampWeek = Math.max(0, Math.min(weekIdx, weekCount - 1));
+  const weekDays = Array.from({ length: 7 }, (_, c) => { const dn = clampWeek * 7 - startDow + c + 1; return (dn >= 1 && dn <= daysInMonth) ? dn : null; });
+  const dotColors = (d: number) => events.filter(e => e.dayNum === d).map(e => e.color);
+  const openDay = (d: number) => { setSelectedDay(d); setPopTab('tasks'); };
+  const gotoPrevMonth = () => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); setSelectedDay(null); setWeekIdx(0); };
+  const gotoNextMonth = () => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); setSelectedDay(null); setWeekIdx(0); };
+
+  const POP_TABS = [
+    { id: 'tasks', label: 'تسک‌ها', icon: 'fa-solid fa-list-check' },
+    { id: 'todo', label: 'To-Do', icon: 'fa-solid fa-square-check' },
+    { id: 'meetings', label: 'جلسات', icon: 'fa-solid fa-users' },
+    { id: 'reminders', label: 'یادآوری', icon: 'fa-solid fa-bell' },
+  ];
+
+  const monthNav = (
+    <div className="flex items-center justify-between mb-3">
+      <button className="w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center" style={{ background: 'var(--aw-bg-hover)' }} onClick={gotoPrevMonth}>
+        <i className="fa-solid fa-chevron-right text-[11px] text-[var(--aw-text-muted)]" />
+      </button>
+      <div className="flex items-center gap-2">
+        <span className="text-[14px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>{JALALI_MONTHS[calMonth]}</span>
+        <span className="text-[13px] text-[var(--aw-text-muted)]">{calYear}</span>
+      </div>
+      <button className="w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center" style={{ background: 'var(--aw-bg-hover)' }} onClick={gotoNextMonth}>
+        <i className="fa-solid fa-chevron-left text-[11px] text-[var(--aw-text-muted)]" />
+      </button>
+    </div>
+  );
+
+  const weekdayHeader = (
+    <div className="grid grid-cols-7 gap-1 mb-1">
+      {JALALI_WEEKDAYS.map(wd => (
+        <div key={wd} className="text-center text-[10px] text-[var(--aw-text-muted)] py-1" style={{ fontWeight: 600 }}>{wd}</div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* View-mode switch: روز / هفته / ماه */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="flex gap-0.5 p-[3px] rounded-full border" style={{ background: 'var(--aw-eu-nav-bg, var(--aw-bg-hover))', borderColor: 'var(--aw-eu-nav-border, var(--aw-border))' }}>
+          {[{ id: 'day', label: 'روز', icon: 'fa-solid fa-calendar-day' }, { id: 'week', label: 'هفته', icon: 'fa-solid fa-calendar-week' }, { id: 'month', label: 'ماه', icon: 'fa-solid fa-calendar' }].map(v => {
+            const on = viewMode === v.id;
+            return (
+              <button key={v.id} onClick={() => setViewMode(v.id)} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full border-none cursor-pointer text-[12px] transition-all" style={on ? { background: 'var(--aw-primary)', color: '#fff', fontWeight: 700 } : { background: 'transparent', color: 'var(--aw-text-secondary)', fontWeight: 500 }}>
+                <i className={v.icon + ' text-[11px]'} />{v.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 pb-24 aw-scroll flex flex-col gap-3 pt-2">
+        {/* ── MONTH VIEW ── */}
+        {viewMode === 'month' && (
+          <div className="p-3" style={cardStyle}>
+            {monthNav}
+            {weekdayHeader}
+            {(() => {
+              const totalCells = weekCount * 7;
+              const cells = Array.from({ length: totalCells }, (_, i) => { const dn = i - startDow + 1; return dn >= 1 && dn <= daysInMonth ? dn : null; });
+              return (
+                <div className="grid grid-cols-7 gap-1">
+                  {cells.map((d, i) => {
+                    if (d === null) return <div key={'e-' + i} className="h-9" />;
+                    const cols = dotColors(d);
+                    const isToday = d === todayNum;
+                    const isFriday = i % 7 === 6;
+                    return (
+                      <button key={d} className="h-9 rounded-lg border-none cursor-pointer flex flex-col items-center justify-center gap-0.5 transition-all relative" style={{ background: isToday ? 'color-mix(in srgb, var(--aw-primary) 14%, transparent)' : 'transparent', color: isFriday ? '#EF4444' : 'var(--aw-text-primary)', fontWeight: isToday ? 700 : 400, fontSize: 13 }} onClick={() => openDay(d)}>
+                        {d}
+                        {cols.length > 0 && (
+                          <div className="flex gap-0.5 absolute bottom-0.5">
+                            {cols.slice(0, 3).map((c, ci) => <span key={ci} className="w-1 h-1 rounded-full" style={{ background: c }} />)}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* ── WEEK VIEW ── */}
+        {viewMode === 'week' && (
+          <div className="p-3" style={cardStyle}>
+            <div className="flex items-center justify-between mb-3">
+              <button className="w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center" style={{ background: 'var(--aw-bg-hover)' }} onClick={() => setWeekIdx(w => Math.max(0, Math.min(weekCount - 1, w) - 1))}>
+                <i className="fa-solid fa-chevron-right text-[11px] text-[var(--aw-text-muted)]" />
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>هفته {toFa(clampWeek + 1)}</span>
+                <span className="text-[12px] text-[var(--aw-text-muted)]">{JALALI_MONTHS[calMonth]} {calYear}</span>
+              </div>
+              <button className="w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center" style={{ background: 'var(--aw-bg-hover)' }} onClick={() => setWeekIdx(w => Math.min(weekCount - 1, Math.max(0, w) + 1))}>
+                <i className="fa-solid fa-chevron-left text-[11px] text-[var(--aw-text-muted)]" />
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1.5">
+              {weekDays.map((d, c) => {
+                if (d === null) return <div key={'we-' + c} className="rounded-xl" style={{ minHeight: 72, background: 'var(--aw-bg-hover)', opacity: 0.4 }} />;
+                const cols = dotColors(d);
+                const isToday = d === todayNum;
+                const isFriday = c === 6;
+                return (
+                  <button key={d} onClick={() => openDay(d)} className="rounded-xl border cursor-pointer flex flex-col items-center justify-start gap-1 pt-1.5 pb-1 transition-all" style={{ minHeight: 72, background: isToday ? 'color-mix(in srgb, var(--aw-primary) 12%, transparent)' : 'var(--aw-bg-hover)', borderColor: isToday ? 'var(--aw-primary)' : 'transparent' }}>
+                    <span className="text-[9px]" style={{ color: isFriday ? '#EF4444' : 'var(--aw-text-muted)', fontWeight: 600 }}>{JALALI_WEEKDAYS[c]}</span>
+                    <span className="text-[15px]" style={{ color: isFriday ? '#EF4444' : 'var(--aw-text-primary)', fontWeight: isToday ? 800 : 600 }}>{d}</span>
+                    <div className="flex gap-0.5 mt-auto flex-wrap justify-center px-1">
+                      {cols.slice(0, 4).map((cc, ci) => <span key={ci} className="w-1.5 h-1.5 rounded-full" style={{ background: cc }} />)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── DAY VIEW ── */}
+        {viewMode === 'day' && (
+          <div className="flex flex-col gap-3">
+            <div className="p-3 flex items-center justify-between" style={cardStyle}>
+              <button className="w-9 h-9 rounded-lg border-none cursor-pointer flex items-center justify-center" style={{ background: 'var(--aw-bg-hover)' }} onClick={() => setDayCursor(d => Math.max(1, d - 1))}>
+                <i className="fa-solid fa-chevron-right text-[12px] text-[var(--aw-text-muted)]" />
+              </button>
+              <div className="flex flex-col items-center">
+                <span className="text-[11px] text-[var(--aw-text-muted)]" style={{ fontWeight: 600 }}>{JALALI_WEEKDAYS[(startDow + dayCursor - 1) % 7]}{dayCursor === todayNum ? ' · امروز' : ''}</span>
+                <span className="text-[24px] text-[var(--aw-text-primary)]" style={{ fontWeight: 800 }}>{toFa(dayCursor)}</span>
+                <span className="text-[12px] text-[var(--aw-text-muted)]">{JALALI_MONTHS[calMonth]} {calYear}</span>
+              </div>
+              <button className="w-9 h-9 rounded-lg border-none cursor-pointer flex items-center justify-center" style={{ background: 'var(--aw-bg-hover)' }} onClick={() => setDayCursor(d => Math.min(daysInMonth, d + 1))}>
+                <i className="fa-solid fa-chevron-left text-[12px] text-[var(--aw-text-muted)]" />
+              </button>
+            </div>
+            {(() => {
+              const cols = dotColors(dayCursor);
+              return cols.length > 0 ? (
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-[11px] text-[var(--aw-text-muted)]">قرارها:</span>
+                  <div className="flex gap-1">{cols.map((c, i) => <span key={i} className="w-2 h-2 rounded-full" style={{ background: c }} />)}</div>
+                </div>
+              ) : null;
+            })()}
+            <button onClick={() => openDay(dayCursor)} className="w-full py-3 rounded-[14px] border-none cursor-pointer text-white text-[13px] flex items-center justify-center gap-2" style={{ background: 'linear-gradient(135deg, var(--aw-primary-light), var(--aw-primary-dark))', fontWeight: 700 }}>
+              <i className="fa-solid fa-list-check text-[13px]" />مشاهده و مدیریت برنامهٔ این روز
+            </button>
+          </div>
+        )}
+
+        {/* Upcoming events overview */}
+        {(() => {
+          const base = todayNum > 0 ? todayNum : 1;
+          const sorted = [...events].sort((a, b) => a.dayNum - b.dayNum);
+          const upcoming = sorted.filter(e => e.dayNum >= base).slice(0, 4);
+          if (upcoming.length === 0) return null;
+          return (
+            <div className="flex flex-col gap-1.5 mt-1">
+              <div className="flex items-center gap-2 px-1">
+                <i className="fa-solid fa-arrow-trend-up text-[11px] text-[var(--aw-primary)]" />
+                <span className="text-[12px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>رویدادهای پیش‌رو</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--aw-primary) 15%, transparent)', color: 'var(--aw-primary)' }}>{toFa(upcoming.length)}</span>
+              </div>
+              {upcoming.map(e => (
+                <button key={'u' + e.id} onClick={() => openDay(e.dayNum)} className="p-2.5 flex items-center gap-2.5 w-full text-right border-none cursor-pointer" style={cardStyle}>
+                  <span className="flex flex-col items-center justify-center w-9 h-9 rounded-[10px] flex-shrink-0" style={{ background: e.color + '1f', color: e.color }}>
+                    <span className="text-[13px] leading-none" style={{ fontWeight: 800 }}>{e.dayNum}</span>
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[12.5px] truncate" style={{ fontWeight: 600, color: 'var(--aw-text-primary)' }}>{e.title}</span>
+                    <span className="block text-[10px] text-[var(--aw-text-muted)] truncate"><i className="fa-regular fa-clock text-[8px] ml-1" />{e.time}</span>
+                  </span>
+                  <i className="fa-solid fa-chevron-left text-[10px] text-[var(--aw-text-muted)]" />
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ── DAY PLANNER POPUP — 4 switchable panes ── */}
+      {selectedDay !== null && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }} onClick={() => { setSelectedDay(null); setTaskForm(null); }}>
+          <div className="w-full max-w-[480px] rounded-t-[24px] flex flex-col" style={{ background: 'var(--aw-bg-modal)', border: '1px solid var(--aw-border)', maxHeight: '88vh' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--aw-border)] flex-shrink-0">
+              <i className="fa-solid fa-calendar-day text-[14px] text-[var(--aw-primary)]" />
+              <span className="text-[14px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>{toFa(selectedDay)} {JALALI_MONTHS[calMonth]} {calYear}</span>
+              <button className="mr-auto w-8 h-8 rounded-full border-none bg-transparent text-[var(--aw-text-muted)] cursor-pointer hover:text-[var(--aw-text-primary)]" onClick={() => { setSelectedDay(null); setTaskForm(null); }}><i className="fa-solid fa-xmark text-[16px]" /></button>
+            </div>
+            <div className="px-4 pt-3 flex-shrink-0">
+              <div className="flex gap-0.5 p-[3px] rounded-full border" style={{ background: 'var(--aw-eu-nav-bg, var(--aw-bg-hover))', borderColor: 'var(--aw-eu-nav-border, var(--aw-border))' }}>
+                {POP_TABS.map(t => {
+                  const on = popTab === t.id;
+                  return (
+                    <button key={t.id} onClick={() => setPopTab(t.id)} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-full border-none cursor-pointer text-[11.5px] transition-all" style={on ? { background: 'var(--aw-primary)', color: '#fff', fontWeight: 700 } : { background: 'transparent', color: 'var(--aw-text-secondary)', fontWeight: 500 }}>
+                      <i className={t.icon + ' text-[10px]'} />{t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 pb-4 aw-scroll">
+              <AnimatePresence mode="wait">
+                {popTab === 'tasks' && (
+                  <motion.div key="tasks" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-2 pt-2">%%TASKS%%</motion.div>
+                )}
+                {popTab === 'todo' && (
+                  <motion.div key="todo" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-1.5 pt-2">%%TODO%%</motion.div>
+                )}
+                {popTab === 'meetings' && (
+                  <motion.div key="meetings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-2 pt-2">%%MEETINGS%%</motion.div>
+                )}
+                {popTab === 'reminders' && (
+                  <motion.div key="reminders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-2 pt-2">%%REMINDERS%%</motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
