@@ -608,6 +608,13 @@ export function SecPlanningScreen() {
     <div className="flex flex-col h-full">
 
       <div className="flex-1 overflow-y-auto px-4 pb-24 aw-scroll flex flex-col gap-3 pt-3">
+        {/* calview: تعویضِ نمای ماه/هفته/روز — قبلاً setViewMode هرگز صدا زده نمی‌شد (نماها مرده بودند) */}
+        <div className="flex gap-1.5">
+          {[{ id: 'month', label: 'ماه' }, { id: 'week', label: 'هفته' }, { id: 'day', label: 'روز' }].map(v => (
+            <button key={v.id} onClick={() => { setViewMode(v.id); if (v.id !== 'month' && !selectedDay) setSelectedDay(todayNum > 0 ? todayNum : 1); }} className="flex-1 py-1.5 rounded-[10px] border cursor-pointer text-[12px] transition-all"
+              style={viewMode === v.id ? { background: 'var(--aw-primary-bg)', borderColor: 'color-mix(in srgb, var(--aw-primary) 40%, transparent)', color: 'var(--aw-primary)', fontWeight: 700 } : { background: 'var(--aw-eu-nav-bg)', borderColor: 'var(--aw-eu-nav-border)', color: 'var(--aw-text-secondary)', fontWeight: 500 }}>{v.label}</button>
+          ))}
+        </div>
         {/* ── MONTH VIEW ── */}
         {viewMode === 'month' && (
           <div className="p-3" style={cardStyle}>
@@ -767,14 +774,36 @@ export function SecPlanningScreen() {
           const base = todayNum > 0 ? todayNum : 1;
           const sorted = [...events].sort((a, b) => a.dayNum - b.dayNum);
           const upcoming = sorted.filter(e => e.dayNum >= base).slice(0, 4);
-          if (upcoming.length === 0) return null;
           return (
             <div className="flex flex-col gap-1.5 mt-1">
               <div className="flex items-center gap-2 px-1">
                 <i className="fa-solid fa-arrow-trend-up text-[11px] text-[var(--aw-primary)]" />
                 <span className="text-[12px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>رویدادهای پیش‌رو</span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--aw-primary) 15%, transparent)', color: 'var(--aw-primary)' }}>{toFa(upcoming.length)}</span>
+                {upcoming.length > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--aw-primary) 15%, transparent)', color: 'var(--aw-primary)' }}>{toFa(upcoming.length)}</span>}
               </div>
+              {/* caladd: افزودن/ویرایشِ رویدادِ واقعی (قبلاً eventForm تعریف شده بود ولی هیچ‌جا رندر نمی‌شد) */}
+              {!eventForm && (
+                <button onClick={() => setEventForm(blankEvent())} className="p-2.5 flex items-center gap-2 border-2 border-dashed border-[var(--aw-border)] rounded-[10px] cursor-pointer hover:border-[#22A6F0] transition-colors bg-transparent w-full">
+                  <i className="fa-solid fa-plus text-[13px] text-[#22A6F0]" /><span className="text-[12px] text-[var(--aw-text-muted)]">افزودن رویداد جدید</span>
+                </button>
+              )}
+              {eventForm && (
+                <div className="p-3 flex flex-col gap-2" style={cardStyle}>
+                  <input className={inputCls} placeholder="عنوان رویداد" value={eventForm.title} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} autoFocus />
+                  <div className="grid grid-cols-3 gap-2">
+                    <label className="flex flex-col gap-1"><span className="text-[10px] text-[var(--aw-text-muted)] px-0.5">روزِ ماه</span><input className={inputCls} inputMode="numeric" value={String(eventForm.dayNum || '')} onChange={e => setEventForm({ ...eventForm, dayNum: parseInt(e.target.value.replace(/[^\d]/g, '')) || 1 })} /></label>
+                    <label className="flex flex-col gap-1"><span className="text-[10px] text-[var(--aw-text-muted)] px-0.5">شروع</span><TimePicker className={inputCls} value={evStart} onChange={(v: string) => setEvStart(v)} /></label>
+                    <label className="flex flex-col gap-1"><span className="text-[10px] text-[var(--aw-text-muted)] px-0.5">پایان</span><TimePicker className={inputCls} value={evEnd} onChange={(v: string) => setEvEnd(v)} /></label>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {EVENT_COLORS.map(c => <button key={c} onClick={() => setEventForm({ ...eventForm, color: c })} className="w-6 h-6 rounded-full cursor-pointer" style={{ background: c, border: eventForm.color === c ? '2px solid var(--aw-text-primary)' : '2px solid transparent' }} />)}
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button className={btnGhost} onClick={() => setEventForm(null)}>انصراف</button>
+                    <button className={btnPrimary} style={{ background: '#22A6F0' }} onClick={() => saveEvent({ ...eventForm, time: composeTime(evStart, evEnd) })}>ذخیره</button>
+                  </div>
+                </div>
+              )}
               {upcoming.map(e => (
                 <button key={'u' + e.id} onClick={() => openDay(e.dayNum)} className="p-2.5 flex items-center gap-2.5 w-full text-right border-none cursor-pointer" style={cardStyle}>
                   <span className="flex flex-col items-center justify-center w-9 h-9 rounded-[10px] flex-shrink-0" style={{ background: e.color + '1f', color: e.color }}>
