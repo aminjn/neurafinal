@@ -210,7 +210,13 @@ function MarketAccountTab() {
     { id: 1, title: 'کیف پول Neura', balance: (walletBalance || 0).toLocaleString('fa-IR') + ' تومان', icon: 'fa-solid fa-wallet', color: '#8B5CF6', isDefault: true },
     ...__payM.map((m: any, i: number) => ({ id: 'pm_' + (m.id || i), title: m.title || m.bank || 'کارت بانکی', last4: m.last4 || (m.number ? '****' + String(m.number).replace(/\D/g, '').slice(-4) : ''), icon: 'fa-solid fa-credit-card', color: '#3B82F6', isDefault: !!m.isDefault })),
   ];
-  const HISTORY: any[] = [];
+  // histreal: تاریخچهٔ خرید از سفارش‌های واقعیِ مارکت (نه خالیِ همیشگی)
+  const HISTORY: any[] = (euPlacedOrders || []).filter((o: any) => o.source === 'market').map((o: any, i: number) => ({
+    id: o.id || i, items: o.items || o.title || 'سفارش', status: o.status,
+    shop: o.shop || o.restaurant || o.vendor || '',
+    date: /^\d{4}-\d{2}-\d{2}T/.test(String(o.date || '')) ? new Date(o.date).toLocaleDateString('fa-IR') : (o.date || ''),
+    total: (Number(String(o.total).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR'),
+  }));
 
   const SECTIONS = [
     { id: 'addresses', icon: 'fa-solid fa-map-marker-alt', label: 'آدرس‌های ارسال', color: '#3B82F6', count: __addrList.length },
@@ -321,9 +327,9 @@ function MarketAccountTab() {
                   </div>
                 ))}
                 <button className="w-full p-2.5 mr-3 rounded-xl border border-dashed border-[var(--aw-border)] bg-transparent text-[11px] text-[var(--aw-text-muted)] cursor-pointer flex items-center justify-center gap-1.5 hover:border-[#F59E0B] hover:text-[#F59E0B] transition-all"
-                  onClick={() => { if (section.id === 'addresses') openAddressForm(); else setEuScreen('euProfileScreen'); }}>
+                  onClick={() => { if (section.id === 'addresses') openAddressForm(); else setEuScreen('euOrdersScreen'); }}>
                   <i className="fa-solid fa-plus text-[9px]" />
-                  {section.id === 'addresses' ? 'افزودن آدرس جدید' : section.id === 'payments' ? 'افزودن روش پرداخت' : 'مشاهده بیشتر'}
+                  {section.id === 'addresses' ? 'افزودن آدرس جدید' : 'مشاهده همه سفارش‌ها'}
                 </button>
               </motion.div>
             )}
