@@ -12,7 +12,8 @@ function useMarketData() {
       (async () => {
         try { const sh: any = await (api as any).shopCatalog('shops'); if (Array.isArray(sh)) __MARKET.shops = sh; } catch (_) {}
         try { const pr: any = await (api as any).shopCatalog('products'); if (Array.isArray(pr)) __MARKET.products = pr; } catch (_) {}
-        try { const of: any = await (api as any).shopCatalog('offers'); if (Array.isArray(of)) __MARKET.offers = of.filter((o: any) => o.shop); } catch (_) {}
+        // offersreal: پیشنهادها از settings.marketOffersِ سوپرادمین (نه seedِ هاردکد). فقط پیشنهادهای مارکت (نه دین). خالی تا اونر تعریف کند.
+        try { const st: any = await (api as any).getSettings(); if (st && Array.isArray(st.marketOffers)) __MARKET.offers = st.marketOffers.filter((o: any) => !(o.source === 'dine' || o.restaurant)); } catch (_) {}
         window.dispatchEvent(new Event('market-loaded'));
       })();
     }

@@ -187,6 +187,36 @@ export function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>پیشنهادها و کدهای تخفیف (مارکت)</CardTitle>
+          <CardDescription>این پیشنهادها در تبِ «پیشنهادها»ی مارکت و «پیشنهادات ویژه»ی خانه به کاربران نشان داده می‌شوند. خالی = هیچ پیشنهادی نمایش داده نمی‌شود.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {(Array.isArray(s.marketOffers) ? s.marketOffers : []).map((o: any, i: number) => {
+            const upd = (patch: any) => set("marketOffers", (s.marketOffers || []).map((x: any, j: number) => (j === i ? { ...x, ...patch } : x)));
+            return (
+              <div key={i} className="grid gap-2 sm:grid-cols-2 rounded-lg border border-border p-3">
+                <Field label="عنوان" value={o.title || ""} onChange={(e: any) => upd({ title: e.target.value })} />
+                <Field label="توضیح" value={o.desc || ""} onChange={(e: any) => upd({ desc: e.target.value })} />
+                <Field label="درصد تخفیف" type="number" value={o.discount ?? 0} onChange={(e: any) => upd({ discount: Number(e.target.value) || 0 })} />
+                <Field label="کد تخفیف" value={o.code || ""} onChange={(e: any) => upd({ code: e.target.value })} />
+                <Field label="فروشگاه / دامنه" value={o.shop || ""} onChange={(e: any) => upd({ shop: e.target.value })} />
+                <Field label="اعتبار تا" value={o.validUntil || ""} onChange={(e: any) => upd({ validUntil: e.target.value })} />
+                <Field label="رنگ (hex)" value={o.color || "#F59E0B"} onChange={(e: any) => upd({ color: e.target.value })} />
+                <Field label="آیکون (FontAwesome)" value={o.icon || "fa-solid fa-gift"} onChange={(e: any) => upd({ icon: e.target.value })} />
+                <div className="sm:col-span-2">
+                  <Button variant="destructive" onClick={() => set("marketOffers", (s.marketOffers || []).filter((_: any, j: number) => j !== i))}>حذف این پیشنهاد</Button>
+                </div>
+              </div>
+            );
+          })}
+          <div>
+            <Button variant="outline" onClick={() => set("marketOffers", [...(Array.isArray(s.marketOffers) ? s.marketOffers : []), { id: Date.now(), title: "", desc: "", discount: 0, code: "", shop: "همه فروشگاه‌ها", validUntil: "", color: "#F59E0B", icon: "fa-solid fa-gift" }])}>+ افزودن پیشنهاد</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>صوت — گفتار↔متن (STT / TTS) — پیش‌فرضِ سیستم</CardTitle>
           <CardDescription>پیش‌فرضِ سراسری برای تبدیلِ گفتار↔متن (مثلاً تماسِ تلفنیِ هوش مصنوعی). فقط مدل‌های ارائه‌دهنده‌های <b>فعال</b> فهرست می‌شوند. هر ایجنت می‌تواند مدلِ خودش را داشته باشد؛ تنظیماتِ «دستیار شخصی» در منوی «هوش مصنوعی» اولویت دارد. اگر لیست خالی است، آنجا مدل‌ها را Sync کن.</CardDescription>
         </CardHeader>
