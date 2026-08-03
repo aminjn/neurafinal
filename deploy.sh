@@ -31,7 +31,7 @@ mkdir -p dist/src
 for d in assets avatars icons; do [ -d "src/$d" ] && cp -r "src/$d" "dist/src/$d"; done
 # aliasِ fw*→w* (رفعِ ۴۰۴ِ آواتارها)
 if [ -d dist/src/avatars ]; then
-  for f in dist/src/avatars/fw*.png; do [ -f "$f" ] && cp -n "$f" "${f/\/fw/\/w}" || true; done
+  for f in dist/src/avatars/fw*.png; do [ -f "$f" ] && [ ! -e "${f/\/fw/\/w}" ] && cp "$f" "${f/\/fw/\/w}" || true; done
 fi
 # preloadِ فونت‌های FontAwesome (رفعِ آیکونِ نامرئی)
 FASOLID="$(ls -1 dist/assets/fa-solid-900-*.woff2 2>/dev/null | head -1 | xargs -r basename || true)"
