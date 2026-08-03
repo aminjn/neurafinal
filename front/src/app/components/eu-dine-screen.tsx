@@ -44,7 +44,9 @@ function useDineData() {
         try {
           const dv: any = await (api as any).dineVenues();
           if (Array.isArray(dv) && dv.length) {
-            const mapped = dv.map((v: any) => ({ id: v.id, name: v.name, type: v.type, cuisine: 'all', rating: 0, distance: v.address || '', deliveryTime: '', isOpen: v.isOpen !== false, minOrder: '', icon: 'fa-solid fa-utensils', color: v.primaryColor || '#14b8a6', __dine: true, theme: v.theme, logo: v.logo, cover: v.cover }));
+            // مقادیرِ نداشته را فیک نمی‌کنیم: rating/deliveryTime/minOrder خالی می‌مانند و در کارت مخفی می‌شوند؛
+            // آدرس در فیلدِ address (نه در جای «فاصله» با آیکونِ فلش که گمراه‌کننده بود).
+            const mapped = dv.map((v: any) => ({ id: v.id, name: v.name, type: v.type, cuisine: 'all', rating: Number(v.rating) || 0, address: v.address || '', distance: '', deliveryTime: v.deliveryTime || '', isOpen: v.isOpen !== false, minOrder: v.minOrder || '', tagline: v.tagline || '', hours: Array.isArray(v.hours) ? v.hours : null, icon: 'fa-solid fa-utensils', color: v.primaryColor || '#14b8a6', __dine: true, theme: v.theme, logo: v.logo, cover: v.cover }));
             const menus: any[] = await Promise.all(dv.map((v: any) => (api as any).dineVenueMenu(v.id).then((r: any) => (r && r.items) || []).catch(() => [])));
             const dineMenu: any[] = [];
             dv.forEach((v: any, i: number) => { (menus[i] || []).forEach((it: any) => dineMenu.push({ id: 'dm_' + v.id + '_' + it.id, name: it.name, desc: it.desc || '', price: (Number(it.priceNum) || 0).toLocaleString('fa-IR'), priceNum: Number(it.priceNum) || 0, category: 'all', image: it.image || '', rating: 0, time: '', restaurant: v.id, venueId: v.id, menuItemId: it.id, venueName: v.name, popular: !!it.popular })); });
@@ -317,7 +319,11 @@ function DineOrdersTab() {
     const iv = setInterval(poll, 15000);
     return () => { stop = true; clearInterval(iv as any); };
   }, [euPlacedOrders]);
-  const filtered = filter === 'all' ? allDineOrders : allDineOrders.filter((o: any) => o.status === filter);
+  // وضعیتِ مؤثر = وضعیتِ زندهٔ آشپزخانه (KDS) اگر موجود بود، وگرنه وضعیتِ سفارش؛ و به سطلِ نمایشِ مشتری نگاشته می‌شود
+  // تا فیلترها/شمارنده‌ها با واقعیتِ سرور هماهنگ باشند (نه فقط 'preparing'ِ ثابت).
+  const __kdsBucket: Record<string, string> = { received: 'preparing', cooking: 'preparing', ready: 'delivering', served: 'delivered', paid: 'delivered', delivering: 'delivering', delivered: 'delivered', cancelled: 'cancelled', preparing: 'preparing' };
+  const effStatus = (o: any) => __kdsBucket[live[String(o.id)] || o.status] || (live[String(o.id)] || o.status);
+  const filtered = filter === 'all' ? allDineOrders : allDineOrders.filter((o: any) => effStatus(o) === filter);
 
   const STATUS_FILTERS = [
     { id: 'all', label: 'همه', icon: 'fa-solid fa-border-all', color: 'var(--aw-eu-primary)' },
@@ -332,7 +338,7 @@ function DineOrdersTab() {
       {/* Status filters */}
       <div className="flex gap-1.5 px-4 pt-3 pb-2 overflow-x-auto">
         {STATUS_FILTERS.map(f => {
-          const count = f.id === 'all' ? allDineOrders.length : allDineOrders.filter((o: any) => o.status === f.id).length;
+          const count = f.id === 'all' ? allDineOrders.length : allDineOrders.filter((o: any) => effStatus(o) === f.id).length;
           return (
             <button key={f.id}
               className={`flex items-center gap-1 py-1.5 px-3 rounded-full border text-[10px] cursor-pointer transition-all whitespace-nowrap ${
@@ -351,10 +357,10 @@ function DineOrdersTab() {
       {/* Summary stats */}
       <div className="grid grid-cols-4 gap-1.5 px-4 pb-2">
         {[
-          { label: 'آماده‌سازی', count: allDineOrders.filter((o: any) => o.status === 'preparing').length, color: '#F59E0B', icon: 'fa-solid fa-fire-burner' },
-          { label: 'ارسال', count: allDineOrders.filter((o: any) => o.status === 'delivering').length, color: '#3B82F6', icon: 'fa-solid fa-motorcycle' },
-          { label: 'تحویل', count: allDineOrders.filter((o: any) => o.status === 'delivered').length, color: '#10B981', icon: 'fa-solid fa-circle-check' },
-          { label: 'لغو', count: allDineOrders.filter((o: any) => o.status === 'cancelled').length, color: '#EF4444', icon: 'fa-solid fa-ban' },
+          { label: 'آماده‌سازی', count: allDineOrders.filter((o: any) => effStatus(o) === 'preparing').length, color: '#F59E0B', icon: 'fa-solid fa-fire-burner' },
+          { label: 'ارسال', count: allDineOrders.filter((o: any) => effStatus(o) === 'delivering').length, color: '#3B82F6', icon: 'fa-solid fa-motorcycle' },
+          { label: 'تحویل', count: allDineOrders.filter((o: any) => effStatus(o) === 'delivered').length, color: '#10B981', icon: 'fa-solid fa-circle-check' },
+          { label: 'لغو', count: allDineOrders.filter((o: any) => effStatus(o) === 'cancelled').length, color: '#EF4444', icon: 'fa-solid fa-ban' },
         ].map(s => (
           <div key={s.label} className="flex flex-col items-center gap-1 p-2 rounded-xl" style={euCardStyle}>
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: s.color + '18' }}>
@@ -393,7 +399,7 @@ function DineOrdersTab() {
               )}
               <div className="flex items-center gap-3 text-[10px] text-[var(--aw-text-muted)]">
                 <span><i className="fa-solid fa-store text-[8px] ml-1" />{ord.restaurant}</span>
-                <span><i className="fa-regular fa-clock text-[8px] ml-1" />{ord.date}</span>
+                <span><i className="fa-regular fa-clock text-[8px] ml-1" />{/^\d{4}-\d{2}-\d{2}T/.test(String(ord.date)) ? new Date(ord.date).toLocaleString('fa-IR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ord.date}</span>
                 {ord.eta && <span className="text-[var(--aw-eu-primary)]" style={{ fontWeight: 600 }}><i className="fa-solid fa-truck text-[8px] ml-1" />{ord.eta}</span>}
               </div>
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-[rgba(126,95,170,0.1)]">
@@ -499,9 +505,11 @@ function RestaurantDetailView({ restaurant, onBack }: { restaurant: Restaurant; 
             </div>
             <div className="text-[10px] text-[var(--aw-text-muted)]">{restaurant.type}</div>
           </div>
-          <div className="flex items-center gap-0.5 text-[14px] text-[#F59E0B]" style={{ fontWeight: 800 }}>
-            <i className="fa-solid fa-star text-[10px]" /> {restaurant.rating}
-          </div>
+          {Number(restaurant.rating) > 0 && (
+            <div className="flex items-center gap-0.5 text-[14px] text-[#F59E0B]" style={{ fontWeight: 800 }}>
+              <i className="fa-solid fa-star text-[10px]" /> {restaurant.rating}
+            </div>
+          )}
         </div>
 
         {/* Detail tabs */}
@@ -583,8 +591,8 @@ function RestaurantDetailView({ restaurant, onBack }: { restaurant: Restaurant; 
                         <span className="text-[8px] text-[var(--aw-text-muted)] mr-0.5">تومان</span>
                       </div>
                       <div className="flex items-center gap-0.5">
-                        <span className="text-[9px] text-[var(--aw-text-muted)]"><i className="fa-solid fa-star text-[#F59E0B] text-[7px]" /> {item.rating}</span>
-                        <span className="text-[9px] text-[var(--aw-text-muted)] mr-1"><i className="fa-regular fa-clock text-[7px]" /> {item.time}</span>
+                        {Number(item.rating) > 0 && <span className="text-[9px] text-[var(--aw-text-muted)]"><i className="fa-solid fa-star text-[#F59E0B] text-[7px]" /> {item.rating}</span>}
+                        {item.time && <span className="text-[9px] text-[var(--aw-text-muted)] mr-1"><i className="fa-regular fa-clock text-[7px]" /> {item.time}</span>}
                       </div>
                     </div>
                     <div className="flex items-center justify-end mt-1">
@@ -619,40 +627,52 @@ function RestaurantDetailView({ restaurant, onBack }: { restaurant: Restaurant; 
         {detailTab === 'info' && (
           <motion.div key="r-info" className="flex-1 overflow-y-auto pb-4 aw-scroll px-4 pt-2"
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
-            <div className="p-4 rounded-2xl mb-3" style={euCardStyle}>
-              <SectionTitle icon="fa-solid fa-circle-info" title="درباره رستوران" />
-              <p className="text-[12px] text-[var(--aw-text-secondary)] mt-2" style={{ lineHeight: '2' }}>
-                {restaurant.name} یکی از معتبرترین رستوران‌های {restaurant.type} در منطقه است که با تجربه‌ای طولانی در ارائه غذاهای اصیل و باکیفیت، مشتریان زیادی را به خود جلب کرده است.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              {[
-                { icon: 'fa-solid fa-location-arrow', label: 'فاصله', value: restaurant.distance, color: '#3B82F6' },
-                { icon: 'fa-solid fa-clock', label: 'زمان ارسال', value: restaurant.deliveryTime, color: '#F59E0B' },
-                { icon: 'fa-solid fa-coins', label: 'حداقل سفارش', value: restaurant.minOrder + ' ت', color: '#10B981' },
-                { icon: 'fa-solid fa-star', label: 'امتیاز', value: String(restaurant.rating), color: '#8B5CF6' },
-              ].map(info => (
-                <div key={info.label} className="p-3 rounded-xl flex items-center gap-2.5" style={euCardStyle}>
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: info.color + '18' }}>
-                    <i className={`${info.icon} text-[13px]`} style={{ color: info.color }} />
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-[var(--aw-text-muted)]">{info.label}</div>
-                    <div className="text-[12px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>{info.value}</div>
-                  </div>
+            {/* «درباره» فقط اگر رستوران معرفیِ واقعی (tagline) داشته باشد — نه متنِ کلیشه‌ایِ ساختگی */}
+            {((restaurant as any).tagline || (restaurant as any).desc) && (
+              <div className="p-4 rounded-2xl mb-3" style={euCardStyle}>
+                <SectionTitle icon="fa-solid fa-circle-info" title="درباره رستوران" />
+                <p className="text-[12px] text-[var(--aw-text-secondary)] mt-2" style={{ lineHeight: '2' }}>
+                  {(restaurant as any).tagline || (restaurant as any).desc}
+                </p>
+              </div>
+            )}
+            {(() => {
+              // فقط کاشی‌هایی که مقدارِ واقعی دارند (نه صفر/خالیِ فیک)
+              const tiles = [
+                restaurant.address ? { icon: 'fa-solid fa-location-dot', label: 'آدرس', value: restaurant.address, color: '#3B82F6' } : null,
+                restaurant.distance ? { icon: 'fa-solid fa-location-arrow', label: 'فاصله', value: restaurant.distance, color: '#3B82F6' } : null,
+                restaurant.deliveryTime ? { icon: 'fa-solid fa-clock', label: 'زمان ارسال', value: restaurant.deliveryTime, color: '#F59E0B' } : null,
+                restaurant.minOrder ? { icon: 'fa-solid fa-coins', label: 'حداقل سفارش', value: restaurant.minOrder + ' ت', color: '#10B981' } : null,
+                Number(restaurant.rating) > 0 ? { icon: 'fa-solid fa-star', label: 'امتیاز', value: String(restaurant.rating), color: '#8B5CF6' } : null,
+              ].filter(Boolean) as any[];
+              return tiles.length ? (
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {tiles.map(info => (
+                    <div key={info.label} className="p-3 rounded-xl flex items-center gap-2.5" style={euCardStyle}>
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: info.color + '18' }}>
+                        <i className={`${info.icon} text-[13px]`} style={{ color: info.color }} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] text-[var(--aw-text-muted)]">{info.label}</div>
+                        <div className="text-[12px] text-[var(--aw-text-primary)] truncate" style={{ fontWeight: 700 }}>{info.value}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="p-4 rounded-2xl" style={euCardStyle}>
-              <SectionTitle icon="fa-solid fa-clock" title="ساعات کاری" />
-              <div className="space-y-1.5 mt-2">
-                {['شنبه تا چهارشنبه: ۱۱:۰۰ - ۲۳:۰۰', 'پنج‌شنبه: ۱۱:۰۰ - ۲۴:۰۰', 'جمعه: ۱۲:۰۰ - ۲۴:۰۰'].map(h => (
+              ) : null;
+            })()}
+            {Array.isArray((restaurant as any).hours) && (restaurant as any).hours.length > 0 && (
+              <div className="p-4 rounded-2xl" style={euCardStyle}>
+                <SectionTitle icon="fa-solid fa-clock" title="ساعات کاری" />
+                <div className="space-y-1.5 mt-2">
+                  {((restaurant as any).hours as string[]).map(h => (
                   <div key={h} className="text-[11px] text-[var(--aw-text-secondary)] flex items-center gap-1.5">
                     <i className="fa-regular fa-clock text-[9px] text-[var(--aw-text-muted)]" /> {h}
                   </div>
                 ))}
+                </div>
               </div>
-            </div>
+            )}
           </motion.div>
         )}
 
@@ -727,9 +747,7 @@ function RestaurantDetailView({ restaurant, onBack }: { restaurant: Restaurant; 
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
             <MiniChatPreview
               messages={[
-                { from: 'agent', text: `سلام! به ${restaurant.name} خوش آمدید. چطور می‌تونم کمکتون کنم؟` },
-                { from: 'user', text: 'سلام، می‌خوام سفارش بدم.' },
-                { from: 'agent', text: 'البته! منوی ما آماده است. می‌تونید از تب منو غذای مورد نظرتون رو انتخاب کنید یا به من بگید چه نوع غذایی میل دارید.' },
+                { from: 'agent', text: `سلام! به ${restaurant.name} خوش آمدید. برای سفارش، از تبِ منو غذا را انتخاب کنید یا همین‌جا بپرسید. برای گفتگوی کامل بزنید.` },
               ]}
               agentName={restaurant.name}
               agentIcon={restaurant.icon}
@@ -883,17 +901,23 @@ function DineRestaurantsTab({ onSelectRestaurant, onBack }: { onSelectRestaurant
                 <div className="text-[10px] text-[var(--aw-text-secondary)] mt-0.5">{r.type}</div>
               </div>
               <div className="flex flex-col items-center gap-1">
-                <div className="flex items-center gap-0.5 text-[13px] text-[#F59E0B]" style={{ fontWeight: 700 }}>
-                  <i className="fa-solid fa-star text-[9px]" /> {r.rating}
-                </div>
+                {Number(r.rating) > 0 && (
+                  <div className="flex items-center gap-0.5 text-[13px] text-[#F59E0B]" style={{ fontWeight: 700 }}>
+                    <i className="fa-solid fa-star text-[9px]" /> {r.rating}
+                  </div>
+                )}
                 <i className="fa-solid fa-chevron-left text-[10px] text-[var(--aw-text-muted)]" />
               </div>
             </div>
-            <div className="flex items-center gap-4 text-[10px] text-[var(--aw-text-muted)] mt-2 pr-14">
-              <span><i className="fa-solid fa-location-arrow text-[8px] ml-1" />{r.distance}</span>
-              <span><i className="fa-solid fa-clock text-[8px] ml-1" />{r.deliveryTime}</span>
-              <span><i className="fa-solid fa-coins text-[8px] ml-1" />حداقل: {r.minOrder}</span>
-            </div>
+            {/* فقط متریک‌هایی که مقدارِ واقعی دارند نشان داده می‌شوند (نه صفر/خالیِ فیک) */}
+            {(r.address || r.distance || r.deliveryTime || r.minOrder) && (
+              <div className="flex items-center gap-4 text-[10px] text-[var(--aw-text-muted)] mt-2 pr-14 flex-wrap">
+                {r.address && <span className="truncate max-w-[180px]"><i className="fa-solid fa-location-dot text-[8px] ml-1" />{r.address}</span>}
+                {r.distance && <span><i className="fa-solid fa-location-arrow text-[8px] ml-1" />{r.distance}</span>}
+                {r.deliveryTime && <span><i className="fa-solid fa-clock text-[8px] ml-1" />{r.deliveryTime}</span>}
+                {r.minOrder && <span><i className="fa-solid fa-coins text-[8px] ml-1" />حداقل: {r.minOrder}</span>}
+              </div>
+            )}
           </motion.div>
         ))}
         {filtered.length === 0 && <EmptyState icon="fa-solid fa-store" text="رستورانی یافت نشد" />}
@@ -1012,15 +1036,12 @@ function DineChatTab() {
 function DineOffersTab() {
   useDineData();
   const { showToast } = useApp();
-  const [offerFilter, setOfferFilter] = useState<'all' | 'personal' | 'discount' | 'popular'>('all');
+  const [offerFilter, setOfferFilter] = useState<'all' | 'discount' | 'popular'>('all');
 
-  const POPULAR_ITEMS = __DINE.menu.filter((m: any) => m.popular).map(m => ({
-    ...m,
-    orderCount: m.id === 1 ? '۱,۲۰۰' : m.id === 3 ? '۸۵۰' : '۶۲۰',
-  }));
+  // پرطرفدارها: فقط غذاهایی که رستوران آن‌ها را «محبوب» علامت زده — بدونِ تعدادِ سفارشِ هاردکدِ فیک.
+  const POPULAR_ITEMS = __DINE.menu.filter((m: any) => m.popular);
 
-  const PERSONAL_OFFERS: Offer[] = __DINE.offers.filter((o: any) => o.icon.includes('wand') || o.icon.includes('gift'));
-  const DISCOUNT_OFFERS: Offer[] = __DINE.offers.filter((o: any) => !o.icon.includes('wand'));
+  const DISCOUNT_OFFERS: Offer[] = __DINE.offers;
 
   return (
     <div className="flex-1 overflow-y-auto pb-4 aw-scroll">
@@ -1028,7 +1049,6 @@ function DineOffersTab() {
       <div className="flex gap-1.5 px-4 pt-3 pb-2 overflow-x-auto">
         {[
           { id: 'all', label: 'همه', icon: 'fa-solid fa-border-all' },
-          { id: 'personal', label: 'شخصی‌سازی شده', icon: 'fa-solid fa-wand-magic-sparkles' },
           { id: 'discount', label: 'تخفیف‌ها', icon: 'fa-solid fa-percent' },
           { id: 'popular', label: 'پرطرفدار', icon: 'fa-solid fa-fire' },
         ].map(f => (
@@ -1045,43 +1065,6 @@ function DineOffersTab() {
 
       <div className="px-4">
         {/* Personalized section */}
-        {(offerFilter === 'all' || offerFilter === 'personal') && (
-          <div className="mb-3">
-            <SectionTitle icon="fa-solid fa-wand-magic-sparkles" title="پیشنهاد ویژه برای شما" extra={<StatusPill label="AI" color="#EC4899" />} />
-            {PERSONAL_OFFERS.map((o, i) => (
-              <motion.div key={o.id} className="p-3 mb-2 overflow-hidden relative" style={euCardStyle}
-                initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}>
-                <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-[0.07]" style={{ background: o.color, filter: 'blur(24px)' }} />
-                <div className="flex items-start gap-3 mb-2 relative">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-[16px]" style={{ background: o.color }}>
-                    <i className={o.icon} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>{o.title}</div>
-                    <div className="text-[11px] text-[var(--aw-text-secondary)] mt-0.5">{o.desc}</div>
-                  </div>
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-[15px]" style={{ background: `${o.color}cc`, fontWeight: 800 }}>
-                    {toFa(o.discount)}%
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 text-[10px] text-[var(--aw-text-muted)]">
-                  <span><i className="fa-solid fa-store text-[8px] ml-1" />{o.restaurant}</span>
-                  <span><i className="fa-solid fa-calendar text-[8px] ml-1" />{o.validUntil}</span>
-                </div>
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-[rgba(126,95,170,0.1)]">
-                  <span className="text-[11px] text-[var(--aw-text-muted)] flex items-center gap-1">
-                    <i className="fa-solid fa-tag text-[8px]" />کد: <span className="text-[var(--aw-eu-primary)]" style={{ fontWeight: 700 }}>{o.code}</span>
-                  </span>
-                  <button className="text-[10px] px-3 py-1.5 rounded-lg border-none text-white cursor-pointer flex items-center gap-1" style={{ background: o.color, fontWeight: 600 }}
-                    onClick={() => { try { (navigator as any).clipboard?.writeText(o.code); } catch (_) {} showToast(`کد تخفیف ${o.code} کپی شد`); }}>
-                    <i className="fa-solid fa-copy text-[8px]" /> کپی کد
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-
         {/* Discounts section */}
         {(offerFilter === 'all' || offerFilter === 'discount') && (
           <div className="mb-3">
@@ -1138,8 +1121,7 @@ function DineOffersTab() {
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-[12px] text-[var(--aw-eu-primary)]" style={{ fontWeight: 700 }}>{item.price} <span className="text-[8px] text-[var(--aw-text-muted)]">تومان</span></span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-[var(--aw-text-muted)]"><i className="fa-solid fa-star text-[#F59E0B] text-[7px]" /> {item.rating}</span>
-                      <span className="text-[9px] text-[var(--aw-text-muted)]"><i className="fa-solid fa-bag-shopping text-[7px]" /> {item.orderCount} سفارش</span>
+                      {Number(item.rating) > 0 && <span className="text-[9px] text-[var(--aw-text-muted)]"><i className="fa-solid fa-star text-[#F59E0B] text-[7px]" /> {item.rating}</span>}
                     </div>
                   </div>
                 </div>
@@ -1153,7 +1135,11 @@ function DineOffersTab() {
 }
 
 function DineAccountTab() {
-  const { showToast, euProfile, walletBalance, euPlacedOrders, setEuScreen , openModal, closeModal } = useApp() as any;
+  const { showToast, euProfile, walletBalance, walletTx, euPlacedOrders, setEuScreen , openModal, closeModal } = useApp() as any;
+  // امتیاز/سطحِ واقعی از کش‌بکِ کیف‌پول (همان منطقِ مارکت و آستانه‌های نرخِ سرور)، نه «—»یِ فیک.
+  const __cashbackTotal = (walletTx || []).filter((t: any) => t.type === 'cashback').reduce((s: number, t: any) => s + (Number(t.amount) || 0), 0);
+  const __tier = __cashbackTotal >= 5000000 ? 'طلایی' : __cashbackTotal >= 1000000 ? 'نقره‌ای' : __cashbackTotal > 0 ? 'برنزی' : 'تازه‌وارد';
+  const __tierColor = __cashbackTotal >= 5000000 ? '#F59E0B' : __cashbackTotal >= 1000000 ? '#94A3B8' : __cashbackTotal > 0 ? '#B45309' : '#8B5CF6';
   const [__payM, setPayM] = useState<any[]>([]);
   useEffect(() => { if (!getToken()) return; (async () => { try { const p: any = await (api as any).myList('payment_methods'); if (Array.isArray(p)) setPayM(p); } catch (_) {} })(); }, []);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -1177,7 +1163,8 @@ function DineAccountTab() {
 
   const HISTORY: any[] = (euPlacedOrders || []).filter((o: any) => o.source === 'dine').map((o: any, i: number) => ({
     id: o.id || i, items: o.items || o.title || 'سفارش', status: o.status,
-    restaurant: o.restaurant || o.vendor || '', date: o.date || '',
+    restaurant: o.restaurant || o.vendor || '',
+    date: /^\d{4}-\d{2}-\d{2}T/.test(String(o.date)) ? new Date(o.date).toLocaleDateString('fa-IR') : (o.date || ''),
     total: (Number(String(o.total).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR'),
   }));
 
@@ -1198,7 +1185,7 @@ function DineAccountTab() {
           </div>
           <div className="flex-1">
             <div className="text-[14px] text-[var(--aw-text-primary)]" style={{ fontWeight: 800 }}>{euProfile.name}</div>
-            <div className="text-[11px] text-[var(--aw-text-muted)]">{euProfile.phone || '۰۹۱۲۳۴۵۶۷۸۹'}</div>
+            <div className="text-[11px] text-[var(--aw-text-muted)]">{euProfile.phone || 'شمارهٔ تماس ثبت نشده'}</div>
           </div>
           <button className="w-9 h-9 rounded-xl cursor-pointer flex items-center justify-center"
             style={{ background: 'color-mix(in srgb, var(--aw-eu-primary) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--aw-eu-primary) 22%, transparent)', color: 'var(--aw-eu-primary)' }}
@@ -1213,13 +1200,13 @@ function DineAccountTab() {
           </div>
           <div className="w-px h-8" style={{ background: 'var(--aw-border)' }} />
           <div className="flex-1 text-center">
-            <div className="text-[16px] text-[var(--aw-text-primary)]" style={{ fontWeight: 800 }}>—</div>
-            <div className="text-[9px] text-[var(--aw-text-muted)]">امتیاز</div>
+            <div className="text-[16px] text-[var(--aw-text-primary)]" style={{ fontWeight: 800 }}>{__cashbackTotal.toLocaleString('fa-IR')}</div>
+            <div className="text-[9px] text-[var(--aw-text-muted)]">کش‌بک (تومان)</div>
           </div>
           <div className="w-px h-8" style={{ background: 'var(--aw-border)' }} />
           <div className="flex-1 text-center">
             <div className="flex items-center justify-center gap-0.5">
-              <StatusPill label="—" color="#F59E0B" />
+              <StatusPill label={__tier} color={__tierColor} />
             </div>
             <div className="text-[9px] mt-0.5 text-[var(--aw-text-muted)]">سطح</div>
           </div>
