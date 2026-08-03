@@ -161,7 +161,7 @@ function AssistantCalendarTab({ events, setEvents, tasks, setTasks }: { events: 
   const [taskDragId, setTaskDragId] = useState<number | null>(null);
 
   const toggleTaskDone = (id: number) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? Date.now() : (t as any).completedAt } : t));
     showToast('وضعیت وظیفه تغییر کرد');
   };
 
@@ -804,7 +804,7 @@ function AssistantTodoTab({ tasks, setTasks, events }: { tasks: AsstTask[]; setT
   const [dragId, setDragId] = useState<number | null>(null);
 
   const toggleTask = (id: number) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? Date.now() : (t as any).completedAt } : t));
     showToast('وضعیت وظیفه تغییر کرد');
   };
 
@@ -1173,12 +1173,22 @@ const PRIORITY_WEIGHT: Record<AsstTask['priority'], number> = { high: 3, medium:
 
 interface SyntheticDoneRecord { type: 'task' | 'plan' | 'order'; title: string; date: Date; weight: number; meta: string }
 
-function generateSyntheticHistory(tasks: AsstTask[], events: CalEvent[]): SyntheticDoneRecord[] {
-  // دیگر داده نمی‌سازیم: فقط رکوردهای واقعیِ انجام‌شده (خالی برای کاربرِ تازه — صادقانه).
+function generateSyntheticHistory(tasks: AsstTask[], events: CalEvent[], orders: any[] = []): SyntheticDoneRecord[] {
+  // فقط رکوردهای واقعیِ انجام‌شده، با تاریخِ واقعی (نه now برای همه) — برای کاربرِ تازه خالی، صادقانه.
+  // تاریخ: وظیفه از completedAt، رویداد از at، سفارش از dateِ ISOِ سرور. این باعث می‌شود نمودارِ
+  // زمانی و فیلترِ بازه واقعاً کار کنند (قبلاً همه now بود → یک سطل و فیلترِ بی‌اثر).
   const now = new Date();
+  const toDate = (v: any): Date => { if (v == null || v === '') return now; if (typeof v === 'number') return new Date(v); const d = new Date(v); return isNaN(d.getTime()) ? now : d; };
   const records: SyntheticDoneRecord[] = [];
-  tasks.forEach((t) => { if (t.done) records.push({ type: 'task', title: t.title, date: now, weight: PRIORITY_WEIGHT[t.priority], meta: t.dueDate }); });
-  events.forEach((e) => { if (e.status === 'done') records.push({ type: 'plan', title: e.title, date: now, weight: 2, meta: e.time }); });
+  tasks.forEach((t) => { if (t.done) records.push({ type: 'task', title: t.title, date: toDate((t as any).completedAt), weight: PRIORITY_WEIGHT[t.priority], meta: t.dueDate }); });
+  events.forEach((e) => { if (e.status === 'done') records.push({ type: 'plan', title: e.title, date: toDate((e as any).at || (e as any).completedAt), weight: 2, meta: e.time }); });
+  (orders || []).forEach((o: any) => {
+    const st = String(o.status || '');
+    if (st === 'delivered' || st === 'done' || st === 'completed') {
+      const totalNum = typeof o.total === 'number' ? o.total : (parseInt(String(o.total).replace(/[^\d]/g, ''), 10) || 0);
+      records.push({ type: 'order', title: o.title || ('سفارش' + (o.num ? (' #' + o.num) : '')), date: toDate(o.date || o.at || o.createdAt), weight: 3, meta: totalNum ? String(totalNum) : '' });
+    }
+  });
   return records;
 }
 
@@ -1220,7 +1230,7 @@ const COLLECTION_OPTIONS: { id: 'order' | 'plan' | 'task'; label: string; icon: 
   { id: 'task',  label: 'وظایف',     icon: 'fa-solid fa-list-check',    color: '#10B981' },
 ];
 
-function AssistantReportTab({ tasks, events }: { tasks: AsstTask[]; events: CalEvent[] }) {
+function AssistantReportTab({ tasks, events, orders }: { tasks: AsstTask[]; events: CalEvent[]; orders?: any[] }) {
   const [range, setRange] = useState<ReportRange>('week');
   const [period, setPeriod] = useState<ReportPeriod>('day');
   const [collections, setCollections] = useState<Set<'order' | 'plan' | 'task'>>(new Set(['order', 'plan', 'task']));
@@ -1240,7 +1250,7 @@ function AssistantReportTab({ tasks, events }: { tasks: AsstTask[]; events: CalE
     });
   };
 
-  const history = useMemo(() => generateSyntheticHistory(tasks, events), [tasks, events]);
+  const history = useMemo(() => generateSyntheticHistory(tasks, events, orders || []), [tasks, events, orders]);
 
   const rangeDays = RANGE_OPTIONS.find(r => r.id === range)!.days;
   const since = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - rangeDays); return d; }, [rangeDays]);
@@ -2267,17 +2277,19 @@ export function EuReportScreen() {
   const { setEuScreen } = useApp();
   const [tasks, setTasks] = useState(INITIAL_TASKS);
   const [events, setEvents] = useState(INITIAL_CAL_EVENTS);
+  const [orders, setOrders] = useState<any[]>([]);
   const _reportLoaded = useRef(false);
   useEffect(() => {
     if (_reportLoaded.current || !getToken()) return; _reportLoaded.current = true;
     (async () => {
       try { const t: any = await (api as any).myList('tasks'); if (Array.isArray(t)) setTasks(t as any); } catch (_e) {}
       try { const e: any = await (api as any).myList('calendar'); if (Array.isArray(e)) setEvents(e as any); } catch (_e) {}
+      try { const o: any = await (api as any).myOrders(); if (Array.isArray(o)) setOrders(o); } catch (_e) {}
     })();
   }, []);
   return (
     <div className="flex flex-col h-full">
-      <AssistantReportTab tasks={tasks} events={events} />
+      <AssistantReportTab tasks={tasks} events={events} orders={orders} />
     </div>
   );
 }
