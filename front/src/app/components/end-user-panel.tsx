@@ -346,7 +346,7 @@ function EuProfileSettings() {
 function EuWalletSettings() {
   // __realdata3
   const { showToast, walletBalance, walletTx, euProfile } = useApp() as any;
-  const [tab, setTab] = useState<'cards' | 'tx' | 'subs' | 'cb'>('cards');
+  const [tab, setTab] = useState<'cards' | 'tx' | 'subs' | 'cb'>('tx'); // rmpay: تبِ کارت‌ها حذف شد
   const [CARDS, setCARDS] = useState<any[]>([]);
   const [SUBS, setSUBS] = useState<any[]>([]);
   const __loadCards = async () => { try { const pm: any = await (api as any).myList('payment_methods'); if (Array.isArray(pm)) setCARDS(pm.map((p: any) => ({ id: p.id, bank: p.label || 'کارت', last4: p.last4 || '', color: 'linear-gradient(135deg, #1E3A8A, #3B82F6)', primary: !!p.isDefault }))); } catch (_) {} };
@@ -361,7 +361,6 @@ function EuWalletSettings() {
   const [cashbackEarned, setCashbackEarned] = useState(0);
   useEffect(() => { (async () => { try { const w: any = await (api as any).getWallet(); if (w && typeof w.cashback === 'number') setCashbackEarned(w.cashback); } catch (_) {} })(); }, []);
   const TABS = [
-    { id: 'cards' as const, label: 'کارت‌ها', icon: 'fa-solid fa-credit-card' },
     { id: 'tx' as const, label: 'تراکنش‌ها', icon: 'fa-solid fa-right-left' },
     { id: 'subs' as const, label: 'اشتراک‌ها', icon: 'fa-solid fa-repeat' },
     { id: 'cb' as const, label: 'کش‌بک', icon: 'fa-solid fa-gift' },
@@ -2316,7 +2315,6 @@ function EuFinanceContent() {
   const TABS: { id: FinanceTab; label: string; icon: string }[] = [
     { id: 'wallet',       label: 'کیف پول',       icon: 'fa-solid fa-wallet' },
     { id: 'history',      label: 'تاریخچه خرید',  icon: 'fa-solid fa-clock-rotate-left' },
-    { id: 'methods',      label: 'روش‌های پرداخت', icon: 'fa-solid fa-credit-card' },
     { id: 'invoices',     label: 'فاکتورها',       icon: 'fa-solid fa-file-invoice' },
     { id: 'transactions', label: 'تراکنش‌ها',      icon: 'fa-solid fa-right-left' },
   ];

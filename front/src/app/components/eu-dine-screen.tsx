@@ -1180,7 +1180,6 @@ function DineAccountTab() {
 
   const SECTIONS = [
     { id: 'addresses', icon: 'fa-solid fa-map-marker-alt', label: 'آدرس‌های من', color: '#3B82F6', count: ADDRESSES.length },
-    { id: 'payments', icon: 'fa-solid fa-credit-card', label: 'روش‌های پرداخت', color: '#10B981', count: PAYMENTS.length },
     { id: 'history', icon: 'fa-solid fa-clock-rotate-left', label: 'تاریخچه خرید', color: '#F59E0B', count: HISTORY.length },
   ];
 
