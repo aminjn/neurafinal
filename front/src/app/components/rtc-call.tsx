@@ -43,6 +43,8 @@ export function NeuraCallLayer() {
   const [peerName, setPeerName] = useState('');
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
+  const [speakerOn, setSpeakerOn] = useState(true);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [remotes, setRemotes] = useState<RemoteTile[]>([]);
   const [statusMsg, setStatusMsg] = useState('');
   const [secs, setSecs] = useState(0);
@@ -265,6 +267,21 @@ export function NeuraCallLayer() {
     const off = !camOff; setCamOff(off);
     for (const t of s.getVideoTracks()) t.enabled = !off;
   }, [camOff]);
+  const toggleSpeaker = useCallback(() => setSpeakerOn((v) => !v), []);
+
+  // بلندگو + پخشِ مطمئنِ صدای دریافتی: هر بار که استریمِ جدید می‌آید یا بلندگو عوض می‌شود،
+  // صدا را پخش کن (autoplay گاهی بلاک می‌شود) و بلندی/خروجی را تنظیم کن. روی موبایل، مرورگر
+  // مسیرِ بلندگو/گوشی را کنترل می‌کند؛ این‌جا بلندی و در صورتِ پشتیبانی setSinkId اعمال می‌شود.
+  useEffect(() => {
+    const root = rootRef.current; if (!root) return;
+    const els = root.querySelectorAll('audio,video') as any;
+    for (const el of els) {
+      if (el.muted) continue; // ویدیوی «خودم» muted است، دست نزن
+      el.volume = speakerOn ? 1 : 0.32;
+      try { el.play?.().catch(() => {}); } catch (_) {}
+      if (typeof el.setSinkId === 'function') { el.setSinkId('').catch(() => {}); }
+    }
+  }, [speakerOn, remotes, phase]);
 
   useEffect(() => () => { try { socketRef.current?.disconnect(); } catch (_) {} if (timerRef.current) clearInterval(timerRef.current); stopRing(); }, []);
 
@@ -275,7 +292,7 @@ export function NeuraCallLayer() {
   const audioRemotes = remotes.filter((r) => r.kind === 'audio');
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col" style={{ background: 'linear-gradient(160deg,#1a1530,#2a1f4d 60%,#0f0b1f)', color: '#fff', fontFamily: "'Kamand', sans-serif" }} dir="rtl">
+    <div ref={rootRef} className="fixed inset-0 z-[200] flex flex-col" style={{ background: 'linear-gradient(160deg,#1a1530,#2a1f4d 60%,#0f0b1f)', color: '#fff', fontFamily: "'Kamand', sans-serif" }} dir="rtl">
       {/* هدر */}
       <div className="flex-shrink-0 pt-10 pb-4 text-center">
         <div className="text-[20px]" style={{ fontWeight: 700 }}>{peerName}</div>
@@ -308,14 +325,15 @@ export function NeuraCallLayer() {
         {/* پیش‌نمایشِ محلی (تصویری) */}
         {kind === 'video' && (phase === 'connected' || phase === 'outgoing') && (
           <div className="absolute bottom-3 left-3 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg" style={{ width: 96, height: 128, background: '#000' }}>
-            <video autoPlay muted playsInline ref={localVideoRef} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+            <video autoPlay muted playsInline ref={(el) => { localVideoRef.current = el; if (el && localStreamRef.current && el.srcObject !== localStreamRef.current) el.srcObject = localStreamRef.current; }} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
           </div>
         )}
 
         {/* صداهای دریافتی (پنهان) */}
         {audioRemotes.map((r) => (
-          <audio key={r.producerId} autoPlay ref={(el) => { if (el && el.srcObject !== r.stream) el.srcObject = r.stream; }} />
+          <audio key={r.producerId} autoPlay playsInline ref={(el) => { if (el && el.srcObject !== r.stream) { el.srcObject = r.stream; el.volume = speakerOn ? 1 : 0.32; el.play?.().catch(() => {}); } }} />
         ))}
+        {/* صدای طرفِ مقابل در تماسِ تصویری هم باید شنیده شود؛ اگر بلندگو خاموش شد فقط بلندی کم می‌شود */}
       </div>
 
       {/* کنترل‌ها */}
@@ -343,6 +361,10 @@ export function NeuraCallLayer() {
                 <span className="text-[11px] opacity-80">{camOff ? 'دوربین خاموش' : 'دوربین'}</span>
               </button>
             )}
+            <button onClick={toggleSpeaker} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
+              <span className="rounded-full flex items-center justify-center" style={{ width: 56, height: 56, background: speakerOn ? 'rgba(255,255,255,0.16)' : '#fff', color: speakerOn ? '#fff' : '#1a1530' }}><i className={`fa-solid ${speakerOn ? 'fa-volume-high' : 'fa-volume-low'} text-[18px]`} /></span>
+              <span className="text-[11px] opacity-80">{speakerOn ? 'بلندگو' : 'آرام'}</span>
+            </button>
             <button onClick={hangup} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
               <span className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: '#ef4444' }}><i className="fa-solid fa-phone-slash text-[22px]" /></span>
               <span className="text-[11px] opacity-80">پایان</span>
