@@ -1669,6 +1669,11 @@ function OnDemandReports() {
             <i className="fa-solid fa-file-arrow-down text-[12px] flex-shrink-0" style={{ color: r.color }} />
           </button>
         ))}
+        {list.length === 0 && (
+          <div className="p-4 text-center text-[11px] text-[var(--aw-text-muted)]" style={cardStyle}>
+            هنوز گزارشی از {tab === 'agents' ? 'عامل‌های دیگر' : 'نیروهای سازمان'} ثبت نشده است.
+          </div>
+        )}
       </div>
     </>
   );
@@ -1679,6 +1684,28 @@ export function SecPerformanceScreen() {
   const [period, setPeriod] = useState('daily');
   const [statFilter, setStatFilter] = useState<string | null>(null);
   const [cat, setCat] = useState(() => { try { const t = localStorage.getItem('sec-report-tab'); if (t) { localStorage.removeItem('sec-report-tab'); return t; } } catch {} return 'meetings'; });
+  // perfreal: همهٔ آمار/فعالیت/جلسه/هشدار از دادهٔ واقعیِ per-user (نه هاردکدِ خالی)
+  const [pTasks, setPTasks] = useState<any[]>([]); __usePersist('sec_tasks', pTasks, setPTasks);
+  const [pMeetings, setPMeetings] = useState<any[]>([]); __usePersist('sec_meetings', pMeetings, setPMeetings);
+  const [pFollowups, setPFollowups] = useState<any[]>([]); __usePersist('sec_followups', pFollowups, setPFollowups);
+  const [pReferrals, setPReferrals] = useState<any[]>([]); __usePersist('sec_referrals', pReferrals, setPReferrals);
+  const [pActs, setPActs] = useState<any[]>([]); __usePersist('sec_activities', pActs, setPActs);
+  const __doneT = pTasks.filter((t: any) => t.done).length;
+  const __pendT = pTasks.length - __doneT;
+  const __v = (n: number) => { const s = toFa(String(n)); return { daily: s, weekly: s, monthly: s }; };
+  const PERF_STATS = [
+    { kind: 'done', label: 'تسک‌های انجام‌شده', color: '#10B981', bg: 'rgba(16,185,129,0.12)', icon: 'fa-solid fa-check-double', values: __v(__doneT) },
+    { kind: 'pending', label: 'در انتظار', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', icon: 'fa-solid fa-hourglass-half', values: __v(__pendT) },
+    { kind: 'meeting', label: 'جلسات', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', icon: 'fa-solid fa-users', values: __v(pMeetings.length) },
+    { kind: 'followup', label: 'پیگیری‌ها', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)', icon: 'fa-solid fa-arrows-rotate', values: __v(pFollowups.length) },
+  ];
+  const __actMetaP: Record<string, { color: string; icon: string }> = { call: { color: '#10B981', icon: 'fa-solid fa-phone' }, sms: { color: '#3B82F6', icon: 'fa-solid fa-comment-sms' }, email: { color: '#F59E0B', icon: 'fa-solid fa-envelope' }, whatsapp: { color: '#22C55E', icon: 'fa-brands fa-whatsapp' }, meeting: { color: '#8B5CF6', icon: 'fa-solid fa-users' }, note: { color: '#6B7280', icon: 'fa-solid fa-note-sticky' } };
+  const PERF_RECENT_ACTIVITIES = [...pActs].sort((a: any, b: any) => (b.at || 0) - (a.at || 0)).slice(0, 30).map((a: any) => ({ id: a.id, kind: a.kind || 'note', title: a.title || 'فعالیت', desc: a.desc || '', when: a.at ? new Date(a.at).toLocaleDateString('fa-IR') : '', color: (__actMetaP[a.kind] || __actMetaP.note).color, icon: (__actMetaP[a.kind] || __actMetaP.note).icon }));
+  const PERF_RECENT_MEETINGS = [...pMeetings].slice(0, 10).map((m: any, i: number) => ({ id: m.id || i, title: m.title || 'جلسه', date: m.date || m.time || '', attendees: Array.isArray(m.attendees) ? m.attendees.length : (m.attendees || 0), duration: m.duration || '' }));
+  const PERF_ALERTS = [
+    ...pFollowups.filter((f: any) => f.status === 'overdue').map((f: any, i: number) => ({ id: 'of' + i, severity: 'high', icon: 'fa-solid fa-clock', title: 'پیگیریِ عقب‌افتاده: ' + (f.title || ''), desc: 'این پیگیری از موعد گذشته است.' })),
+    ...pReferrals.filter((r: any) => r.status !== 'done').map((r: any, i: number) => ({ id: 'or' + i, severity: 'medium', icon: 'fa-solid fa-share', title: 'ارجاعِ در انتظار: ' + (r.title || ''), desc: 'ارجاع به فروش هنوز بسته نشده.' })),
+  ].slice(0, 10);
   const filteredActivities = statFilter ? PERF_RECENT_ACTIVITIES.filter(a => a.kind === statFilter) : PERF_RECENT_ACTIVITIES;
   return (
     <div className="flex flex-col h-full">
