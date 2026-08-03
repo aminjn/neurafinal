@@ -1159,15 +1159,24 @@ function DineAccountTab() {
   useEffect(() => { if (!getToken()) return; (async () => { try { const v: any = await (api as any).myList('notif_prefs'); if (Array.isArray(v) && v[0] && v[0].map) setNprefs(v[0].map); } catch (_) {} })(); }, []);
   const __toggleNotif = (k: string, d: boolean) => setNprefs(prev => { const next = { ...prev, [k]: !(prev[k] ?? d) }; (api as any).myCreate('notif_prefs', { id: 'prefs', map: next }).catch(() => {}); return next; });
 
+  // dineaccountreal: آدرس‌ها و علاقه‌مندی از انبارِ per-userِ سرور (نه هاردکد/خالیِ همیشگی)
+  const [__addrList, setAddrList] = useState<any[]>([]);
+  useEffect(() => { if (!getToken()) return; (async () => { try { const r: any = await (api as any).myList('addresses'); if (Array.isArray(r)) setAddrList(r); } catch (_) {} })(); }, []);
+  const [__dineFavs, setDineFavs] = useState<any[]>([]);
+  useEffect(() => { if (!getToken()) return; (async () => { try { const r: any = await (api as any).myList('dine_favorites'); if (Array.isArray(r)) setDineFavs(r); } catch (_) {} })(); }, []);
 
-  const ADDRESSES: any[] = [];
+  const ADDRESSES: any[] = __addrList.map((a: any, i: number) => ({ id: a.id || i, title: a.title || a.label || 'آدرس', address: a.address || a.full || '', icon: 'fa-solid fa-map-marker-alt', isDefault: !!a.isDefault }));
 
   const PAYMENTS = [
     { id: 1, title: 'کیف پول Neura', balance: (walletBalance || 0).toLocaleString('fa-IR') + ' تومان', icon: 'fa-solid fa-wallet', color: '#8B5CF6', isDefault: true },
     ...__payM.map((m: any, i: number) => ({ id: 'pm_' + (m.id || i), title: m.title || m.bank || 'کارت بانکی', last4: m.last4 || (m.number ? '****' + String(m.number).replace(/\D/g, '').slice(-4) : ''), icon: 'fa-solid fa-credit-card', color: '#3B82F6', isDefault: !!m.isDefault })),
   ];
 
-  const HISTORY: any[] = [];
+  const HISTORY: any[] = (euPlacedOrders || []).filter((o: any) => o.source === 'dine').map((o: any, i: number) => ({
+    id: o.id || i, items: o.items || o.title || 'سفارش', status: o.status,
+    restaurant: o.restaurant || o.vendor || '', date: o.date || '',
+    total: (Number(String(o.total).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR'),
+  }));
 
   const SECTIONS = [
     { id: 'addresses', icon: 'fa-solid fa-map-marker-alt', label: 'آدرس‌های من', color: '#3B82F6', count: ADDRESSES.length },
@@ -1296,13 +1305,7 @@ function DineAccountTab() {
         {[
           {
             id: 'favorites', icon: 'fa-solid fa-heart', label: 'غذاهای مورد علاقه', color: '#EF4444', desc: '',
-            items: [
-              { t: 'چلوکباب سلطانی', s: 'رستوران شاندیز', p: '۲۸۵,۰۰۰', icon: 'fa-solid fa-drumstick-bite' },
-              { t: 'پیتزا پپرونی', s: 'فست‌فود نیکا', p: '۱۹۵,۰۰۰', icon: 'fa-solid fa-pizza-slice' },
-              { t: 'قرمه‌سبزی', s: 'رستوران دربار', p: '۱۷۰,۰۰۰', icon: 'fa-solid fa-bowl-food' },
-              { t: 'سالاد سزار', s: 'سالاد بار سبز', p: '۹۵,۰۰۰', icon: 'fa-solid fa-leaf' },
-              { t: 'برگر مخصوص', s: 'فست‌فود نیکا', p: '۱۴۵,۰۰۰', icon: 'fa-solid fa-burger' },
-            ],
+            items: __dineFavs.map((x: any) => ({ t: x.name || x.t || '', s: x.venue || x.restaurant || x.s || '', p: x.price || x.p || '', icon: x.icon || 'fa-solid fa-utensils' })),
           },
           {
             id: 'notifications', icon: 'fa-solid fa-bell', label: 'تنظیمات اعلان', color: '#F59E0B', desc: 'فعال',
