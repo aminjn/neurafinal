@@ -22,7 +22,7 @@ const ALLOWED = new Set([
   'sec_tasks', 'sec_events', 'sec_meetings', 'sec_reminders',
   // منشیِ شخصی (per-user)
   'sec_tasks', 'sec_events', 'sec_meetings', 'sec_reminders',
-  'sec_contacts', 'sec_leads', 'sec_receipts', 'sec_payments', 'sec_todos', 'sec_activities', 'dine_favorites',
+  'sec_contacts', 'sec_leads', 'sec_receipts', 'sec_payments', 'sec_todos', 'sec_activities', 'dine_favorites', 'asst_msgs',
   // ایجنتِ بازاریاب (per-user) — لید/کمپین/سگمنت/پرسونا/تقویم/تأییدها/گفتگوها
   'mkt_leads', 'mkt_campaigns', 'mkt_segments', 'mkt_personas', 'mkt_calendar', 'mkt_approvals', 'mkt_conversations',
   // ایجنتِ خرید و تدارکات (per-user) — انبار/کاتالوگِ کالاها + تأمین‌کننده‌ها

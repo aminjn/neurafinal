@@ -335,10 +335,13 @@ function AssistantCalendarTab({ events, setEvents, tasks, setTasks }: { events: 
               <div className="flex-1 min-w-0">
                 <div className={`text-[13px] ${ev.status === 'done' ? 'line-through text-[var(--aw-text-muted)]' : 'text-[var(--aw-text-primary)]'}`} style={{ fontWeight: 700 }}>{ev.title}</div>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="text-[10px] flex items-center gap-1" style={{ color: ss.pillText, fontWeight: 600 }}>
-                    <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: ss.pillText }} />
-                    {ss.label}
-                  </span>
+                  {/* پیل وضعیت فقط برای حالت‌های معنادار (در حالِ انجام/انجام‌شده/لغو) — «معلق» حالتِ پیش‌فرضِ هر رویدادِ تازه است و نشان‌دادنش کنارِ همه‌چیز فقط شلوغی/گیج‌کننده بود. */}
+                  {ev.status !== 'pending' && (
+                    <span className="text-[10px] flex items-center gap-1" style={{ color: ss.pillText, fontWeight: 600 }}>
+                      <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: ss.pillText }} />
+                      {ss.label}
+                    </span>
+                  )}
                   <span className="text-[10px] text-[var(--aw-text-muted)]"><i className="fa-regular fa-clock text-[8px] ml-1" />{ev.time}</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-md" style={{ background: `${ct.color}1F`, color: ct.color, fontWeight: 700 }}>{ct.label}</span>
                 </div>
@@ -955,7 +958,9 @@ function AssistantSearchTab({ onBack }: { onBack?: () => void }) {
   const [_orders, _setOrders] = useState<any[]>([]);
   const [_events, _setEvents] = useState<any[]>([]);
   const [_tasks, _setTasks] = useState<any[]>([]);
+  const [_notes, _setNotes] = useState<any[]>([]);
   const _asstSearchLoaded = useRef(false);
+  const _loadNotes = () => { (api as any).myList('notes').then((n: any) => { if (Array.isArray(n)) _setNotes(n as any); }).catch(() => {}); };
   useEffect(() => {
     if (_asstSearchLoaded.current) return; _asstSearchLoaded.current = true;
     (async () => {
@@ -968,7 +973,14 @@ function AssistantSearchTab({ onBack }: { onBack?: () => void }) {
       }))); } catch (_e) {}
       try { const e: any = await (api as any).myList('calendar'); if (Array.isArray(e)) _setEvents(e as any); } catch (_e) {}
       try { const t: any = await (api as any).myList('tasks'); if (Array.isArray(t)) _setTasks(t as any); } catch (_e) {}
+      _loadNotes();
     })();
+  }, []);
+  // یادداشتِ ساخته‌شده توسط دستیار (myCreate('notes')) بلافاصله اینجا دیده شود.
+  useEffect(() => {
+    const onChanged = (e: any) => { if (e?.detail?.collection === 'notes') _loadNotes(); };
+    window.addEventListener('neura-data-changed', onChanged as any);
+    return () => window.removeEventListener('neura-data-changed', onChanged as any);
   }, []);
 
   const matchedOrders = q ? _orders.filter((o: any) =>
@@ -1059,9 +1071,11 @@ function AssistantSearchTab({ onBack }: { onBack?: () => void }) {
                   <span className="flex-1 text-[12.5px] text-[var(--aw-text-primary)] truncate" style={{ fontWeight: 700 }}>
                     <Highlight text={e.title} query={q} />
                   </span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-md flex items-center gap-1" style={{ background: ss.pillBg, color: ss.pillText, fontWeight: 700 }}>
-                    <i className={`${ss.icon} text-[8px]`} />{ss.label}
-                  </span>
+                  {e.status !== 'pending' && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md flex items-center gap-1" style={{ background: ss.pillBg, color: ss.pillText, fontWeight: 700 }}>
+                      <i className={`${ss.icon} text-[8px]`} />{ss.label}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-[10px] text-[var(--aw-text-muted)] flex-wrap mb-1">
                   <span><i className="fa-regular fa-calendar text-[8px] ml-1" /><Highlight text={e.date} query={q} /></span>
@@ -1126,15 +1140,15 @@ function AssistantSearchTab({ onBack }: { onBack?: () => void }) {
             ))}
           </div>
 
-          <SectionTitle icon="fa-solid fa-sticky-note" title="یادداشت‌های اخیر" />
-          {NOTES.map((n, i) => (
+          {_notes.length > 0 && <SectionTitle icon="fa-solid fa-sticky-note" title="یادداشت‌های اخیر" />}
+          {_notes.map((n: any, i: number) => (
             <motion.div key={n.id} className="p-3 mb-2" style={euCardStyle}
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[13px] text-[var(--aw-text-primary)]" style={{ fontWeight: 600 }}>{n.title}</span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-md" style={{ background: `${n.color}15`, color: n.color }}>{n.tag}</span>
+                {n.tag && <span className="text-[9px] px-1.5 py-0.5 rounded-md" style={{ background: `${n.color || '#6366f1'}15`, color: n.color || '#6366f1' }}>{n.tag}</span>}
               </div>
-              <div className="text-[11px] text-[var(--aw-text-secondary)] truncate">{n.preview}</div>
+              <div className="text-[11px] text-[var(--aw-text-secondary)] truncate">{n.preview || n.text}</div>
               <div className="text-[9px] text-[var(--aw-text-muted)] mt-1"><i className="fa-regular fa-clock text-[8px] ml-0.5" />{n.date}</div>
             </motion.div>
           ))}
@@ -1520,12 +1534,38 @@ function AssistantReportTab({ tasks, events, orders }: { tasks: AsstTask[]; even
   );
 }
 
+// agentaction: تشخیصِ خواستِ کاربر برای «انجامِ کار» و اجرای واقعیِ آن روی دادهٔ per-user
+// (نه ادعای دروغِ AI). خروجی: { collection, doc, confirm } یا null.
+function __detectAssistantAction(raw: string): { collection: string; doc: any; confirm: string } | null {
+  const m = String(raw || '').trim();
+  const hasCreate = /(بساز|بسازش|اضافه\s*کن|ثبت\s*کن|ایجاد\s*کن|بنویس|درست\s*کن|بذار|بگذار|تنظیم\s*کن|یادم\s*بنداز)/.test(m);
+  if (!hasCreate) return null;
+  const kind = /(یادآور|ریمایندر|یادم\s*بنداز)/.test(m) ? 'reminder' : /(یادداشت|نوت)/.test(m) ? 'note' : /(تسک|وظیفه|کار)/.test(m) ? 'task' : null;
+  if (!kind) return null;
+  const t = m
+    .replace(/(یک|یه)\s+/g, '')
+    .replace(/(تسک|وظیفه|کار|یادآوری|یادآور|ریمایندر|یادداشت|نوت)(\s+جدید)?/g, '')
+    .replace(/(بسازش|بساز|اضافه\s*کن|ثبت\s*کن|ایجاد\s*کن|بنویس|درست\s*کن|بذار|بگذار|تنظیم\s*کن|یادم\s*بنداز)/g, '')
+    .replace(/(به\s*نام|با\s*عنوان|با\s*موضوع|برای\s*من|برام|لطفا[ً]?|که|:|،|["'«»])/g, '')
+    .replace(/\s+/g, ' ').replace(/\s+(رو|را)$/,'').trim();
+  if (!t) return null;
+  // هر سه به سطحی می‌روند که کاربر واقعاً می‌بیندشان (وگرنه «ثبت شد» ولی نامرئی = همان دروغ):
+  // تسک → «روزمرگی»، یادآوری → رویدادِ امروزِ تقویمِ «روزمرگی»، یادداشت → «یادداشت‌های اخیر» در جستجو.
+  if (kind === 'task') return { collection: 'tasks', doc: { id: Date.now(), title: t, priority: 'medium', done: false, dueDate: '', status: 'todo' }, confirm: `تسکِ «${t}» ساخته شد و در «روزمرگی» ثبت شد ✅` };
+  if (kind === 'reminder') return { collection: 'calendar', doc: { id: Date.now(), title: t, time: '', date: 'امروز', type: 'reminder', status: 'pending', muted: false }, confirm: `یادآوریِ «${t}» برای امروز در «روزمرگی» ثبت شد ✅` };
+  return { collection: 'notes', doc: { id: Date.now(), title: t, text: t, tag: 'یادداشت', color: '#6366f1', preview: t, date: new Date().toLocaleDateString('fa-IR'), at: new Date().toISOString() }, confirm: `یادداشتِ «${t}» ثبت شد و در جستجو زیرِ «یادداشت‌های اخیر» می‌بینی ✅` };
+}
+
 function AssistantNewChat({ resetSignal = 0, loadMessages = null, loadSignal = 0 }: { resetSignal?: number; loadMessages?: { from: 'user' | 'agent'; text: string }[] | null; loadSignal?: number }) {
   const { showToast, speakMessage, speakingMsgId, agents } = useApp();
   // پرسونای واقعیِ دستیار (نام/خوش‌آمدِ ذخیره‌شدهٔ کاربر) — پیش‌تر asst/asstName تعریف‌نشده بودند و کرش می‌دادند.
   const asst: any = (agents || []).find((a: any) => a.id === 'assistant') || null;
   const asstName: string = (asst && (asst.name || asst.title)) || 'دستیار';
   const [messages, setMessages] = useState<{ from: 'user' | 'agent'; text: string }[]>([]);
+  // chatpersist: گفتگوی دستیار را per-user ذخیره/بارگذاری کن تا با هارد‌رفرش/ناوبری نپرد
+  const __chatLoaded = useRef(false);
+  useEffect(() => { if (!getToken()) return; (async () => { try { const v: any = await (api as any).myList('asst_msgs'); if (Array.isArray(v) && v.length) setMessages(v as any); } catch (_) {} __chatLoaded.current = true; })(); }, []);
+  useEffect(() => { if (!__chatLoaded.current || !getToken()) return; const h = setTimeout(() => { (api as any).myBulkSave('asst_msgs', messages).catch(() => {}); }, 500); return () => clearTimeout(h); }, [messages]);
   const [inputText, setInputText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   // ── مکالمهٔ صوتیِ زنده (STT → chat → TTS در حلقه) ──
@@ -1645,6 +1685,17 @@ function AssistantNewChat({ resetSignal = 0, loadMessages = null, loadSignal = 0
     setInputText('');
     const nextMsgs = [...messages, { from: 'user' as const, text: userMsg }];
     setMessages(nextMsgs);
+    // agentaction: اگر خواستِ ساختِ تسک/یادآوری/یادداشت بود، همین‌جا واقعاً بساز (نه ادعای دروغ)
+    const act = __detectAssistantAction(userMsg);
+    if (act) {
+      (async () => {
+        let ok = false;
+        try { await (api as any).myCreate(act.collection, act.doc); ok = true; } catch (_) { ok = false; }
+        setMessages(prev => [...prev, { from: 'agent', text: ok ? act.confirm : 'الان نتوانستم ثبتش کنم؛ چند لحظه بعد دوباره بگو.' }]);
+        try { window.dispatchEvent(new CustomEvent('neura-data-changed', { detail: { collection: act.collection } })); } catch (_) {}
+      })();
+      return;
+    }
     (async () => {
       try {
         const hist = nextMsgs.map(m => ({ role: m.from === 'user' ? 'user' : 'assistant', content: m.text }));
@@ -1941,6 +1992,17 @@ export function EuAssistantScreen() {
   }, []);
   useEffect(() => { if (!_asstDataLoaded.current || !getToken()) return; const _h = setTimeout(() => { (api as any).myBulkSave('tasks', tasks).catch(() => {}); }, 700); return () => clearTimeout(_h); }, [tasks]);
   useEffect(() => { if (!_asstDataLoaded.current || !getToken()) return; const _h = setTimeout(() => { (api as any).myBulkSave('calendar', events).catch(() => {}); }, 700); return () => clearTimeout(_h); }, [events]);
+  // datachanged: \u062F\u0633\u062A\u06CC\u0627\u0631 \u0627\u0632 \u062F\u0627\u062E\u0644\u0650 \u0686\u062A \u062A\u0633\u06A9 \u0645\u06CC\u200C\u0633\u0627\u0632\u062F \u2192 \u062F\u0627\u062F\u0647\u0654 \u062A\u0627\u0632\u0647 \u0631\u0627 \u0628\u06AF\u06CC\u0631 \u062A\u0627 \u0647\u0645 \u0646\u0645\u0627\u06CC\u0634 \u0632\u0646\u062F\u0647 \u0628\u0627\u0634\u062F \u0648 \u0647\u0645 \u0630\u062E\u06CC\u0631\u0647\u0654 \u06AF\u0631\u0648\u0647\u06CC\u0650 state\u0650 \u0642\u062F\u06CC\u0645\u06CC\u060C \u062A\u0633\u06A9\u0650 \u0646\u0648 \u0631\u0627 \u067E\u0627\u06A9 \u0646\u06A9\u0646\u062F.
+  useEffect(() => {
+    const onChanged = (e: any) => {
+      const coll = e?.detail?.collection;
+      if (!getToken()) return;
+      if (coll === 'tasks' || coll === 'reminders') { (api as any).myList('tasks').then((t: any) => { if (Array.isArray(t)) setTasks(t as any); }).catch(() => {}); }
+      if (coll === 'calendar' || coll === 'events') { (api as any).myList('calendar').then((v: any) => { if (Array.isArray(v)) setEvents(v as any); }).catch(() => {}); }
+    };
+    window.addEventListener('neura-data-changed', onChanged as any);
+    return () => window.removeEventListener('neura-data-changed', onChanged as any);
+  }, []);
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     const _en = (x: any) => String(x == null ? '' : x).replace(/[\u06F0-\u06F9]/g, (d: string) => String(d.charCodeAt(0) - 0x06F0)).replace(/[\u0660-\u0669]/g, (d: string) => String(d.charCodeAt(0) - 0x0660));
@@ -2312,6 +2374,18 @@ export function EuPlannerScreen() {
   }, []);
   useEffect(() => { if (!_asstDataLoaded.current || !getToken()) return; const _h = setTimeout(() => { (api as any).myBulkSave('tasks', tasks).catch(() => {}); }, 700); return () => clearTimeout(_h); }, [tasks]);
   useEffect(() => { if (!_asstDataLoaded.current || !getToken()) return; const _h = setTimeout(() => { (api as any).myBulkSave('calendar', events).catch(() => {}); }, 700); return () => clearTimeout(_h); }, [events]);
+  // datachanged: \u0648\u0642\u062A\u06CC \u062F\u0633\u062A\u06CC\u0627\u0631 \u0627\u0632 \u062F\u0627\u062E\u0644\u0650 \u06AF\u0641\u062A\u06AF\u0648 \u062A\u0633\u06A9/\u06CC\u0627\u062F\u0622\u0648\u0631\u06CC \u0645\u06CC\u200C\u0633\u0627\u0632\u062F (myCreate + \u0631\u0648\u06CC\u062F\u0627\u062F)\u060C \u0627\u06CC\u0646 \u0635\u0641\u062D\u0647 \u062F\u0627\u062F\u0647\u0654 \u062A\u0627\u0632\u0647 \u0631\u0627 \u0627\u0632 \u0633\u0631\u0648\u0631 \u0645\u06CC\u200C\u06AF\u06CC\u0631\u062F
+  // \u062A\u0627 \u0647\u0645 \u062A\u0633\u06A9\u0650 \u0646\u0648 \u0632\u0646\u062F\u0647 \u0646\u0645\u0627\u06CC\u0634 \u062F\u0627\u062F\u0647 \u0634\u0648\u062F \u0648 \u0647\u0645 state\u0650 \u0642\u062F\u06CC\u0645\u06CC \u0628\u0627 \u0630\u062E\u06CC\u0631\u0647\u0654 \u06AF\u0631\u0648\u0647\u06CC\u0650 \u0628\u0639\u062F\u06CC\u060C \u062A\u0633\u06A9\u0650 \u062A\u0627\u0632\u0647 \u0631\u0627 \u067E\u0627\u06A9 \u0646\u06A9\u0646\u062F.
+  useEffect(() => {
+    const onChanged = (e: any) => {
+      const coll = e?.detail?.collection;
+      if (!getToken()) return;
+      if (coll === 'tasks' || coll === 'reminders') { (api as any).myList('tasks').then((t: any) => { if (Array.isArray(t)) setTasks(t as any); }).catch(() => {}); }
+      if (coll === 'calendar' || coll === 'events') { (api as any).myList('calendar').then((v: any) => { if (Array.isArray(v)) setEvents(v as any); }).catch(() => {}); }
+    };
+    window.addEventListener('neura-data-changed', onChanged as any);
+    return () => window.removeEventListener('neura-data-changed', onChanged as any);
+  }, []);
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     const _en = (x: any) => String(x == null ? '' : x).replace(/[\u06F0-\u06F9]/g, (d: string) => String(d.charCodeAt(0) - 0x06F0)).replace(/[\u0660-\u0669]/g, (d: string) => String(d.charCodeAt(0) - 0x0660));
