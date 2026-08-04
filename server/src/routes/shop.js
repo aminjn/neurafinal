@@ -95,6 +95,7 @@ router.get('/market/products', authRequired, async (req, res) => {
   const { rows } = await query("SELECT company AS scope, data FROM documents WHERE collection = 'u_proc_inventory' ORDER BY created_at");
   const nameCache = {};
   const shopCache = {};
+  const rateCache = {};
   const out = [];
   for (const r of rows) {
     const p = r.data || {};
@@ -102,7 +103,9 @@ router.get('/market/products', authRequired, async (req, res) => {
     const sub = String(r.scope || '').replace(/^user:/, '');
     if (!(await userHasShop(sub, shopCache))) continue; // فقط فروشگاه‌دار (ایجنتِ فروشنده)
     if (!(sub in nameCache)) nameCache[sub] = await resolveShopName(sub, p.shopName);
-    out.push({ ...p, shopName: nameCache[sub], _shopId: sub });
+    if (!(sub in rateCache)) rateCache[sub] = await productRatings(sub);
+    const rt = rateCache[sub][String(p.id)] || { rating: 0, ratingCount: 0 };
+    out.push({ ...p, shopName: nameCache[sub], _shopId: sub, rating: rt.rating, ratingCount: rt.ratingCount });
   }
   res.json(out);
 });
@@ -117,6 +120,167 @@ router.get('/market/:userId/products', authRequired, async (req, res) => {
   const inStock = rows.map((r) => r.data).filter((p) => (Number(p && p.quantity) || 0) > 0);
   const shopName = await resolveShopName(sub, inStock[0] && inStock[0].shopName);
   res.json(inStock.map((p) => ({ ...p, shopName })));
+});
+
+// ————————————————————————— نظر و امتیازِ محصولِ مارکت (both-role) —————————————————————————
+// میانگینِ امتیازِ هر محصولِ یک فروشنده از u_product_reviews (برای نمایش کنارِ محصول در بازار).
+async function productRatings(sellerId) {
+  const { rows } = await query("SELECT data FROM documents WHERE collection='u_product_reviews' AND company=$1", ['user:' + sellerId]);
+  const by = {};
+  for (const r of rows) { const d = r.data || {}; const pid = String(d.productId || ''); if (!pid) continue; (by[pid] = by[pid] || []).push(Math.max(0, Number(d.rating) || 0)); }
+  const out = {};
+  for (const pid of Object.keys(by)) { const a = by[pid]; out[pid] = { rating: Math.round((a.reduce((s, x) => s + x, 0) / a.length) * 10) / 10, ratingCount: a.length }; }
+  return out;
+}
+// آیا خریدار این محصول را واقعاً از این فروشنده خریده؟ (شرطِ ثبتِ نظر — جلوگیری از نظرِ جعلی)
+async function buyerPurchased(buyerSub, sellerId, productId) {
+  const { rows } = await query("SELECT data FROM documents WHERE collection='u_orders' AND company=$1", ['user:' + buyerSub]);
+  return rows.some((r) => {
+    const o = r.data || {}; if (o.kind === 'sale') return false;
+    const items = Array.isArray(o.lines) ? o.lines : (Array.isArray(o.items) ? o.items : []);
+    return items.some((it) => it && String(it.productId) === String(productId) && (String(it.sellerId || '') === String(sellerId) || !it.sellerId));
+  });
+}
+
+// ثبتِ نظرِ «واقعی» برای یک محصول — فقط اگر خریدار آن را خریده باشد. در انبارِ فروشنده ذخیره می‌شود.
+router.post('/product/review', authRequired, async (req, res) => {
+  const sellerId = String(req.body?.sellerId || '');
+  const productId = String(req.body?.productId || '');
+  const rating = Math.max(1, Math.min(5, Math.floor(Number(req.body?.rating) || 0)));
+  const text = String(req.body?.text || '').slice(0, 1000);
+  if (!sellerId || !productId || !rating) return res.status(400).json({ error: 'bad_review' });
+  if (!(await buyerPurchased(req.user.sub, sellerId, productId))) return res.status(403).json({ error: 'not_purchased', detail: 'فقط خریدارِ همین محصول می‌تواند نظر بدهد.' });
+  let name = 'کاربر';
+  try { const ur = await query('SELECT name, username FROM app_users WHERE id=$1', [req.user.sub]); name = (ur.rows[0] && (ur.rows[0].name || ur.rows[0].username)) || 'کاربر'; } catch (_) {}
+  const id = 'prev_' + Date.now() + Math.random().toString(36).slice(2, 5);
+  const review = { id, productId, sellerId, user: name, userId: String(req.user.sub), rating, text, date: new Date().toISOString() };
+  // یک نظر برای هر کاربر روی هر محصول (به‌روزرسانی اگر قبلاً داده)
+  const prev = await query("SELECT id FROM documents WHERE collection='u_product_reviews' AND company=$1 AND data->>'productId'=$2 AND data->>'userId'=$3 LIMIT 1", ['user:' + sellerId, productId, String(req.user.sub)]);
+  const dbId = prev.rows[0] ? prev.rows[0].id : (sellerId + '__' + id);
+  await query("INSERT INTO documents (collection, id, company, data) VALUES ('u_product_reviews', $1, $2, $3::jsonb) ON CONFLICT (collection, id) DO UPDATE SET data=$3::jsonb, updated_at=now()", [dbId, 'user:' + sellerId, JSON.stringify(review)]);
+  // نوتیفِ فروشنده
+  const ntfId = 'ntf_' + Date.now() + Math.random().toString(36).slice(2, 5);
+  await query("INSERT INTO documents (collection, id, company, data) VALUES ('u_notifications', $1, $2, $3::jsonb)", [sellerId + '__' + ntfId, 'user:' + sellerId, JSON.stringify({ id: ntfId, type: 'review', title: 'نظرِ جدید روی محصول', message: name + ' امتیازِ ' + rating + ' ثبت کرد', body: text, date: new Date().toISOString(), read: false })]);
+  res.json({ ok: true, review });
+});
+
+// نظرهای عمومیِ یک محصول (برای نمایش به خریدارها)
+router.get('/product/:sellerId/:productId/reviews', authRequired, async (req, res) => {
+  const { rows } = await query("SELECT data FROM documents WHERE collection='u_product_reviews' AND company=$1 ORDER BY created_at DESC LIMIT 100", ['user:' + String(req.params.sellerId)]);
+  const list = rows.map((r) => r.data).filter((d) => d && String(d.productId) === String(req.params.productId));
+  const avg = list.length ? Math.round((list.reduce((s, x) => s + (Number(x.rating) || 0), 0) / list.length) * 10) / 10 : 0;
+  res.json({ rating: avg, count: list.length, reviews: list.map((d) => ({ user: d.user || 'کاربر', rating: Math.round(Number(d.rating) || 0), text: d.text || '', date: d.date || '' })) });
+});
+
+// نظرهای محصولاتِ خودِ فروشنده (both-role: فروشنده نظرها را می‌بیند)
+router.get('/my-product-reviews', authRequired, async (req, res) => {
+  const { rows } = await query("SELECT data FROM documents WHERE collection='u_product_reviews' AND company=$1 ORDER BY created_at DESC LIMIT 200", ['user:' + req.user.sub]);
+  res.json(rows.map((r) => r.data).filter(Boolean));
+});
+
+// ————————————————————————— مرجوعی/بازگشتِ وجه (both-role) —————————————————————————
+// درخواستِ مرجوعیِ خریدار: وضعیتِ سفارش را «درخواستِ مرجوعی» می‌کند و برای فروشنده(ها) یک پروندهٔ مرجوعی +
+// نوتیف می‌سازد. بازپرداختِ واقعی هنگامِ تأییدِ فروشنده انجام می‌شود (اتمیک).
+router.post('/order/return', authRequired, async (req, res) => {
+  const orderId = String(req.body?.orderId || '');
+  const reason = String(req.body?.reason || '').slice(0, 500);
+  if (!orderId) return res.status(400).json({ error: 'order_required' });
+  const or = await query("SELECT id, data FROM documents WHERE collection='u_orders' AND company=$1 AND id=$2 LIMIT 1", ['user:' + req.user.sub, req.user.sub + '__' + orderId]);
+  const row = or.rows[0] || (await query("SELECT id, data FROM documents WHERE collection='u_orders' AND company=$1 AND data->>'id'=$2 LIMIT 1", ['user:' + req.user.sub, orderId])).rows[0];
+  if (!row) return res.status(404).json({ error: 'order_not_found' });
+  const o = row.data || {};
+  if (['return_requested', 'refunded'].includes(o.status)) return res.status(409).json({ error: 'already_' + o.status });
+  const lines = Array.isArray(o.lines) ? o.lines : [];
+  // گروه‌بندی بر اساسِ فروشنده
+  const bySeller = {};
+  for (const l of lines) { const sid = String(l.sellerId || ''); if (!sid || sid === String(req.user.sub)) continue; (bySeller[sid] = bySeller[sid] || []).push(l); }
+  let buyerName = 'کاربر';
+  try { const ur = await query('SELECT name, username FROM app_users WHERE id=$1', [req.user.sub]); buyerName = (ur.rows[0] && (ur.rows[0].name || ur.rows[0].username)) || 'کاربر'; } catch (_) {}
+  const sellerIds = Object.keys(bySeller);
+  // اگر خطِ فروشنده‌دار نبود (سفارشِ ویترین)، کلِ مبلغ را به‌عنوانِ یک مرجوعیِ بدونِ فروشنده ثبت کن
+  const groups = sellerIds.length ? sellerIds.map((sid) => ({ sid, lines: bySeller[sid] })) : [{ sid: '', lines }];
+  const returns = [];
+  for (const g of groups) {
+    const amount = g.lines.reduce((s, l) => s + (Number(l.priceNum) || 0) * (Number(l.qty) || 1), 0) || (sellerIds.length ? 0 : Number(o.total) || 0);
+    const rid = 'ret_' + Date.now() + Math.random().toString(36).slice(2, 5);
+    const rec = { id: rid, orderId: o.id || orderId, orderNum: o.num || '', buyerId: String(req.user.sub), buyerName, sellerId: g.sid, reason, items: g.lines.map((l) => ({ name: l.name, qty: l.qty, priceNum: l.priceNum, productId: l.productId })), amount, status: 'pending', date: new Date().toISOString() };
+    const scope = g.sid ? ('user:' + g.sid) : ('user:' + req.user.sub);
+    await query("INSERT INTO documents (collection, id, company, data) VALUES ('u_returns', $1, $2, $3::jsonb)", [(g.sid || req.user.sub) + '__' + rid, scope, JSON.stringify(rec)]);
+    if (g.sid) {
+      const ntfId = 'ntf_' + Date.now() + Math.random().toString(36).slice(2, 5);
+      await query("INSERT INTO documents (collection, id, company, data) VALUES ('u_notifications', $1, $2, $3::jsonb)", [g.sid + '__' + ntfId, 'user:' + g.sid, JSON.stringify({ id: ntfId, type: 'return', title: 'درخواستِ مرجوعی', message: buyerName + ' برای سفارشِ #' + (o.num || '') + ' مرجوعی خواست', body: reason, date: new Date().toISOString(), read: false, amount })]);
+    }
+    returns.push(rec);
+  }
+  o.status = 'return_requested'; o.returnReason = reason;
+  await query("UPDATE documents SET data=$3::jsonb, updated_at=now() WHERE collection='u_orders' AND id=$1 AND company=$2", [row.id, 'user:' + req.user.sub, JSON.stringify(o)]);
+  res.json({ ok: true, returns });
+});
+
+// مرجوعی‌های در انتظارِ فروشنده (both-role)
+router.get('/returns', authRequired, async (req, res) => {
+  const { rows } = await query("SELECT data FROM documents WHERE collection='u_returns' AND company=$1 ORDER BY created_at DESC LIMIT 200", ['user:' + req.user.sub]);
+  res.json(rows.map((r) => r.data).filter(Boolean));
+});
+
+// تصمیمِ فروشنده روی مرجوعی: تأیید→بازپرداختِ اتمیک (خریدار+، فروشنده−، برگشتِ موجودی) ؛ رد→بازگشتِ وضعیت.
+router.post('/return/resolve', authRequired, async (req, res) => {
+  const returnId = String(req.body?.returnId || '');
+  const approve = req.body?.approve !== false;
+  if (!returnId) return res.status(400).json({ error: 'return_required' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const rr = await client.query("SELECT id, data FROM documents WHERE collection='u_returns' AND company=$1 AND data->>'id'=$2 LIMIT 1 FOR UPDATE", ['user:' + req.user.sub, returnId]);
+    if (!rr.rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'return_not_found' }); }
+    const rec = rr.rows[0].data || {};
+    if (rec.sellerId && String(rec.sellerId) !== String(req.user.sub)) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'not_your_return' }); }
+    if (rec.status !== 'pending') { await client.query('ROLLBACK'); return res.status(409).json({ error: 'already_' + rec.status }); }
+    const buyerId = String(rec.buyerId);
+    const amount = Math.max(0, Math.floor(Number(rec.amount) || 0));
+    if (approve) {
+      // خریدار: بازپرداختِ کیف‌پول
+      const br = await client.query('SELECT meta FROM app_users WHERE id=$1 FOR UPDATE', [buyerId]);
+      if (br.rows[0]) {
+        const bm = br.rows[0].meta || {};
+        if (!bm.wallet || typeof bm.wallet !== 'object') bm.wallet = { balance: 0, tx: [] };
+        bm.wallet.balance = (Number(bm.wallet.balance) || 0) + amount;
+        if (!Array.isArray(bm.wallet.tx)) bm.wallet.tx = [];
+        bm.wallet.tx.unshift({ id: 'ref' + Date.now(), type: 'deposit', title: 'بازگشتِ وجهِ مرجوعی #' + (rec.orderNum || ''), date: '', amount });
+        bm.wallet.tx = bm.wallet.tx.slice(0, 300);
+        await client.query('UPDATE app_users SET meta=$2::jsonb WHERE id=$1', [buyerId, JSON.stringify(bm)]);
+      }
+      // فروشنده: کسرِ مبلغ + برگشتِ موجودیِ انبار
+      const sm = (await client.query('SELECT meta FROM app_users WHERE id=$1 FOR UPDATE', [req.user.sub])).rows[0]?.meta || {};
+      if (!sm.wallet || typeof sm.wallet !== 'object') sm.wallet = { balance: 0, tx: [] };
+      sm.wallet.balance = (Number(sm.wallet.balance) || 0) - amount;
+      if (!Array.isArray(sm.wallet.tx)) sm.wallet.tx = [];
+      sm.wallet.tx.unshift({ id: 'refs' + Date.now(), type: 'purchase', title: 'مرجوعیِ سفارشِ #' + (rec.orderNum || ''), date: '', amount: -amount });
+      sm.wallet.tx = sm.wallet.tx.slice(0, 300);
+      await client.query('UPDATE app_users SET meta=$2::jsonb WHERE id=$1', [req.user.sub, JSON.stringify(sm)]);
+      for (const it of (rec.items || [])) {
+        if (!it.productId) continue;
+        const dbId = req.user.sub + '__' + it.productId;
+        const ir = await client.query("SELECT data FROM documents WHERE collection='u_proc_inventory' AND id=$1 AND company=$2 FOR UPDATE", [dbId, 'user:' + req.user.sub]);
+        if (ir.rows[0]) { const pd = ir.rows[0].data || {}; pd.quantity = (Number(pd.quantity) || 0) + (Number(it.qty) || 0); pd.status = 'sufficient'; await client.query("UPDATE documents SET data=$3::jsonb WHERE collection='u_proc_inventory' AND id=$1 AND company=$2", [dbId, 'user:' + req.user.sub, JSON.stringify(pd)]); }
+      }
+      rec.status = 'approved'; rec.resolvedAt = new Date().toISOString();
+      // سفارشِ خریدار → refunded
+      await client.query("UPDATE documents SET data = data || '{\"status\":\"refunded\"}'::jsonb WHERE collection='u_orders' AND company=$1 AND data->>'id'=$2", ['user:' + buyerId, rec.orderId]);
+    } else {
+      rec.status = 'rejected'; rec.resolvedAt = new Date().toISOString();
+      await client.query("UPDATE documents SET data = data || '{\"status\":\"preparing\"}'::jsonb WHERE collection='u_orders' AND company=$1 AND data->>'id'=$2", ['user:' + buyerId, rec.orderId]);
+    }
+    await client.query("UPDATE documents SET data=$3::jsonb, updated_at=now() WHERE collection='u_returns' AND id=$1 AND company=$2", [rr.rows[0].id, 'user:' + req.user.sub, JSON.stringify(rec)]);
+    // نوتیفِ خریدار از نتیجه
+    const ntfId = 'ntf_' + Date.now() + Math.random().toString(36).slice(2, 5);
+    await client.query("INSERT INTO documents (collection, id, company, data) VALUES ('u_notifications', $1, $2, $3::jsonb)", [buyerId + '__' + ntfId, 'user:' + buyerId, JSON.stringify({ id: ntfId, type: 'return_result', title: approve ? 'مرجوعیِ شما تأیید شد' : 'مرجوعیِ شما رد شد', message: approve ? ('مبلغِ ' + amount.toLocaleString('en-US') + ' تومان به کیفِ‌پولتان بازگشت') : 'درخواستِ مرجوعی پذیرفته نشد', date: new Date().toISOString(), read: false })]);
+    await client.query('COMMIT');
+    res.json({ ok: true, status: rec.status, refunded: approve ? amount : 0 });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    res.status(500).json({ error: 'resolve_failed', detail: String(e?.message || e) });
+  } finally { client.release(); }
 });
 
 // ————————————————————————— داین (رستوران/کافه) —————————————————————————

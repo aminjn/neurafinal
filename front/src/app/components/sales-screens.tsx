@@ -31,6 +31,44 @@ import { LetterAvatar } from './letter-avatar';
 import { ProductDetail, OrderDetail, OrderFlow, SalesAlertsSection, SalesShiftScreen, BUSINESS_TYPES, type PresetCat } from './sales-extra';
 import { OrderInvoice } from './end-user-panel';
 
+// بخشِ مرجوعی‌هایِ فروشنده (both-role): درخواست‌هایِ در انتظار + تأیید/رد با بازپرداختِ اتمیکِ سرور.
+function SellerReturnsSection() {
+  const { showToast } = useApp() as any;
+  const [returns, setReturns] = React.useState<any[]>([]);
+  const [busy, setBusy] = React.useState('');
+  const load = React.useCallback(() => { (api as any).listReturns().then((r: any) => setReturns(Array.isArray(r) ? r : [])).catch(() => {}); }, []);
+  React.useEffect(() => { load(); }, [load]);
+  const pending = returns.filter(r => r.status === 'pending');
+  const resolve = async (r: any, approve: boolean) => {
+    if (busy) return; setBusy(r.id);
+    try { const res: any = await (api as any).resolveReturn(r.id, approve); showToast && showToast(approve ? ('مرجوعی تأیید و ' + (Number(res.refunded) || 0).toLocaleString('fa-IR') + ' تومان بازپرداخت شد') : 'مرجوعی رد شد', 'success'); load(); }
+    catch (_e) { showToast && showToast('عملیات ناموفق بود', 'error'); }
+    finally { setBusy(''); }
+  };
+  if (!pending.length) return null;
+  return (
+    <div className="mt-3 mb-1 p-3 rounded-2xl border" style={{ background: 'color-mix(in srgb, var(--aw-danger) 8%, transparent)', borderColor: 'var(--aw-danger)' }}>
+      <div className="flex items-center gap-2 mb-2"><i className="fa-solid fa-rotate-left text-[13px]" style={{ color: 'var(--aw-danger)' }} /><span className="text-[13px]" style={{ fontWeight: 800, color: 'var(--aw-danger)' }}>درخواست‌های مرجوعی ({(pending.length).toLocaleString('fa-IR')})</span></div>
+      <div className="flex flex-col gap-2">
+        {pending.map((r, i) => (
+          <div key={r.id || i} className="p-2.5 rounded-xl" style={{ background: 'var(--aw-bg-card)', border: '1px solid var(--aw-border)' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-[12px]" style={{ fontWeight: 700 }}>{r.buyerName || 'خریدار'} · سفارش #{String(r.orderNum || '')}</span>
+              <span className="text-[12px] text-[var(--aw-danger)]" style={{ fontWeight: 800 }}>{(Number(r.amount) || 0).toLocaleString('fa-IR')} ت</span>
+            </div>
+            <div className="text-[11px] text-[var(--aw-text-secondary)] mt-0.5">{(r.items || []).map((it: any) => (it.name || 'کالا') + ' ×' + (it.qty || 1)).join('، ')}</div>
+            {r.reason && <div className="text-[10px] text-[var(--aw-text-muted)] mt-0.5">دلیل: {r.reason}</div>}
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <button onClick={() => resolve(r, true)} disabled={!!busy} className="py-2 rounded-[8px] border-none text-white text-[12px] cursor-pointer" style={{ background: '#10B981', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>تأیید و بازپرداخت</button>
+              <button onClick={() => resolve(r, false)} disabled={!!busy} className="py-2 rounded-[8px] text-[12px] cursor-pointer bg-transparent" style={{ border: '1px solid var(--aw-border)', color: 'var(--aw-text-secondary)', fontWeight: 700 }}>رد</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ========================
 // SHARED STYLES
 // ========================
@@ -637,6 +675,7 @@ export function SalesOrdersScreen() {
             </div>
           </div>
         )}
+        <SellerReturnsSection />
         {/* Add manual order card (hidden on the new-order form tab) */}
         {activeTab !== 'new' && (
           <button onClick={() => openModal('ثبت سفارش دستی', <OrderFlow />)} className="w-full flex items-center gap-3 p-3 mt-3 mb-1 rounded-2xl border cursor-pointer transition-all" style={{ background: 'var(--aw-primary-bg)', borderColor: 'var(--aw-primary)' }}>

@@ -414,7 +414,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const _nowIso = new Date().toISOString();
         // ثبتِ واقعیِ سفارش روی سرور + کسرِ کیف‌پول (اتمیک). اگر از QRِ میز آمده باشد، اطلاعاتِ میز هم می‌رود.
         const _dt: any = (source === 'dine' && (window as any).__dineTable && lines[0] && String((lines[0] as any).venueId) === String((window as any).__dineTable.venueId)) ? (window as any).__dineTable : null;
-        (api as any).placeOrder(source === 'dine' ? 'dine' : 'market', lines, total, { source, num: _num, items: itemsText, lines: lines.map((l: any) => ({ name: l.name, qty: l.qty, priceNum: l.priceNum })), vendor: _vendor, eta: _eta, status: 'preparing', date: _nowIso, address: (typeof window !== 'undefined' ? ((window as any).__euOrderAddress || '') : ''), ...(_dt ? { tableId: _dt.tableId, tableLabel: _dt.tableLabel, dineType: 'dinein' } : {}) })
+        (api as any).placeOrder(source === 'dine' ? 'dine' : 'market', lines, total, { source, num: _num, items: itemsText, lines: lines.map((l: any) => ({ name: l.name, qty: l.qty, priceNum: l.priceNum, productId: l.productId, sellerId: l.sellerId, menuItemId: l.menuItemId, venueId: l.venueId })), vendor: _vendor, eta: _eta, status: 'preparing', date: _nowIso, address: (typeof window !== 'undefined' ? ((window as any).__euOrderAddress || '') : ''), ...(_dt ? { tableId: _dt.tableId, tableLabel: _dt.tableLabel, dineType: 'dinein' } : {}) })
           .then((r: any) => { if (r && typeof r.balance === 'number') setWalletBalance(r.balance); })
           .catch((e: any) => { const m = (e && (e.status === 402 || String(e.message || e).includes('402') || String(e.message || '').includes('insufficient'))) ? 'پرداخت ناموفق: موجودی کیف‌پول کافی نیست' : 'ثبت سفارش ناموفق بود'; try { window.dispatchEvent(new CustomEvent('neura:toast', { detail: m })); } catch (_e) {} })
           .finally(() => { (async () => { try { const _o: any = await (api as any).myOrders(); if (Array.isArray(_o)) setEuPlacedOrders(_o); } catch (_e) {} })(); });
@@ -1323,7 +1323,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       financeData, setFinanceData,
       invoices, setInvoices, addInvoice,
       orders, setOrders,
-      euCart, setEuCart, cartAdd, cartDec, cartRemove, cartClear, cartQty, cartCount, checkoutCart, euPlacedOrders,
+      euCart, setEuCart, cartAdd, cartDec, cartRemove, cartClear, cartQty, cartCount, checkoutCart, euPlacedOrders, setEuPlacedOrders,
       userProfile, setUserProfile,
       euProfile, setEuProfile,
       tasks, setTasks,

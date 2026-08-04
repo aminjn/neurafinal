@@ -4,6 +4,8 @@
 //
 // اجرا:  DATABASE_URL=... node tools/audit-seed.mjs
 import { query, pool } from '../server/src/db.js';
+import bcrypt from '../server/node_modules/bcryptjs/index.js';
+const SELLER_PASS = 'seller123'; // تا هارنس بتواند به‌عنوانِ فروشنده لاگین و «تأییدِ مرجوعی» را تست کند
 
 const BUYER = process.env.AUDIT_USER || 'audituser';
 const SELLER_USER = 'audiseller';
@@ -12,12 +14,13 @@ const REST_USER = 'audirest';
 const REST_NAME = 'رستورانِ نمونهٔ نئورا';
 
 // قیمت‌ها ASCII باشند (مَپِ فرانت با replace(/[^0-9]/g) رقمِ فارسی را هم پاک می‌کند؛ نمایش خودش fa می‌کند).
+// id عددی (مثلِ محصولاتِ واقعیِ تدارکات که Date.now می‌گیرند) تا مَپِ فرانت (Number(id)) درست بماند و شرطِ نظر کار کند.
 const PRODUCTS = [
-  { id: 'p1', name: 'هدفون بلوتوث نئورا',   quantity: 25, salePrice: '1250000', purchasePrice: '900000',  category: 'electronics', unit: 'عدد', minStock: 5 },
-  { id: 'p2', name: 'ماوس بی‌سیم پرو',       quantity: 40, salePrice: '650000',  purchasePrice: '420000',  category: 'electronics', unit: 'عدد', minStock: 8 },
-  { id: 'p3', name: 'کیبورد مکانیکال RGB',   quantity: 15, salePrice: '2100000', purchasePrice: '1500000', category: 'electronics', unit: 'عدد', minStock: 4 },
-  { id: 'p4', name: 'قهوهٔ ترکِ ۲۵۰ گرمی',   quantity: 60, salePrice: '320000',  purchasePrice: '210000',  category: 'grocery',     unit: 'بسته', minStock: 10 },
-  { id: 'p5', name: 'تیشرتِ نخیِ یقه‌گرد',    quantity: 35, salePrice: '480000',  purchasePrice: '300000',  category: 'fashion',     unit: 'عدد', minStock: 6 },
+  { id: 1001, name: 'هدفون بلوتوث نئورا',   quantity: 25, salePrice: '1250000', purchasePrice: '900000',  category: 'electronics', unit: 'عدد', minStock: 5 },
+  { id: 1002, name: 'ماوس بی‌سیم پرو',       quantity: 40, salePrice: '650000',  purchasePrice: '420000',  category: 'electronics', unit: 'عدد', minStock: 8 },
+  { id: 1003, name: 'کیبورد مکانیکال RGB',   quantity: 15, salePrice: '2100000', purchasePrice: '1500000', category: 'electronics', unit: 'عدد', minStock: 4 },
+  { id: 1004, name: 'قهوهٔ ترکِ ۲۵۰ گرمی',   quantity: 60, salePrice: '320000',  purchasePrice: '210000',  category: 'grocery',     unit: 'بسته', minStock: 10 },
+  { id: 1005, name: 'تیشرتِ نخیِ یقه‌گرد',    quantity: 35, salePrice: '480000',  purchasePrice: '300000',  category: 'fashion',     unit: 'عدد', minStock: 6 },
 ];
 
 const MARKET_CATEGORIES = [
@@ -65,8 +68,9 @@ async function ensureUser(username, name, meta) {
   return ins.rows[0].id;
 }
 
-// ── فروشنده (فروشگاه) ──
+// ── فروشنده (فروشگاه) ── (با رمزِ واقعی تا لاگین و تستِ «تأییدِ مرجوعی» ممکن باشد)
 const sellerId = await ensureUser(SELLER_USER, SHOP_NAME, { ownedAgents: ['sales'], wallet: { balance: 0, tx: [] } });
+try { const h = await bcrypt.hash(SELLER_PASS, 8); await query('UPDATE app_users SET password_hash=$2 WHERE id=$1', [sellerId, h]); } catch (_) {}
 await upsertDoc('u_businesses', 'biz_' + sellerId, 'user:' + sellerId, { id: 'biz_' + sellerId, name: SHOP_NAME });
 for (const p of PRODUCTS) {
   await upsertDoc('u_proc_inventory', sellerId + '__' + p.id, 'user:' + sellerId,

@@ -974,6 +974,59 @@ function MarketDealsTab() {
   );
 }
 
+// نظر و امتیازِ محصول — واقعی: لیست از سرور + ثبتِ نظر فقط برای خریدارِ همان محصول (شرطِ سروری).
+function ProductReviews({ sellerId, productId }: { sellerId: string; productId: any }) {
+  const { showToast } = useApp() as any;
+  const [data, setData] = useState<{ rating: number; count: number; reviews: any[] }>({ rating: 0, count: 0, reviews: [] });
+  const [stars, setStars] = useState(5);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = React.useCallback(() => { if (!sellerId) return; (api as any).productReviews(sellerId, productId).then((r: any) => { if (r) setData({ rating: Number(r.rating) || 0, count: Number(r.count) || 0, reviews: Array.isArray(r.reviews) ? r.reviews : [] }); }).catch(() => {}); }, [sellerId, productId]);
+  React.useEffect(() => { load(); }, [load]);
+  const submit = async () => {
+    if (busy) return; setBusy(true);
+    try { await (api as any).submitProductReview(sellerId, productId, stars, text.trim()); showToast && showToast('نظرِ شما ثبت شد ✅', 'success'); setText(''); load(); }
+    catch (e: any) { const notBought = e && (e.status === 403 || String(e.message || e).includes('403') || String(e.message || '').includes('not_purchased')); showToast && showToast(notBought ? 'فقط خریدارِ این محصول می‌تواند نظر بدهد' : 'ثبتِ نظر ناموفق بود', 'error'); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[13px]" style={{ fontWeight: 800, color: 'var(--aw-text-primary)' }}>نظرات و امتیاز</span>
+        <span className="text-[11px] text-[#F59E0B]" style={{ fontWeight: 700 }}>{data.count > 0 ? <><i className="fa-solid fa-star text-[9px]" /> {toFa(data.rating)} ({toFa(data.count)} نظر)</> : 'هنوز نظری نیست'}</span>
+      </div>
+      {/* فرمِ ثبتِ نظر */}
+      <div className="p-3 rounded-xl mb-2" style={euCardStyle}>
+        <div className="flex items-center gap-1 mb-2">
+          {[1, 2, 3, 4, 5].map(n => (
+            <button key={n} onClick={() => setStars(n)} className="bg-transparent border-none cursor-pointer p-0" aria-label={`امتیاز ${n}`}>
+              <i className={`fa-${n <= stars ? 'solid' : 'regular'} fa-star text-[16px]`} style={{ color: '#F59E0B' }} />
+            </button>
+          ))}
+        </div>
+        <textarea value={text} onChange={e => setText(e.target.value)} placeholder="نظرت دربارهٔ این کالا…" rows={2}
+          className="w-full rounded-[10px] px-3 py-2 text-[12px] text-[var(--aw-text-primary)] outline-none border border-[var(--aw-border)] resize-none" style={{ background: 'var(--aw-bg-input)' }} />
+        <button onClick={submit} disabled={busy} className="mt-2 w-full py-2 rounded-[10px] border-none text-white text-[12px] cursor-pointer" style={{ background: 'var(--aw-eu-primary, #7B62FC)', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>
+          {busy ? 'در حال ثبت…' : 'ثبتِ نظر'}
+        </button>
+      </div>
+      {/* لیستِ نظرها */}
+      <div className="flex flex-col gap-1.5">
+        {data.reviews.length === 0 && <div className="text-[11px] text-center text-[var(--aw-text-muted)] py-3">اولین نفری باش که نظر می‌دهد.</div>}
+        {data.reviews.map((rv, i) => (
+          <div key={i} className="p-2.5 rounded-xl" style={euCardStyle}>
+            <div className="flex items-center justify-between">
+              <span className="text-[12px]" style={{ fontWeight: 700 }}>{rv.user}</span>
+              <span className="text-[10px] text-[#F59E0B]">{[1, 2, 3, 4, 5].map(n => <i key={n} className={`fa-${n <= (rv.rating || 0) ? 'solid' : 'regular'} fa-star text-[8px] ml-0.5`} />)}</span>
+            </div>
+            {rv.text && <div className="text-[11px] text-[var(--aw-text-secondary)] mt-1 leading-5">{rv.text}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ProductDetailView({ product, onBack, qty, onAdd, onRemove }: {
   product: MarketProduct; onBack: () => void; qty: number; onAdd: () => void; onRemove: () => void;
 }) {
@@ -1022,6 +1075,7 @@ function ProductDetailView({ product, onBack, qty, onAdd, onRemove }: {
             </div>
           ))}
         </div>
+        <ProductReviews sellerId={(product as any).shopId} productId={product.id} />
       </div>
       <div className="flex-shrink-0 px-4 py-3 border-t border-[var(--aw-border)]" style={{ background: 'var(--aw-bg-header)' }}>
         {!product.inStock ? (

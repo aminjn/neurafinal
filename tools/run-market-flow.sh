@@ -9,6 +9,9 @@ AUD="${AUDIT_DIR:-/var/tmp/neura-marketdb}"; PGPORT="${AUDIT_PGPORT:-5456}"; API
 RUNUSER=""; if [ "$(id -u)" = "0" ]; then id pgaudit >/dev/null 2>&1 || useradd -M -s /bin/bash pgaudit; RUNUSER="runuser -u pgaudit --"; fi
 psql_(){ $RUNUSER "$PGBIN/psql" -h 127.0.0.1 -p "$PGPORT" -U neura -d neura_audit -tc "$1" 2>&1; }
 
+# سرورهای زامبیِ اجراهای قبلی را ببند (وگرنه پورت را نگه می‌دارند و curl به کدِ قدیمی می‌خورد)
+pkill -f "node src/server.js" 2>/dev/null; sleep 1
+
 echo "==> PostgreSQL موقت"
 rm -rf "$AUD"; mkdir -p "$AUD"; [ -n "$RUNUSER" ] && chown -R pgaudit "$AUD"; chmod 700 "$AUD"
 $RUNUSER "$PGBIN/initdb" -D "$AUD/data" -U neura --auth=trust >/dev/null 2>&1 || { echo "initdb خطا"; exit 2; }
@@ -41,6 +44,21 @@ echo "==> تأییدِ سمتِ فروشنده (both-role): فروش/کیف‌پ
 psql_ "SELECT 'seller_wallet=' || (meta->'wallet'->>'balance') FROM app_users WHERE username='audiseller'"
 psql_ "SELECT 'seller_sale_orders=' || count(*) FROM documents d JOIN app_users u ON d.company='user:'||u.id WHERE u.username='audiseller' AND d.collection='u_orders' AND d.data->>'kind'='sale'"
 psql_ "SELECT 'seller_notifs=' || count(*) FROM documents d JOIN app_users u ON d.company='user:'||u.id WHERE u.username='audiseller' AND d.collection='u_notifications'"
+
+echo "==> تستِ نظر+مرجوعی+بازپرداخت (end-to-end, both-role)"
+API="http://127.0.0.1:$APIPORT/api"
+BT=$(curl -s -X POST "$API/auth/login" -H 'Content-Type: application/json' -d '{"username":"audituser","password":"audit123"}' | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+ST=$(curl -s -X POST "$API/auth/login" -H 'Content-Type: application/json' -d '{"username":"audiseller","password":"seller123"}' | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+OID=$(curl -s "$API/shop/orders" -H "Authorization: Bearer $BT" | sed -n 's/.*"id":"\(ord_[^"]*\)".*/\1/p' | head -1)
+echo "buyerToken=${BT:0:8}… sellerToken=${ST:0:8}… orderId=$OID"
+echo "-- ثبتِ نظر (خریدارِ واقعی):"; curl -s -X POST "$API/shop/product/review" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d '{"sellerId":"2","productId":"1001","rating":5,"text":"عالی بود"}' | head -c 200; echo
+echo "-- درخواستِ مرجوعی (خریدار):"; curl -s -X POST "$API/shop/order/return" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d "{\"orderId\":\"$OID\",\"reason\":\"کالا معیوب بود\"}" | head -c 200; echo
+RID=$(curl -s "$API/shop/returns" -H "Authorization: Bearer $ST" | sed -n 's/.*"id":"\(ret_[^"]*\)".*/\1/p' | head -1)
+echo "-- returnId=$RID → تأییدِ فروشنده (بازپرداختِ اتمیک):"; curl -s -X POST "$API/shop/return/resolve" -H "Authorization: Bearer $ST" -H 'Content-Type: application/json' -d "{\"returnId\":\"$RID\",\"approve\":true}" | head -c 200; echo
+echo "-- SQL: امتیازِ محصول / موجودیِ خریدار پس از بازپرداخت / وضعیتِ سفارش:"
+psql_ "SELECT 'reviews=' || count(*) FROM documents WHERE collection='u_product_reviews'"
+psql_ "SELECT 'buyer_wallet=' || (meta->'wallet'->>'balance') FROM app_users WHERE username='audituser'"
+psql_ "SELECT 'order_status=' || (data->>'status') FROM documents d JOIN app_users u ON d.company='user:'||u.id WHERE u.username='audituser' AND d.collection='u_orders' AND d.data->>'kind'<>'sale' LIMIT 1"
 
 echo "==> پاک‌سازی"
 [ -f "$AUD/server.pid" ] && kill "$(cat "$AUD/server.pid")" 2>/dev/null

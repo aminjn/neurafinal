@@ -2377,9 +2377,11 @@ function __faOrderDate(d: any): string {
 }
 
 export function OrderDetail({ order: o }: { order: Order }) {
-  const { closeModal, openChat, openModal } = useApp();
+  const { closeModal, openChat, openModal, showToast } = useApp() as any;
   const __num = (o as any).num || (o as any).id || '';
-  const __statusLabel = (ORDER_STATUS_LABELS as any)[o.status] || 'ثبت شد';
+  const __st = String((o as any).status || '');
+  const __statusLabel = (ORDER_STATUS_LABELS as any)[o.status] || ((__st === 'return_requested') ? 'درخواستِ مرجوعی' : (__st === 'refunded' ? 'مرجوعی‌شده' : 'ثبت شد'));
+  const __canReturn = !['return_requested', 'refunded', 'cancelled'].includes(__st);
 
   return (
     <div>
@@ -2412,6 +2414,50 @@ export function OrderDetail({ order: o }: { order: Order }) {
           onClick={() => openModal('فاکتور سفارش', <OrderInvoice order={o} />)}>
           <i className="fa-solid fa-file-invoice" /> مشاهده فاکتور
         </button>
+      </div>
+      {__st === 'return_requested' && <div className="mt-2 text-[11px] text-center text-[#F59E0B]"><i className="fa-solid fa-clock ml-1" />درخواستِ مرجوعی ثبت شد و در انتظارِ تأییدِ فروشنده است.</div>}
+      {__st === 'refunded' && <div className="mt-2 text-[11px] text-center text-[#10B981]"><i className="fa-solid fa-check ml-1" />مرجوعی تأیید و وجه به کیفِ‌پولتان بازگشت.</div>}
+      {__canReturn && (o as any).source === 'market' && (
+        <button className="w-full mt-2 py-2.5 rounded-[10px] text-[12px] cursor-pointer" style={{ background: 'transparent', border: '1px solid var(--aw-danger)', color: 'var(--aw-danger)', fontWeight: 600 }}
+          onClick={() => openModal('درخواست مرجوعی', <ReturnRequestForm order={o} />)}>
+          <i className="fa-solid fa-rotate-left ml-1" /> درخواست مرجوعی
+        </button>
+      )}
+    </div>
+  );
+}
+
+// فرمِ درخواستِ مرجوعیِ خریدار: دلیل + ثبت روی سرور (سفارش «درخواستِ مرجوعی» می‌شود و فروشنده مطلع).
+function ReturnRequestForm({ order: o }: { order: any }) {
+  const { closeModal, showToast, setEuPlacedOrders } = useApp() as any;
+  const [reason, setReason] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  const REASONS = ['کالا معیوب بود', 'مغایرت با توضیحات', 'اشتباه در سفارش', 'دیگر نمی‌خواهم'];
+  const submit = async () => {
+    if (busy) return; setBusy(true);
+    try {
+      await (api as any).requestReturn(o.id, reason.trim() || 'بدون توضیح');
+      showToast && showToast('درخواستِ مرجوعی ثبت شد ✅', 'success');
+      try { const _o: any = await (api as any).myOrders(); if (Array.isArray(_o)) setEuPlacedOrders(_o); } catch (_e) {}
+      closeModal();
+    } catch (e: any) {
+      const dup = e && String(e.message || e).includes('already');
+      showToast && showToast(dup ? 'قبلاً برای این سفارش درخواست ثبت شده' : 'ثبتِ درخواست ناموفق بود', 'error');
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-[12px] text-[var(--aw-text-secondary)]">دلیلِ مرجوعیِ سفارش #{toFa(String(o.num || o.id || ''))} را انتخاب یا بنویس:</div>
+      <div className="flex flex-wrap gap-1.5">
+        {REASONS.map(r => (
+          <button key={r} onClick={() => setReason(r)} className="text-[11px] px-2.5 py-1.5 rounded-full cursor-pointer" style={reason === r ? { background: 'var(--aw-eu-primary)', color: '#fff', border: 'none', fontWeight: 700 } : { background: 'transparent', border: '1px solid var(--aw-border)', color: 'var(--aw-text-secondary)' }}>{r}</button>
+        ))}
+      </div>
+      <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="توضیحِ بیشتر (اختیاری)" rows={2}
+        className="w-full rounded-[10px] px-3 py-2 text-[12px] text-[var(--aw-text-primary)] outline-none border border-[var(--aw-border)] resize-none" style={{ background: 'var(--aw-bg-input)' }} />
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={submit} disabled={busy} className="py-2.5 rounded-[10px] border-none cursor-pointer text-white text-[13px]" style={{ background: 'var(--aw-danger)', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>{busy ? 'در حال ثبت…' : 'ثبتِ درخواست'}</button>
+        <button onClick={closeModal} className="py-2.5 rounded-[10px] cursor-pointer text-[13px] bg-transparent" style={{ border: '1px solid var(--aw-border)', color: 'var(--aw-text-secondary)', fontWeight: 700 }}>انصراف</button>
       </div>
     </div>
   );

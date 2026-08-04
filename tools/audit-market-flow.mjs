@@ -90,7 +90,9 @@ await p.keyboard.press('Escape').catch(() => {}); await p.waitForTimeout(400);
 // فیلترِ دسته + مرتب‌سازی روی تبِ محصول
 await goEu('euMarketScreen'); await p.waitForTimeout(500); await dismiss(); await clickText('محصول'); await p.waitForTimeout(600);
 const catClicked = await clickText('دیجیتال'); await p.waitForTimeout(600); await shot('mkt_cat_digital');
-result_extra = { invoiceOpened, catClicked };
+// جزئیاتِ محصول: بخشِ نظرات و امتیاز
+const prodOpened = await clickText('هدفون بلوتوث نئورا'); await p.waitForTimeout(700); await scrollAll(); await shot('mkt_product_detail');
+result_extra = { invoiceOpened, catClicked, prodOpened };
 
 const result = { tabs: tabReport, purchase: { added, paidClicked: paid, balBefore, balAfter, spent: (balBefore != null && balAfter != null) ? balBefore - balAfter : null, ordBefore, ordAfter, newOrders: (ordAfter >= 0 && ordBefore >= 0) ? ordAfter - ordBefore : null }, extra: result_extra, errors: log.slice(0, 5) };
 fs.writeFileSync(path.resolve(ROOT, '..', '.audit-market-flow.json'), JSON.stringify(result, null, 2));

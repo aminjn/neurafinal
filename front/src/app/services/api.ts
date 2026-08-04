@@ -159,6 +159,14 @@ export const api = {
   marketShopProducts: (userId: string | number) => req<any[]>(`/shop/market/${encodeURIComponent(String(userId))}/products?_=${Date.now()}`),
   marketAllProducts: () => req<any[]>(`/shop/market/products?_=${Date.now()}`),
   sellerSales: () => req<any[]>(`/shop/sales?_=${Date.now()}`),
+  // نظر و امتیازِ محصول (both-role)
+  productReviews: (sellerId: string | number, productId: string | number) => req<any>(`/shop/product/${encodeURIComponent(String(sellerId))}/${encodeURIComponent(String(productId))}/reviews?_=${Date.now()}`),
+  submitProductReview: (sellerId: string | number, productId: string | number, rating: number, text: string) => req<any>(`/shop/product/review`, { method: 'POST', body: JSON.stringify({ sellerId, productId, rating, text }) }),
+  myProductReviews: () => req<any[]>(`/shop/my-product-reviews?_=${Date.now()}`),
+  // مرجوعی/بازگشتِ وجه (both-role)
+  requestReturn: (orderId: string | number, reason: string) => req<any>(`/shop/order/return`, { method: 'POST', body: JSON.stringify({ orderId, reason }) }),
+  listReturns: () => req<any[]>(`/shop/returns?_=${Date.now()}`),
+  resolveReturn: (returnId: string, approve: boolean) => req<any>(`/shop/return/resolve`, { method: 'POST', body: JSON.stringify({ returnId, approve }) }),
   // داین: رستوران‌های منتشرشده + منوی هر رستوران + رمزگشاییِ QRِ میز
   dineVenues: () => req<any[]>(`/shop/dine/venues?_=${Date.now()}`),
   dineVenueMenu: (userId: string | number) => req<any>(`/shop/dine/venues/${encodeURIComponent(String(userId))}/menu?_=${Date.now()}`),
