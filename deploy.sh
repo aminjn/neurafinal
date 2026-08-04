@@ -65,11 +65,16 @@ rsync -a --exclude='.env' --exclude='.env.*' --exclude='node_modules' --exclude=
 # ── تماسِ صوتی/تصویری (mediasoup): متغیرهای .env و بازکردنِ پورتِ مدیا (یک‌بار، idempotent) ──
 log "۳.۵) پیکربندیِ تماس (mediasoup)"
 ENVF="$SRV/.env"; touch "$ENVF"
-# IP عمومیِ سرور را خودکار تشخیص بده (اگر در .env نباشد)
-PUBIP="$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || true)"; [ -z "$PUBIP" ] && PUBIP="94.101.177.196"
+# IP عمومیِ سرور را خودکار تشخیص کن (چند ارائه‌دهنده تا اگر یکی بسته بود دیگری جواب دهد)؛ فالبک = آی‌پیِ فعلیِ سرور
+PUBIP="$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || true)"
+[ -z "$PUBIP" ] && PUBIP="$(curl -s --max-time 5 https://ifconfig.me 2>/dev/null || true)"
+[ -z "$PUBIP" ] && PUBIP="$(curl -s --max-time 5 https://ipinfo.io/ip 2>/dev/null || true)"
+[ -z "$PUBIP" ] && PUBIP="94.101.179.95"   # آی‌پیِ فعلیِ سرور (فالبک اگر تشخیص خودکار نشد)
 add_env(){ grep -q "^$1=" "$ENVF" 2>/dev/null || { echo "$1=$2" >> "$ENVF"; echo "  + $1"; }; }
+# آی‌پیِ اعلانیِ mediasoup باید همیشه = آی‌پیِ فعلیِ عمومیِ سرور باشد؛ اگر IP سرور عوض شد، این را «به‌روزرسانی» کن (نه فقط اگر نبود) وگرنه تماس‌ها می‌شکنند.
+set_env(){ if grep -q "^$1=" "$ENVF" 2>/dev/null; then sed -i "s#^$1=.*#$1=$2#" "$ENVF"; echo "  ~ $1=$2"; else echo "$1=$2" >> "$ENVF"; echo "  + $1=$2"; fi; }
 add_env RTC_PORT 4001
-add_env MEDIASOUP_ANNOUNCED_IP "$PUBIP"
+set_env MEDIASOUP_ANNOUNCED_IP "$PUBIP"
 add_env MEDIASOUP_MIN_PORT 40000
 add_env MEDIASOUP_MAX_PORT 40200
 
