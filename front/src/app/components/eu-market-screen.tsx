@@ -437,7 +437,7 @@ function MarketAccountTab() {
                   </div>
                 ))}
                 <button className="w-full p-2.5 mr-3 rounded-xl border border-dashed border-[var(--aw-border)] bg-transparent text-[11px] text-[var(--aw-text-muted)] cursor-pointer flex items-center justify-center gap-1.5 hover:border-[#F59E0B] hover:text-[#F59E0B] transition-all"
-                  onClick={() => { if (section.id === 'addresses') openAddressForm(); else setEuScreen('euOrdersScreen'); }}>
+                  onClick={() => { if (section.id === 'addresses') openAddressForm(); else openMarketOrders(setEuScreen); }}>
                   <i className="fa-solid fa-plus text-[9px]" />
                   {section.id === 'addresses' ? 'افزودن آدرس جدید' : 'مشاهده همه سفارش‌ها'}
                 </button>
@@ -883,8 +883,8 @@ function MarketCatalogTab({ selectedProduct, setSelectedProduct, onBack }: {
 
 function MarketOrdersTab() {
   const { showToast, euPlacedOrders, openModal } = useApp() as any;
-  const placedMarket = (euPlacedOrders || []).filter((o: any) => o.source === 'market');
-  const allOrders = [...placedMarket.map((o: any) => ({ ...o, shop: o.vendor }))];
+  // «یک جای واحد» برای همهٔ سفارش‌ها (مارکت + داین) — دیگر صفحهٔ موازیِ euOrdersScreen وجود ندارد (R14).
+  const allOrders = ((euPlacedOrders || []) as any[]).map((o: any) => ({ ...o, shop: o.vendor || o.shop }));
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -1266,13 +1266,26 @@ function ShopDetailView({ shop, onBack, selectedProduct, setSelectedProduct, car
   );
 }
 
+// «سفارشات» = یک جای واحد: تبِ سفارشاتِ مارکت. از هر جای اپ با این helper باز می‌شود (R14: بدونِ صفحهٔ موازی).
+export function openMarketOrders(setEuScreen: (s: any) => void) {
+  try { (window as any).__euMarketInitTab = 'orders'; window.dispatchEvent(new CustomEvent('neura:market-tab', { detail: 'orders' })); } catch (_e) {}
+  setEuScreen('euMarketScreen');
+}
+
 export function EuMarketScreen() {
   const { setEuScreen, cartCount, euPlacedOrders } = useApp();
   const [tab, setTab] = useState('shops');
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<MarketProduct | null>(null);
+  // ورود مستقیم به تبِ سفارشات از بیرون (checkout/خانه/داین/حساب): از طریقِ global (mount) یا event (mounted).
+  React.useEffect(() => {
+    try { const t = (window as any).__euMarketInitTab; if (t) { setTab(t); delete (window as any).__euMarketInitTab; } } catch (_e) {}
+    const h = (e: any) => { if (e && e.detail) { setSelectedShop(null); setSelectedProduct(null); setTab(e.detail); } };
+    window.addEventListener('neura:market-tab', h);
+    return () => window.removeEventListener('neura:market-tab', h);
+  }, []);
 
-  const activeOrders = (euPlacedOrders || []).filter((o: any) => o.source === 'market' && (o.status === 'preparing' || o.status === 'shipping')).length;
+  const activeOrders = (euPlacedOrders || []).filter((o: any) => (o.status === 'preparing' || o.status === 'shipping' || o.status === 'pending')).length;
   const marketTabs = MARKET_TABS.map(t => {
     if (t.id === 'orders') return { ...t, badge: activeOrders > 0 ? activeOrders : undefined };
     return t;

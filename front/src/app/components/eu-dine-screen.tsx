@@ -25,7 +25,7 @@ function __recMic(onOk: () => void, onErr: () => void) {
 }
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from './app-context';
-import { AddressFormModal } from './eu-market-screen'; // __dineAddr
+import { AddressFormModal, openMarketOrders } from './eu-market-screen'; // __dineAddr
 import { api, getToken } from '../services/api';
 // ── فروشگاهِ واقعی: کاتالوگ از /api/shop بارگذاری می‌شود ──
 const __DINE: any = { restaurants: [], menu: [], offers: [] };
@@ -405,7 +405,7 @@ function DineOrdersTab() {
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-[rgba(126,95,170,0.1)]">
                 <span className="text-[12px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>{ord.total} <span className="text-[9px] text-[var(--aw-text-muted)]">تومان</span></span>
                 {(ord.status === 'preparing' || ord.status === 'delivering') && (
-                  <button onClick={() => setEuScreen('euOrdersScreen')} className="text-[10px] px-3 py-1.5 rounded-lg border border-[var(--aw-eu-primary)] bg-transparent text-[var(--aw-eu-primary)] cursor-pointer" style={{ fontWeight: 600 }}>
+                  <button onClick={() => openMarketOrders(setEuScreen)} className="text-[10px] px-3 py-1.5 rounded-lg border border-[var(--aw-eu-primary)] bg-transparent text-[var(--aw-eu-primary)] cursor-pointer" style={{ fontWeight: 600 }}>
                     <i className="fa-solid fa-eye text-[8px] ml-1" />پیگیری
                   </button>
                 )}

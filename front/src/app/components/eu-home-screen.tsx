@@ -3,6 +3,7 @@ import { useApp } from './app-context';
 import { QuickForm } from './quick-actions';
 import { toFa, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, orderIcon } from './data';
 import { OrderDetail } from './end-user-panel';
+import { openMarketOrders } from './eu-market-screen';
 
 // Figma-exported icon components
 import Layer from '../../imports/Layer4-1/index';
@@ -503,7 +504,7 @@ function EuHomeScreenDefault() {
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--aw-text-muted)' }}>سفارشات من</span>
             <button className="text-[11px] bg-transparent border-none cursor-pointer"
               style={{ color: 'var(--aw-eu-primary)', fontWeight: 600 }}
-              onClick={() => setEuScreen('euOrdersScreen')}>
+              onClick={() => openMarketOrders(setEuScreen)}>
               مشاهده همه <i className="fa-solid fa-chevron-left text-[8px]" />
             </button>
           </div>

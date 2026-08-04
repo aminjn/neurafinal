@@ -44,7 +44,7 @@ import { useApp, EuScreen } from './app-context';
 import { RoleSwitcher, AgentSelector, SubscribeContent, ProfileContent, FormGroup, FormInput, SettingsGroup, SettingsItem, CustomizeAgentContent, AgentSettingsContent, MoreScreenModal, NOTIF_ICON_SRC } from './admin-panel';
 import { COMPANIES, NOTIFICATIONS, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, toFa, orderIcon, Agent, Order } from './data';
 import { EuDineScreen, EuAssistantScreen, EuContacts, EuSupportScreen, EuMarketScreen, EuPlannerScreen, EuSearchScreen, EuReportScreen } from './eu-agent-screens';
-import { MARKET_PROMO_ITEMS, MKT_OFFERS, AddressFormModal } from './eu-market-screen';
+import { MARKET_PROMO_ITEMS, MKT_OFFERS, AddressFormModal, openMarketOrders } from './eu-market-screen';
 import { OFFERS as DINE_OFFERS } from './eu-dine-screen';
 import { EuHomeScreen } from './eu-home-screen';
 import { EuAvatar } from './eu-spectrum-avatar';
@@ -960,7 +960,7 @@ function EuNotifications() {
               const a = agents.find((x: any) => x.id === n.target);
               if (a && !a.locked) setTimeout(() => openChat(n.target, 'eu'), 200);
             } else if (n.type === 'order') {
-              setEuScreen('euOrdersScreen');
+              openMarketOrders(setEuScreen);
             } else if (n.type === 'reminder' || n.type === 'task') {
               setEuScreen('euPlannerScreen');
             }
@@ -1112,7 +1112,6 @@ function EuSidebar({ expanded, onToggle }: { expanded: boolean; onToggle: () => 
   const { euScreen, setEuScreen, openModal, openUnifiedCall, orders } = useApp();
   const badgeMap: Partial<Record<EuScreen, number>> = {
     euChatListScreen: undefined,
-    euOrdersScreen: orders.filter(o => o.status === 'preparing' || o.status === 'pending').length,
   };
   const w = expanded ? 240 : 68;
 
@@ -2282,75 +2281,8 @@ function AgentProfileModal({ agent: a }: { agent: Agent }) {
 // ========================
 // EU ORDERS
 // ========================
-function EuOrdersScreen() {
-  const { euPlacedOrders, openModal, setEuScreen } = useApp();
-  const orders = (euPlacedOrders || []) as any[]; // euorders: سفارش‌های واقعیِ خرید
-  const [filter, setFilter] = useState<string>('all');
-
-  const filtered = filter === 'all' ? orders : orders.filter((o: any) => o.status === filter);
-
-  return (
-    <div className="flex-1 overflow-y-auto pb-4 aw-scroll">
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <button onClick={() => setEuScreen('euHomeScreen')} title="بازگشت"
-            className="w-9 h-9 rounded-[12px] cursor-pointer flex items-center justify-center"
-            style={{ background: 'rgba(127,127,127,0.12)', border: '1px solid var(--aw-eu-primary)', color: 'var(--aw-eu-primary)' }}>
-            <i className="fa-solid fa-arrow-right text-[13px]" />
-          </button>
-          <h3 className="text-base flex items-center gap-1.5" style={{ fontWeight: 700 }}>
-            <i className="fa-solid fa-shopping-bag text-[var(--aw-eu-primary)]" /> سفارشات من
-          </h3>
-        </div>
-      </div>
-
-      {/* Filter pills */}
-      <div className="flex gap-1.5 px-4 pb-3 flex-wrap">
-        {[
-          { id: 'all', label: 'همه' },
-          { id: 'pending', label: 'در انتظار' },
-          { id: 'preparing', label: 'در حال آماده‌سازی' },
-          { id: 'delivered', label: 'تحویل شده' },
-        ].map(f => (
-          <button key={f.id}
-            className={`py-1.5 px-3 rounded-[20px] border text-[11px] cursor-pointer transition-all ${
-              filter === f.id ? 'text-white border-[var(--aw-eu-primary)]' : 'bg-transparent text-[var(--aw-text-secondary)] border-[var(--aw-border)]'
-            }`}
-            style={filter === f.id ? { background: 'var(--aw-eu-primary, #7B62FC)', fontWeight: 600 } : { fontWeight: 600 }}
-            onClick={() => setFilter(f.id)}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="px-4">
-        {filtered.map(o => (
-          <div key={o.id} className="rounded-[10px] p-3.5 mb-2 border border-[var(--aw-border)] cursor-pointer transition-all hover:border-[var(--aw-eu-primary)]" style={{ background: 'var(--aw-bg-card)' }}
-            onClick={() => openModal('جزئیات سفارش', <OrderDetail order={o} />)}>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm" style={{ fontWeight: 600 }}>سفارش #{o.num}</span>
-              <span className="px-2.5 py-0.5 rounded-[20px] text-[10px]" style={{ background: ORDER_STATUS_COLORS[o.status]?.bg, color: ORDER_STATUS_COLORS[o.status]?.text, fontWeight: 600 }}>
-                {ORDER_STATUS_LABELS[o.status]}
-              </span>
-            </div>
-            <div className="text-[12px] text-[var(--aw-text-secondary)] space-y-1">
-              <div className="flex items-center gap-1.5"><i className="fa-solid fa-utensils text-[var(--aw-text-muted)]" /> {__orderItemsText(o)}</div>
-              <div className="flex items-center gap-1.5"><i className="fa-solid fa-calendar text-[var(--aw-text-muted)]" /> {o.date}</div>
-              <div className="flex items-center gap-1.5"><i className="fa-solid fa-coins text-[var(--aw-accent)]" /> {(o as any).total != null ? Number((o as any).total).toLocaleString('fa-IR') + ' تومان' : ((o as any).price + ' ریال')}</div>
-            </div>
-          </div>
-        ))}
-        {filtered.length === 0 && (
-          <div className="text-center py-12 text-[var(--aw-text-muted)]">
-            <i className="fa-solid fa-shopping-bag text-[56px] opacity-25 block mb-5" />
-            <p className="text-[13px]">سفارشی یافت نشد</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+// EuOrdersScreen حذف شد: «سفارشاتِ من»یِ موازی و خراب (تاریخِ خام/۰ تومان) بود. حالا یک جای واحد داریم =
+// تبِ «سفارشات»ِ مارکت (MarketOrdersTab)، که از هر ورودی با openMarketOrders باز می‌شود (R14/R10).
 
 // orderitems: شرحِ سفارش را امن رِندر کن. آیتم‌های واقعیِ داین/مارکت آرایه‌ای از آبجکت‌اند
 // ({name,qty,price})؛ رِندرِ مستقیمِ آرایهٔ آبجکت به‌عنوانِ فرزندِ React خطای #31 می‌دهد (کرشِ صفحه).
@@ -3743,7 +3675,7 @@ function EuCartScreen() {
               <span className="text-[16px] text-[var(--aw-text-primary)]" style={{ fontWeight: 800 }}>{fa(total)} <span className="text-[11px]" style={{ fontWeight: 600 }}>تومان</span></span>
             </div>
             <button
-              onClick={() => { if (!__selAddr) { showToast('لطفاً آدرسِ تحویل را انتخاب کنید', 'error'); return; } try { (window as any).__euOrderAddress = __selAddr.title || __selAddr.text || ''; } catch (_e) {} checkoutCart(); showToast('سفارش در حال ثبت است…', 'info'); setEuScreen('euOrdersScreen'); }}
+              onClick={() => { if (!__selAddr) { showToast('لطفاً آدرسِ تحویل را انتخاب کنید', 'error'); return; } try { (window as any).__euOrderAddress = __selAddr.title || __selAddr.text || ''; } catch (_e) {} checkoutCart(); showToast('سفارش در حال ثبت است…', 'info'); openMarketOrders(setEuScreen); }}
               className="w-full py-3 rounded-[10px] border-none text-white text-[14px] cursor-pointer flex items-center justify-center gap-2"
               style={{ background: 'linear-gradient(135deg, var(--aw-eu-primary), #5c4abd)', fontWeight: 700 }}>
               <i className="fa-solid fa-credit-card text-[12px]" /> پرداخت و ثبت سفارش
@@ -3923,7 +3855,6 @@ export default function EndUserPanel() {
             {euScreen === 'euChatListScreen' && <motion.div key="euChats" className="flex flex-col h-full" variants={euPageVariants} initial="initial" animate="animate" exit="exit"><EuChatListScreen /></motion.div>}
             {euScreen === 'euOffersScreen' && <motion.div key="euOffers" className="flex flex-col h-full" variants={euPageVariants} initial="initial" animate="animate" exit="exit"><EuOffersScreen /></motion.div>}
             {euScreen === 'euAgentDiscovery' && <motion.div key="euDiscover" className="flex flex-col h-full" variants={euPageVariants} initial="initial" animate="animate" exit="exit"><EuAgentDiscoveryScreen /></motion.div>}
-            {euScreen === 'euOrdersScreen' && <motion.div key="euOrders" className="flex flex-col h-full" variants={euPageVariants} initial="initial" animate="animate" exit="exit"><EuOrdersScreen /></motion.div>}
             {euScreen === 'euPlannerScreen' && <motion.div key="euPlanner" className="flex flex-col h-full" variants={euPageVariants} initial="initial" animate="animate" exit="exit"><EuPlannerScreen /></motion.div>}
             {euScreen === 'euSearchScreen' && <motion.div key="euSearch" className="flex flex-col h-full" variants={euPageVariants} initial="initial" animate="animate" exit="exit"><EuSearchScreen /></motion.div>}
             {euScreen === 'euReportScreen' && <motion.div key="euReport" className="flex flex-col h-full" variants={euPageVariants} initial="initial" animate="animate" exit="exit"><EuReportScreen /></motion.div>}
