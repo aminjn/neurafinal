@@ -185,7 +185,7 @@ function EuHeader() {
             <button
               className="w-[26px] h-[26px] bg-transparent border-none cursor-pointer flex items-center justify-center p-0"
               style={{ color: 'var(--aw-eu-primary)', fontSize: 16 }}
-              onClick={() => setEuScreen('euAssistantScreen')}
+              onClick={() => setEuScreen('euSearchScreen')}
               title="جستجو"
             >
               <span aria-hidden style={{ display: 'block', width: 25, height: 25, background: 'var(--aw-eu-primary)', WebkitMaskImage: 'url("/src/icons/search.svg")', maskImage: 'url("/src/icons/search.svg")', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain' }} />
