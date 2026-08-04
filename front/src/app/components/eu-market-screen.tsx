@@ -1,4 +1,5 @@
 import { api, getToken } from '../services/api';
+import { geolocateOnce } from '../services/permissions';
 // ── فروشگاهِ واقعی: کاتالوگ از /api/shop ──
 const __MARKET: any = { shops: [], products: [], offers: [] };
 let __marketLoaded = false;
@@ -149,13 +150,12 @@ function AddressMapPicker({ tileUrl, onPoint, onReady }: { tileUrl: string; onPo
     const emit = () => { const c = map.getCenter(); clearTimeout(t); t = setTimeout(() => onPointRef.current(c.lat, c.lng), 250); };
     map.on('moveend', emit);
     if (onReady) onReady((lat: number, lng: number) => map.setView([lat, lng], 16));
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (p) => { map.setView([p.coords.latitude, p.coords.longitude], 16); },
-        () => { onPointRef.current(TEHRAN[0], TEHRAN[1]); },
-        { enableHighAccuracy: true, timeout: 6000 }
-      );
-    } else { onPointRef.current(TEHRAN[0], TEHRAN[1]); }
+    // لوکیشن را فقط «یک‌بار» بپرس؛ اگر قبلاً رد/نادیده شد، مستقیم fallback (تهران) — نه پرسیدنِ دوباره.
+    geolocateOnce(
+      (p) => { map.setView([p.coords.latitude, p.coords.longitude], 16); },
+      () => { onPointRef.current(TEHRAN[0], TEHRAN[1]); },
+      { enableHighAccuracy: true, timeout: 6000 }
+    );
     // مودال بعد از باز شدن ابعادش عوض می‌شود؛ اندازهٔ نقشه را دوباره محاسبه کن.
     const inv = setTimeout(() => map.invalidateSize(), 250);
     return () => { clearTimeout(inv); clearTimeout(t); map.remove(); mapRef.current = null; };

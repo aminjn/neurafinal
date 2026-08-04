@@ -2,6 +2,7 @@
 // برای اینکه «هر کس اپ را نصب کرده همهٔ نوتیفیکیشن‌ها برایش برود»، بعد از ورود صدا زده می‌شود.
 // نکته: اجازهٔ نوتیفیکیشن روی iOS فقط با تعاملِ کاربر داده می‌شود؛ پس اگر لازم شد، با اولین کلیک می‌گیریم.
 import { api, getToken } from './api';
+import { askNotificationOnce, permAsked, markPermAsked } from './permissions';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -45,8 +46,10 @@ export async function initPush(): Promise<void> {
     if (!getToken()) return;
     if (Notification.permission === 'granted') { await subscribeNow(); return; }
     if (Notification.permission === 'denied') return;
-    // permission = default → با تعاملِ کاربر بپرس (روی iOS اجباری است).
+    if (permAsked('notifications')) return; // یک‌بار پرسیده‌ایم، دیگر هر نشست نپرس
+    // permission = default → با تعاملِ کاربر فقط یک‌بار بپرس (روی iOS اجباری است).
     onFirstGesture(async () => {
+      markPermAsked('notifications');
       try {
         const p = await Notification.requestPermission();
         if (p === 'granted') await subscribeNow();

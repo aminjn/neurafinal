@@ -1284,7 +1284,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       } catch {}
     };
-    try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {}); } catch {}
+    try { import('../services/permissions').then(m => m.askNotificationOnce()).catch(() => {}); } catch {}
     check();
     const iv = setInterval(() => { if (!stopped) check(); }, 30000);
     return () => { stopped = true; clearInterval(iv); };

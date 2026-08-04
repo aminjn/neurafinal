@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { useApp } from './app-context';
 import { TimePicker } from './time-picker';
 import { api, getToken } from '../services/api';
+import { askNotificationOnce } from '../services/permissions';
 import { toFa } from './data';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import svgChatIcons from '../../imports/Frame2147223516/svg-6y73huub0v';
@@ -247,7 +248,7 @@ function AssistantCalendarTab({ events, setEvents, tasks, setTasks }: { events: 
     let _at = 0; if (_nAt && _nDate) { _nDate.setHours(Number(_nAt[1]), Number(_nAt[2]), 0, 0); _at = _nDate.getTime(); }
     const ev: CalEvent = { id: newId, title: newTitle.trim(), time: newTime.trim(), date: newDate, type: newType, status: 'pending', muted: false, at: _at };
     setEvents(prev => [...prev, ev]);
-    try { if (_at && typeof window !== 'undefined' && 'Notification' in window && (Notification as any).permission === 'default') (Notification as any).requestPermission().catch(() => {}); } catch (_) {}
+    try { if (_at) askNotificationOnce(); } catch (_) {}
     // reminders: schedule server — یادآور سرِ موعد از سرور پیامک شود (حتی با اپِ بسته).
     if (newType === 'reminder') { try {
       const _hm = newTime.trim().replace(/[۰-۹]/g, (d: string) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).match(/(\d{1,2}):(\d{2})/);
@@ -2001,7 +2002,7 @@ export function EuAssistantScreen() {
     };
     const _pending = (events || []).filter((ev: any) => ev && !ev.done && ev.status !== 'done' && ev.status !== 'cancelled' && !ev.muted && _atOf(ev) > 0);
     const _future = _pending.some((ev: any) => _atOf(ev) > Date.now() - 3600000);
-    try { if (_future && (Notification as any).permission === 'default') (Notification as any).requestPermission().catch(() => {}); } catch (_) {}
+    try { if (_future) askNotificationOnce(); } catch (_) {}
     const _check = () => {
       const now = Date.now();
       _pending.forEach((ev: any) => {
@@ -2395,7 +2396,7 @@ export function EuPlannerScreen() {
     };
     const _pending = (events || []).filter((ev: any) => ev && !ev.done && ev.status !== 'done' && ev.status !== 'cancelled' && !ev.muted && _atOf(ev) > 0);
     const _future = _pending.some((ev: any) => _atOf(ev) > Date.now() - 3600000);
-    try { if (_future && (Notification as any).permission === 'default') (Notification as any).requestPermission().catch(() => {}); } catch (_) {}
+    try { if (_future) askNotificationOnce(); } catch (_) {}
     const _check = () => {
       const now = Date.now();
       _pending.forEach((ev: any) => {
