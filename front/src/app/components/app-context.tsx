@@ -949,7 +949,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       getCustMsgs(id);
     } else if (type === 'contact') {
       // peerchat: گفتگوی واقعیِ کاربر-به-کاربرِ نورا — تاریخچه را از سرور بگیر (id = 'peer_<sub>')
-      if (String(id).startsWith('peer_')) {
+      if (String(id).startsWith('pgroup_')) {
+        // گروهِ چند نفره (id = 'pgroup_<gid>')
+        const gid = String(id).slice('pgroup_'.length);
+        (api as any).groupWith(gid).then((r: any) => {
+          const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, text: m.text, sent: !!m.mine, time: '', senderName: m.mine ? '' : (m.fromName || '') }));
+          setContactMsgsMap(prev => ({ ...prev, [id]: msgs }));
+        }).catch(() => { setContactMsgsMap(prev => (prev[id] ? prev : { ...prev, [id]: [] })); });
+      } else if (String(id).startsWith('peer_')) {
         const other = String(id).slice(5);
         (api as any).peerWith(other).then((r: any) => {
           const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, text: m.text, sent: !!m.mine, time: '' }));
@@ -1111,8 +1118,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setGroupMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
     } else if (chat.type === 'contact' && chat.id) {
       setContactMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
-      // peerchat: پیام را واقعاً به کاربرِ نورا بفرست (بدونِ پاسخِ خودکار — طرفِ مقابل انسان است)
-      if (String(chat.id).startsWith('peer_')) { const other = String(chat.id).slice(5); (api as any).peerSend(other, text).catch(() => {}); }
+      // peerchat: پیام را واقعاً بفرست (بدونِ پاسخِ خودکار — طرفِ مقابل انسان است)
+      if (String(chat.id).startsWith('pgroup_')) { const gid = String(chat.id).slice('pgroup_'.length); (api as any).groupSend(gid, text).catch(() => {}); }
+      else if (String(chat.id).startsWith('peer_')) { const other = String(chat.id).slice(5); (api as any).peerSend(other, text).catch(() => {}); }
     } else if (chat.type === 'customer' && chat.id) {
       setCustMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
 
@@ -1132,14 +1140,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // peerlive: تا گفتگوی کاربر-به-کاربر باز است، هر چند ثانیه پیام‌های تازه را از سرور بگیر تا بدونِ
   // رفرش/بستنِ چت، پیامِ طرفِ مقابل زنده بیاید. (وقتی چت بسته شد، پولینگ متوقف می‌شود.)
   useEffect(() => {
-    if (!chat.open || chat.type !== 'contact' || !String(chat.id || '').startsWith('peer_')) return;
-    const other = String(chat.id).slice(5);
+    const cid = String(chat.id || '');
+    const isPeer = cid.startsWith('peer_');
+    const isGroup = cid.startsWith('pgroup_');
+    if (!chat.open || chat.type !== 'contact' || (!isPeer && !isGroup)) return;
+    const other = isPeer ? cid.slice(5) : cid.slice('pgroup_'.length);
     let stop = false;
     const poll = async () => {
       try {
-        const r: any = await (api as any).peerWith(other);
+        const r: any = isGroup ? await (api as any).groupWith(other) : await (api as any).peerWith(other);
         if (stop) return;
-        const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, text: m.text, sent: !!m.mine, time: '' }));
+        const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, text: m.text, sent: !!m.mine, time: '', senderName: m.mine ? '' : (m.fromName || '') }));
         setContactMsgsMap(prev => {
           const cur = prev[chat.id as string] || [];
           // فقط وقتی سرور پیامِ بیشتری دارد به‌روزرسانی کن تا پیامِ خوش‌بینانهٔ همین‌الان پاک نشود.

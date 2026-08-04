@@ -310,6 +310,15 @@ export const api = {
   // حضورِ واقعیِ کاربران از سرورِ تماس (RTC) — { sub: true/false }
   rtcPresence: (subs: string[]) =>
     req<Record<string, boolean>>(`/rtc/presence?subs=${encodeURIComponent(subs.join(','))}&_=${Date.now()}`),
+  // گروهِ چند نفره
+  groupCreate: (name: string, members: string[]) =>
+    req<{ group: { id: string; name: string; members: string[] } }>(`/peer/group/create`, { method: 'POST', body: JSON.stringify({ name, members }) }),
+  groupList: () =>
+    req<{ groups: { id: string; name: string; members: string[]; memberCount: number; lastText: string; ts: number }[] }>(`/peer/groups?_=${Date.now()}`),
+  groupSend: (groupId: string, text: string) =>
+    req<{ ok: boolean; message: any }>(`/peer/group/send`, { method: 'POST', body: JSON.stringify({ groupId, text }) }),
+  groupWith: (groupId: string) =>
+    req<{ group: { id: string; name: string; members: string[]; memberCount: number }; messages: any[] }>(`/peer/group/with?groupId=${encodeURIComponent(groupId)}&_=${Date.now()}`),
   // Web Push
   pushVapid: () => req<{ publicKey: string; enabled: boolean }>(`/push/vapid`),
   pushSubscribe: (subscription: any) =>

@@ -1266,10 +1266,28 @@ function __chatBg(i: number): string {
 }
 
 function NewConversationModal() {
-  const { openChat, closeModal, setEuScreen, agents } = useApp() as any;
+  const { openChat, closeModal, setEuScreen, agents, showToast } = useApp() as any;
   const [q, setQ] = useState('');
   const [neura, setNeura] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [groupMode, setGroupMode] = useState(false);
+  const [selected, setSelected] = useState<Record<string, string>>({}); // sub -> name
+  const [groupName, setGroupName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const selCount = Object.keys(selected).length;
+  const toggleSel = (u: any) => setSelected(prev => { const n = { ...prev }; if (n[u.sub]) delete n[u.sub]; else n[u.sub] = u.name; return n; });
+  const createGroup = async () => {
+    if (selCount < 2) { showToast('حداقل ۲ نفر را انتخاب کنید', 'error'); return; }
+    setCreating(true);
+    try {
+      const nm = groupName.trim() || ('گروه ' + Object.values(selected).slice(0, 3).join('، '));
+      const r: any = await (api as any).groupCreate(nm, Object.keys(selected));
+      const g = r && r.group;
+      if (g && g.id) { openChat('pgroup_' + g.id, 'contact', { name: g.name, init: 'گ', bg: 'bg-[var(--aw-eu-primary,#7B62FC)]', sub: (g.members?.length || selCount + 1) + ' عضو' } as any, []); closeModal(); }
+      else showToast('ساخت گروه ناموفق بود', 'error');
+    } catch (_) { showToast('ساخت گروه ناموفق بود', 'error'); }
+    finally { setCreating(false); }
+  };
 
   // مخاطبینِ کاربر را می‌گیریم و از سرور می‌پرسیم کدام‌شان «کاربرِ نورا» هستند (فقط همان‌ها قابلِ پیام‌اند).
   React.useEffect(() => { (async () => {
@@ -1311,16 +1329,30 @@ function NewConversationModal() {
 
   return (
     <div className="flex flex-col" style={{ maxHeight: '66vh' }}>
+      {/* سوییچِ «گفتگوی جدید» / «گروه جدید» */}
+      <div className="flex items-center gap-1.5 p-1 mb-2 rounded-full flex-shrink-0" style={{ background: 'var(--aw-bg-card)', border: '1px solid var(--aw-border)' }}>
+        <button className="flex-1 h-8 rounded-full border-none cursor-pointer text-[12px] flex items-center justify-center gap-1.5" style={!groupMode ? { background: 'var(--aw-eu-primary,#7B62FC)', color: '#fff', fontWeight: 700 } : { background: 'transparent', color: 'var(--aw-text-secondary)', fontWeight: 600 }} onClick={() => setGroupMode(false)}><i className="fa-solid fa-comment text-[11px]" /> گفتگوی جدید</button>
+        <button className="flex-1 h-8 rounded-full border-none cursor-pointer text-[12px] flex items-center justify-center gap-1.5" style={groupMode ? { background: 'var(--aw-eu-primary,#7B62FC)', color: '#fff', fontWeight: 700 } : { background: 'transparent', color: 'var(--aw-text-secondary)', fontWeight: 600 }} onClick={() => setGroupMode(true)}><i className="fa-solid fa-users text-[11px]" /> گروه جدید</button>
+      </div>
+
+      {groupMode && (
+        <div className="flex items-center gap-2 rounded-[10px] px-3 mb-2 border border-[var(--aw-border)] flex-shrink-0" style={{ background: 'var(--aw-bg-input)' }}>
+          <i className="fa-solid fa-users text-[12px] text-[var(--aw-eu-primary,#7B62FC)]" />
+          <input className="flex-1 bg-transparent border-none py-2.5 text-[13px] text-[var(--aw-text-primary)] outline-none placeholder:text-[var(--aw-text-muted)]"
+            placeholder="نامِ گروه…" value={groupName} onChange={e => setGroupName(e.target.value)} />
+        </div>
+      )}
+
       <div className="flex items-center gap-2 rounded-[10px] px-3 border border-[var(--aw-border)] flex-shrink-0" style={{ background: 'var(--aw-bg-input)' }}>
         <i className="fa-solid fa-search text-[12px] text-[var(--aw-text-muted)]" />
-        <input autoFocus className="flex-1 bg-transparent border-none py-2.5 text-[13px] text-[var(--aw-text-primary)] outline-none placeholder:text-[var(--aw-text-muted)]"
-          placeholder="جستجوی کاربر یا شماره…" value={q} onChange={e => setQ(e.target.value)} />
+        <input className="flex-1 bg-transparent border-none py-2.5 text-[13px] text-[var(--aw-text-primary)] outline-none placeholder:text-[var(--aw-text-muted)]"
+          placeholder={groupMode ? 'افزودنِ اعضا…' : 'جستجوی کاربر یا شماره…'} value={q} onChange={e => setQ(e.target.value)} />
         {q && <button className="border-none bg-transparent text-[var(--aw-text-muted)] text-[12px] cursor-pointer" onClick={() => setQ('')}><i className="fa-solid fa-xmark" /></button>}
       </div>
 
       <div className="overflow-y-auto mt-2 aw-scroll -mx-1 px-1">
-        {/* ایجنت‌ها — دستیار شخصی و پشتیبانی همیشه بالا، بقیه زیرشان */}
-        {!sq && (
+        {/* ایجنت‌ها — فقط در حالتِ گفتگوی تکی */}
+        {!sq && !groupMode && (
           <>
             <div className="text-[11px] text-[var(--aw-text-muted)] px-1 mt-1 mb-1" style={{ fontWeight: 700 }}>ایجنت‌ها</div>
             {pinnedIds.map(agentRow)}
@@ -1329,7 +1361,7 @@ function NewConversationModal() {
         )}
 
         {/* کاربرانِ نورا از میان مخاطبینِ من */}
-        <div className="text-[11px] text-[var(--aw-text-muted)] px-1 mt-3 mb-1" style={{ fontWeight: 700 }}>کاربرانِ نورا (از مخاطبین تو)</div>
+        <div className="text-[11px] text-[var(--aw-text-muted)] px-1 mt-3 mb-1" style={{ fontWeight: 700 }}>{groupMode ? ('اعضای گروه' + (selCount ? ' (' + toFa(selCount) + ')' : '')) : 'کاربرانِ نورا (از مخاطبین تو)'}</div>
         {loading ? (
           <div className="text-center text-[12px] text-[var(--aw-text-muted)] py-6">در حال بررسی مخاطبین…</div>
         ) : filteredUsers.length === 0 ? (
@@ -1338,18 +1370,33 @@ function NewConversationModal() {
             {neura.length === 0 ? 'هیچ‌کدام از مخاطبینت هنوز در نورا نیستند. وقتی عضو شوند اینجا می‌آیند.' : 'کاربری با این جست‌وجو نیست.'}
           </div>
         ) : (
-          filteredUsers.map((u) => (
-            <div key={u.sub} className="flex items-center gap-3 p-2.5 rounded-[10px] cursor-pointer border border-transparent hover:bg-[var(--aw-bg-card-hover)] active:scale-[0.98] transition-all" onClick={() => openPeer(u)}>
+          filteredUsers.map((u) => {
+            const isSel = !!selected[u.sub];
+            return (
+            <div key={u.sub} className="flex items-center gap-3 p-2.5 rounded-[10px] cursor-pointer border border-transparent hover:bg-[var(--aw-bg-card-hover)] active:scale-[0.98] transition-all" onClick={() => groupMode ? toggleSel(u) : openPeer(u)}>
               <div className="relative flex-shrink-0"><LetterAvatar name={u.name} init={String(u.name || '?').charAt(0)} size={44} radius={13} /></div>
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] truncate" style={{ fontWeight: 600, color: 'var(--aw-text-primary)' }}>{u.name}</div>
                 <div className="text-[11px] text-[var(--aw-text-muted)] truncate" dir="ltr" style={{ textAlign: 'right' }}>{u.phone}</div>
               </div>
-              <span className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--aw-eu-primary, #7B62FC)', color: '#fff' }}><i className="fa-solid fa-comment-dots text-[13px]" /></span>
+              {groupMode ? (
+                <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 border-2" style={{ borderColor: isSel ? 'var(--aw-eu-primary,#7B62FC)' : 'var(--aw-border)', background: isSel ? 'var(--aw-eu-primary,#7B62FC)' : 'transparent', color: '#fff' }}>{isSel && <i className="fa-solid fa-check text-[10px]" />}</span>
+              ) : (
+                <span className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--aw-eu-primary, #7B62FC)', color: '#fff' }}><i className="fa-solid fa-comment-dots text-[13px]" /></span>
+              )}
             </div>
-          ))
+          ); })
         )}
       </div>
+
+      {/* دکمهٔ ساختِ گروه */}
+      {groupMode && (
+        <button disabled={creating || selCount < 2} onClick={createGroup}
+          className="mt-2 w-full py-3 rounded-[12px] border-none cursor-pointer text-white text-[13px] flex items-center justify-center gap-2 flex-shrink-0"
+          style={{ background: selCount < 2 ? 'var(--aw-text-muted)' : 'var(--aw-eu-primary,#7B62FC)', opacity: creating ? 0.7 : 1, fontWeight: 700 }}>
+          <i className="fa-solid fa-users" /> {creating ? 'در حال ساخت…' : ('ساختِ گروه' + (selCount ? ' با ' + toFa(selCount) + ' نفر' : ''))}
+        </button>
+      )}
     </div>
   );
 }
@@ -1661,7 +1708,11 @@ function EuChatListScreen() {
   useEffect(() => { (api as any).contacts().then((r: any) => __setEuContacts(Array.isArray(r?.contacts) ? r.contacts : [])).catch(() => {}); }, []);
   // گفتگوهای واقعیِ کاربر-به-کاربرِ نورا — بعد از ایجنت‌ها در همین لیست نمایش داده می‌شوند.
   const [__peerConvs, __setPeerConvs] = useState<any[]>([]);
-  const __loadPeerConvs = () => { (api as any).peerConversations().then((r: any) => __setPeerConvs(Array.isArray(r?.conversations) ? r.conversations : [])).catch(() => {}); };
+  const [__groups, __setGroups] = useState<any[]>([]);
+  const __loadPeerConvs = () => {
+    (api as any).peerConversations().then((r: any) => __setPeerConvs(Array.isArray(r?.conversations) ? r.conversations : [])).catch(() => {});
+    (api as any).groupList().then((r: any) => __setGroups(Array.isArray(r?.groups) ? r.groups : [])).catch(() => {});
+  };
   useEffect(() => { __loadPeerConvs(); const h = () => __loadPeerConvs(); window.addEventListener('neura:data-changed', h); return () => window.removeEventListener('neura:data-changed', h); }, []);
   const [chatListTab, setChatListTab] = useState<'interactions' | 'agents'>('interactions');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1947,6 +1998,20 @@ function EuChatListScreen() {
                 </div>
               );
             })()}
+            {/* گروه‌ها — بعد از ایجنت‌ها */}
+            {(chatFilter === 'all' || chatFilter === 'unread') && __groups
+              .filter((g: any) => { const sq = searchQuery.trim(); return !sq || String(g.name || '').includes(sq) || String(g.lastText || '').includes(sq); })
+              .map((g: any) => (
+              <div key={'pgroup_' + g.id} className="flex items-center gap-3 p-3 rounded-[10px] cursor-pointer border border-transparent hover:bg-[var(--aw-bg-card-hover)] active:scale-[0.98]"
+                onClick={() => openChat('pgroup_' + g.id, 'contact', { name: g.name, init: 'گ', bg: 'bg-[var(--aw-eu-primary,#7B62FC)]', sub: toFa(g.memberCount || (g.members || []).length) + ' عضو' } as any, [])}>
+                <div className="relative flex-shrink-0 w-12 h-12 rounded-[14px] flex items-center justify-center text-white" style={{ background: 'var(--aw-eu-primary,#7B62FC)' }}><i className="fa-solid fa-users text-[18px]" /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-0.5"><span className="text-sm" style={{ fontWeight: 600 }}>{g.name}</span></div>
+                  <div className="text-[10px] text-[var(--aw-text-muted)] flex items-center gap-1"><i className="fa-solid fa-users" /> گروه · {toFa(g.memberCount || (g.members || []).length)} عضو</div>
+                  <div className="text-[12px] text-[var(--aw-text-secondary)] truncate">{g.lastText}</div>
+                </div>
+              </div>
+            ))}
             {/* گفتگوهای کاربر-به-کاربرِ نورا — بعد از ایجنت‌ها */}
             {(chatFilter === 'all' || chatFilter === 'unread') && __peerConvs
               .filter((c: any) => { const sq = searchQuery.trim(); return !sq || String(c.name || '').includes(sq) || String(c.lastText || '').includes(sq); })
