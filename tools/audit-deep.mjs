@@ -79,7 +79,13 @@ p.on('requestfailed', r => { const u = r.url(); if (u.includes('/api/')) netFail
 await p.goto(BASE + INDEX, { waitUntil: 'domcontentloaded' }).catch(() => {});
 await p.waitForTimeout(1800);
 
-const bodyHash = () => p.evaluate(() => { const s = document.body.innerHTML; let h = 0; for (let i = 0; i < s.length; i += 7) h = (h * 31 + s.charCodeAt(i)) | 0; return h + ':' + s.length; });
+// R18: هشِ چگال (هر نویسه) + اثرِ انگشتِ «انتخابِ تب» (aria-selected + استایلِ فعال) تا سوییچِ تبی که فقط
+// رنگ/حالتش عوض می‌شود (مثلِ تبِ خالیِ پیشنهادها) به‌غلط «مرده» گزارش نشود — مشکلِ نمونه‌گیریِ هر ۷ نویسه رفع شد.
+const bodyHash = () => p.evaluate(() => {
+  const s = document.body.innerHTML; let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  const sel = [...document.querySelectorAll('[aria-selected="true"],[data-state="active"],[aria-current]')].map(e => (e.className || '') + ':' + (e.textContent || '').slice(0, 12)).join('|');
+  return h + ':' + s.length + ':' + sel;
+});
 const curScreen = () => p.evaluate(() => { try { return JSON.stringify({ a: (window.__NEURA_STATE__ && window.__NEURA_STATE__.adminScreen) || '', e: (window.__NEURA_STATE__ && window.__NEURA_STATE__.euScreen) || '', u: location.hash }); } catch (_) { return ''; } });
 const gotoScreen = async (kind, name) => {
   await p.evaluate(({ kind, name }) => {
@@ -192,9 +198,15 @@ const auditScreen = async (kind, name) => {
     const other = labels.find((l) => l !== label);
     await gotoScreen(kind, name); await p.waitForTimeout(220);
     if (other) { await clickByLabel(other); await p.waitForTimeout(400); }
+    // R18: اگر «تلنگر» ما را به صفحهٔ دیگری بُرد (مثلاً other=جستجو)، به صفحهٔ هدف برگرد تا کلیکِ دوباره روی
+    // خودِ همان دکمه انجام شود؛ وگرنه دکمه پیدا نمی‌شود و به‌غلط «مرده» ثبت می‌شد.
+    const scNow = await curScreen();
+    if (!scNow.includes(name)) { await gotoScreen(kind, name); await p.waitForTimeout(300); if (other) { /* در همان صفحه یک تبِ دیگر را بزن */ } }
     const r2 = await tryClick(label);
     if (r2.crash) { crashed.push({ label, err: r2.crash }); continue; }
-    if (!r2.changed) dead.push(label); // حتی بعد از تلنگر هم هیچ اثری نداشت → واقعاً مرده
+    // فقط وقتی «مرده» بگو که دکمه هنوز حاضر باشد ولی هیچ اثری نداشته باشد. اگر اصلاً پیدا نشد (found=false)
+    // احتمالاً ناوبری جابه‌جامان کرده — مرده حساب نکن (جلوگیری از false-positive).
+    if (r2.found && !r2.changed) dead.push(label);
   }
 
   const status = crashed.length ? 'CRASH' : (blank ? 'BLANK' : (dead.length ? 'DEAD-BTNS' : (loadNetFails.length ? 'NET-ERR' : (fakeSuspect ? 'FAKE?' : 'OK'))));
