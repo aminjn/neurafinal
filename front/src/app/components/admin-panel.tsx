@@ -3055,12 +3055,9 @@ function ReportsBody() {
     { name: 'پیشنهاد ارسال شده', value: (deals || []).filter((d: any) => d.stage === 'proposal').length, fill: '#3b82f6' },
     { name: 'بسته شده', value: (deals || []).filter((d: any) => d.stage === 'closed' || d.stage === 'won').length, fill: '#10b981' },
   ];
-  const CRM_FUNNEL_DATA = __crmFunnel.reduce((t: number, f: any) => t + f.value, 0) > 0 ? __crmFunnel : [
-    { name: 'سرنخ جدید', value: 45, fill: '#9B59B6' },
-    { name: 'در حال مذاکره', value: 28, fill: '#f59e0b' },
-    { name: 'پیشنهاد ارسال شده', value: 18, fill: '#3b82f6' },
-    { name: 'بسته شده', value: 12, fill: '#10b981' },
-  ];
+  // دادهٔ واقعیِ CRM (بدونِ fallbackِ فیک). قبلاً وقتی خالی بود اعدادِ هاردکد ۴۵/۲۸/۱۸/۱۲ نشان می‌داد
+  // که «ویترینی» بود و با دیتای واقعیِ CRM (۰) تناقض داشت — حذف شد؛ خالی، خالی نشان داده می‌شود.
+  const CRM_FUNNEL_DATA = __crmFunnel;
   const companyAgents = agents.filter(a => !a.locked && (!a.company || a.company === company));
 
   const agentChartData = companyAgents.map(a => ({

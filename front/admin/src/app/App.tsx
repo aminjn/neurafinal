@@ -64,6 +64,9 @@ function Dashboard({ user, onLogout }: { user: AuthUser; onLogout: () => void })
     setDetail(null);
   };
 
+  // بریجِ ممیزی: ابزارِ audit-deep می‌تواند بین صفحه‌های سوپرادمین حرکت کند.
+  useEffect(() => { (window as any).__ADMIN_NAV__ = { go: (k: string) => handleSelect(k as MenuKey) }; });
+
   return (
     <div className="size-full" dir="rtl">
       <SidebarProvider>

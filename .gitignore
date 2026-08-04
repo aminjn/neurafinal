@@ -11,3 +11,6 @@ secrets*
 logs/
 uploads/
 .DS_Store
+# آرتیفکت‌های ممیزیِ عمیق (محلی)
+.audit-deep-shots/
+.audit-deep-report*.json
