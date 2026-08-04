@@ -92,6 +92,9 @@ await goEu('euMarketScreen'); await p.waitForTimeout(500); await dismiss(); awai
 const catClicked = await clickText('دیجیتال'); await p.waitForTimeout(600); await shot('mkt_cat_digital');
 // جزئیاتِ محصول: بخشِ نظرات و امتیاز
 const prodOpened = await clickText('هدفون بلوتوث نئورا'); await p.waitForTimeout(700); await scrollAll(); await shot('mkt_product_detail');
+// حساب من (تاریخچهٔ خرید بعد از خرید) + فروشگاه‌ها
+await goEu('euMarketScreen'); await p.waitForTimeout(500); await dismiss(); await clickText('حساب من'); await p.waitForTimeout(500); await clickText('تاریخچه خرید'); await p.waitForTimeout(400); await shot('mkt_account2');
+await goEu('euMarketScreen'); await p.waitForTimeout(400); await clickText('فروشگاه‌ها'); await p.waitForTimeout(600); await shot('mkt_shops2');
 result_extra = { invoiceOpened, catClicked, prodOpened };
 
 const result = { tabs: tabReport, purchase: { added, paidClicked: paid, balBefore, balAfter, spent: (balBefore != null && balAfter != null) ? balBefore - balAfter : null, ordBefore, ordAfter, newOrders: (ordAfter >= 0 && ordBefore >= 0) ? ordAfter - ordBefore : null }, extra: result_extra, errors: log.slice(0, 5) };

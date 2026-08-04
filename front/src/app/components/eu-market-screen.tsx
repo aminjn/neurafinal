@@ -29,7 +29,7 @@ import 'leaflet/dist/leaflet.css';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from './app-context';
 import { OrderDetail } from './end-user-panel';
-import { toFa } from './data';
+import { toFa, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from './data';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { euCardStyle, AgentTabBar, StatusPill, SectionTitle, EmptyState, AgentChatTabUI } from './eu-agent-shared';
 import type { ChatListItem, AgentCardItem, AgentTopicItem } from './eu-agent-shared';
@@ -290,6 +290,34 @@ export function AddressFormModal({ onDone }: { onDone: () => void }) {
   );
 }
 
+// افزودنِ روشِ پرداختِ واقعی (کارتِ بانکی) — در payment_methodsِ کاربر ذخیره می‌شود (نه فیک).
+function AddPaymentModal({ onDone }: { onDone: () => void }) {
+  const [num, setNum] = useState('');
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
+  const digits = num.replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\D/g, '');
+  const pretty = digits.replace(/(.{4})/g, '$1 ').trim();
+  const submit = async () => {
+    if (busy) return;
+    if (digits.length < 16) { try { window.dispatchEvent(new CustomEvent('neura:toast', { detail: 'شمارهٔ کارت ۱۶ رقمی وارد کنید' })); } catch (_e) {} return; }
+    setBusy(true);
+    try { await (api as any).myCreate('payment_methods', { id: 'pm_' + Date.now(), title: title.trim() || 'کارت بانکی', number: digits, last4: digits.slice(-4), isDefault: false }); onDone(); }
+    catch (_e) { try { window.dispatchEvent(new CustomEvent('neura:toast', { detail: 'خطا در افزودن' })); } catch (__e) {} }
+    finally { setBusy(false); }
+  };
+  const inp = 'w-full rounded-[10px] px-3 py-2.5 text-[13px] text-[var(--aw-text-primary)] outline-none border border-[var(--aw-border)] bg-[var(--aw-bg-input)]';
+  return (
+    <div className="flex flex-col gap-3">
+      <input className={inp} value={pretty} onChange={e => setNum(e.target.value)} placeholder="شمارهٔ کارت (۱۶ رقم)" inputMode="numeric" dir="ltr" style={{ textAlign: 'center', letterSpacing: 2 }} />
+      <input className={inp} value={title} onChange={e => setTitle(e.target.value)} placeholder="نامِ بانک/کارت (اختیاری)" />
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={submit} disabled={busy} className="py-2.5 rounded-[10px] border-none cursor-pointer text-white text-[13px]" style={{ background: 'var(--aw-eu-primary, #7B62FC)', fontWeight: 700, opacity: busy ? 0.6 : 1 }}>{busy ? 'در حال ثبت…' : 'ذخیره'}</button>
+        <button onClick={onDone} className="py-2.5 rounded-[10px] cursor-pointer text-[13px] bg-transparent" style={{ border: '1px solid var(--aw-border)', color: 'var(--aw-text-secondary)', fontWeight: 700 }}>انصراف</button>
+      </div>
+    </div>
+  );
+}
+
 function MarketAccountTab() {
   const { showToast, euProfile, walletBalance, euPlacedOrders, walletTx, openModal, closeModal, setEuScreen } = useApp();
   const [__addrList, __setAddrList] = useState<any[]>([]);
@@ -305,7 +333,6 @@ function MarketAccountTab() {
   const __toggleNotif = (k: string, d: boolean) => setNprefs(prev => { const next = { ...prev, [k]: !(prev[k] ?? d) }; (api as any).myCreate('notif_prefs', { id: 'prefs', map: next }).catch(() => {}); return next; });
 
 
-  const ADDRESSES: any[] = [];
   const [__wishItems, setWishItems] = useState<any[]>([]);
   const __loadWish = () => { if (!getToken()) return; (api as any).myList('wishlist').then((w: any) => { if (Array.isArray(w)) setWishItems(w.map((x: any) => ({ t: x.t || x.name || '', s: x.s || x.shop || '', p: x.p || '', icon: x.icon || 'fa-solid fa-box' }))); }).catch(() => {}); };
   // با هر تغییرِ داده (افزودن/حذفِ علاقه‌مندی از هر جای اپ) فهرست تازه می‌شود؛ قبلاً فقط یک‌بار موقعِ مانت لود می‌شد و کهنه می‌ماند.
@@ -328,13 +355,15 @@ function MarketAccountTab() {
     total: (Number(String(o.total).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR'),
   }));
 
+  const openAddPayment = () => openModal('افزودن روش پرداخت', <AddPaymentModal onDone={() => { closeModal(); (api as any).myList('payment_methods').then((p: any) => { if (Array.isArray(p)) setPayM(p); }).catch(() => {}); showToast('روش پرداخت افزوده شد ✅', 'success'); }} />);
   const SECTIONS = [
     { id: 'addresses', icon: 'fa-solid fa-map-marker-alt', label: 'آدرس‌های ارسال', color: '#3B82F6', count: __addrList.length },
+    { id: 'payments', icon: 'fa-solid fa-credit-card', label: 'روش‌های پرداخت', color: '#8B5CF6', count: PAYMENTS.length },
     { id: 'history', icon: 'fa-solid fa-clock-rotate-left', label: 'تاریخچه خرید', color: '#F59E0B', count: HISTORY.length },
   ];
 
-  const statusLabel = (s: string) => s === 'delivered' ? 'تحویل شده' : s === 'shipping' ? 'در حال ارسال' : 'لغو شده';
-  const statusColor = (s: string) => s === 'delivered' ? '#10B981' : s === 'shipping' ? '#F59E0B' : '#EF4444';
+  const statusLabel = (s: string) => (ORDER_STATUS_LABELS as any)[s] || (s === 'shipping' ? 'در حال ارسال' : s === 'refunded' ? 'مرجوعی‌شده' : 'ثبت‌شده');
+  const statusColor = (s: string) => (ORDER_STATUS_COLORS as any)[s]?.text || (s === 'shipping' ? '#F59E0B' : s === 'refunded' ? '#EF4444' : '#8B5CF6');
 
   return (
     <div className="flex-1 overflow-y-auto pb-4 aw-scroll px-4 pt-3">
@@ -348,11 +377,11 @@ function MarketAccountTab() {
           </div>
           <div className="flex-1">
             <div className="text-[14px] text-[var(--aw-text-primary)]" style={{ fontWeight: 800 }}>{euProfile.name}</div>
-            <div className="text-[11px] text-[var(--aw-text-muted)]">{euProfile.phone || '۰۹۱۲۳۴۵۶۷۸۹'}</div>
+            <div className="text-[11px] text-[var(--aw-text-muted)]">{euProfile.phone || 'شماره ثبت نشده'}</div>
           </div>
           <button className="w-9 h-9 rounded-xl cursor-pointer flex items-center justify-center"
             style={{ background: 'color-mix(in srgb, var(--aw-eu-primary) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--aw-eu-primary) 22%, transparent)', color: 'var(--aw-eu-primary)' }}
-            onClick={() => showToast('ویرایش پروفایل')}>
+            onClick={() => setEuScreen('euProfileScreen')} title="ویرایش پروفایل">
             <i className="fa-solid fa-pen text-[12px]" />
           </button>
         </div>
@@ -437,9 +466,9 @@ function MarketAccountTab() {
                   </div>
                 ))}
                 <button className="w-full p-2.5 mr-3 rounded-xl border border-dashed border-[var(--aw-border)] bg-transparent text-[11px] text-[var(--aw-text-muted)] cursor-pointer flex items-center justify-center gap-1.5 hover:border-[#F59E0B] hover:text-[#F59E0B] transition-all"
-                  onClick={() => { if (section.id === 'addresses') openAddressForm(); else openMarketOrders(setEuScreen); }}>
+                  onClick={() => { if (section.id === 'addresses') openAddressForm(); else if (section.id === 'payments') openAddPayment(); else openMarketOrders(setEuScreen); }}>
                   <i className="fa-solid fa-plus text-[9px]" />
-                  {section.id === 'addresses' ? 'افزودن آدرس جدید' : 'مشاهده همه سفارش‌ها'}
+                  {section.id === 'addresses' ? 'افزودن آدرس جدید' : section.id === 'payments' ? 'افزودن روش پرداخت' : 'مشاهده همه سفارش‌ها'}
                 </button>
               </motion.div>
             )}
@@ -644,15 +673,11 @@ const MKT_CHAT_MSGS = [];
 function MarketShopsTab({ onSelectShop, onBack }: { onSelectShop: (s: Shop) => void; onBack?: () => void }) {
   const { showToast, promotedMarket } = useApp();
   const [search, setSearch] = useState('');
-  const [cat, setCat] = useState('all');
-  const [__shopCats, __setShopCats] = useState<any[]>(SHOP_CATEGORIES);
-  useEffect(() => { (api as any).getSettings().then((st: any) => { if (st && Array.isArray(st.marketCategories) && st.marketCategories.length) __setShopCats([{ id: 'all', label: 'همه', icon: 'fa-solid fa-border-all' }, ...st.marketCategories]); }).catch(() => {}); }, []);
-  const [greetOpen, setGreetOpen] = useState(true);
   const [__mktShops, __setMktShops] = useState<any[]>([]);
   React.useEffect(() => { (api as any).marketShops().then((r: any) => __setMktShops(Array.isArray(r) ? r : [])).catch(() => {}); }, []);
   const searchRef = React.useRef<HTMLInputElement>(null);
   const isPromoted = (s: Shop) => promotedMarket.includes('shop:' + s.name);
-  const __shopList: Shop[] = (__mktShops || []).map((c: any) => ({ id: c.id, name: c.name || 'فروشگاه', type: c.type || 'فروشگاه', cat: 'all', rating: 0, distance: '', deliveryTime: '', isOpen: c.isOpen !== false, icon: 'fa-solid fa-store', color: '#3B82F6', products: Number(c.products) || 0 } as any as Shop));
+  const __shopList: Shop[] = (__mktShops || []).map((c: any) => ({ id: c.id, name: c.name || 'فروشگاه', type: c.type || 'فروشگاه', cat: 'all', rating: Number(c.rating) || 0, ratingCount: Number(c.ratingCount) || 0, distance: '', deliveryTime: '', isOpen: c.isOpen !== false, icon: 'fa-solid fa-store', color: '#3B82F6', products: Number(c.products) || 0 } as any as Shop));
   const filtered = __shopList
     .filter(s => (!search || s.name.includes(search) || s.type.includes(search)))
     .slice()
@@ -676,19 +701,7 @@ function MarketShopsTab({ onSelectShop, onBack }: { onSelectShop: (s: Shop) => v
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-1 aw-scroll-x" style={{ scrollbarWidth: 'none' }}>
-        {__shopCats.map((c: any) => {
-          const on = cat === c.id;
-          return (
-            <button key={c.id} onClick={() => setCat(c.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] whitespace-nowrap cursor-pointer border transition-all flex-shrink-0"
-              style={{ fontWeight: 700, background: on ? 'var(--aw-primary)' : 'var(--aw-bg-card)', color: on ? '#fff' : 'var(--aw-text-secondary)', borderColor: on ? 'var(--aw-primary)' : 'var(--aw-border)' }}>
-              <i className={c.icon + ' text-[11px]'} />{c.label}
-            </button>
-          );
-        })}
-      </div>
-
+      {/* فیلترِ دستهٔ فروشگاه حذف شد: فروشگاه‌های واقعی (فروشنده‌ها) دستهٔ سراسری ندارند؛ کنترلِ فیک نگذاشتیم (R1). */}
       <SectionTitle icon="fa-solid fa-store" title={`فروشگاه‌ها (${toFa(filtered.length)})`} />
       {filtered.map((shop, i) => {
         return (
@@ -707,15 +720,13 @@ function MarketShopsTab({ onSelectShop, onBack }: { onSelectShop: (s: Shop) => v
               <div className="text-[10px] text-[var(--aw-text-secondary)]">{shop.type}</div>
             </div>
             <div className="flex flex-col items-center gap-0.5">
-              <div className="flex items-center gap-0.5 text-[13px] text-[#F59E0B]" style={{ fontWeight: 700 }}>
-                <i className="fa-solid fa-star text-[9px]" />{shop.rating}
-              </div>
+              {((shop as any).rating || 0) > 0 ? (
+                <div className="flex items-center gap-0.5 text-[13px] text-[#F59E0B]" style={{ fontWeight: 700 }}>
+                  <i className="fa-solid fa-star text-[9px]" />{toFa((shop as any).rating)}
+                </div>
+              ) : <span className="text-[9px] text-[var(--aw-text-muted)] opacity-70">بدون امتیاز</span>}
               <span className="text-[9px] text-[var(--aw-text-muted)]">{toFa(shop.products || 0)} محصول</span>
             </div>
-          </div>
-          <div className="flex items-center gap-4 text-[10px] text-[var(--aw-text-muted)] mt-2 pr-15">
-            <span><i className="fa-solid fa-location-arrow text-[8px] ml-1" />{shop.distance}</span>
-            <span><i className="fa-solid fa-truck text-[8px] ml-1" />{shop.deliveryTime}</span>
           </div>
         </motion.div>
         );

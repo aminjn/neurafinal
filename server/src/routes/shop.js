@@ -85,7 +85,14 @@ router.get('/market', authRequired, async (req, res) => {
   for (const sub of Object.keys(byScope)) {
     if (!(await userHasShop(sub, _cache))) continue; // فقط دارندهٔ ایجنتِ فروشنده/صندوقدار فروشگاه دارد
     const name = await resolveShopName(sub, byScope[sub].shopName);
-    shops.push({ id: sub, name, type: 'فروشگاه', products: byScope[sub].count, isOpen: true });
+    // امتیازِ فروشگاه = میانگینِ واقعیِ همهٔ نظرهایِ محصولاتش (نه ۰یِ فیک)
+    let rating = 0, ratingCount = 0;
+    try {
+      const rv = await query("SELECT data FROM documents WHERE collection='u_product_reviews' AND company=$1", ['user:' + sub]);
+      const rs = rv.rows.map((r) => Number(r.data && r.data.rating) || 0).filter((n) => n > 0);
+      if (rs.length) { rating = Math.round((rs.reduce((a, b) => a + b, 0) / rs.length) * 10) / 10; ratingCount = rs.length; }
+    } catch (_) {}
+    shops.push({ id: sub, name, type: 'فروشگاه', products: byScope[sub].count, isOpen: true, rating, ratingCount });
   }
   res.json(shops);
 });
@@ -238,15 +245,26 @@ router.post('/return/resolve', authRequired, async (req, res) => {
     if (rec.status !== 'pending') { await client.query('ROLLBACK'); return res.status(409).json({ error: 'already_' + rec.status }); }
     const buyerId = String(rec.buyerId);
     const amount = Math.max(0, Math.floor(Number(rec.amount) || 0));
+    let cbRevert = 0;
     if (approve) {
-      // خریدار: بازپرداختِ کیف‌پول
+      // کش‌بکِ همان خرید را به‌نسبتِ مبلغِ مرجوعی پس بگیر (پارِیتیِ لیدرها: کش‌بکِ خریدِ مرجوعی‌شده نباید بماند).
+      try {
+        const oq = await client.query("SELECT data FROM documents WHERE collection='u_orders' AND company=$1 AND data->>'id'=$2 LIMIT 1", ['user:' + buyerId, rec.orderId]);
+        const od = oq.rows[0]?.data || {}; const cb = Number(od.cashback) || 0; const tot = Number(od.total) || 0;
+        cbRevert = (cb > 0 && tot > 0) ? Math.floor(cb * Math.min(1, amount / tot)) : 0;
+      } catch (_) {}
+      // خریدار: بازپرداختِ کیف‌پول (منهای کش‌بکِ پس‌گرفته‌شده)
       const br = await client.query('SELECT meta FROM app_users WHERE id=$1 FOR UPDATE', [buyerId]);
       if (br.rows[0]) {
         const bm = br.rows[0].meta || {};
         if (!bm.wallet || typeof bm.wallet !== 'object') bm.wallet = { balance: 0, tx: [] };
-        bm.wallet.balance = (Number(bm.wallet.balance) || 0) + amount;
+        bm.wallet.balance = (Number(bm.wallet.balance) || 0) + amount - cbRevert;
         if (!Array.isArray(bm.wallet.tx)) bm.wallet.tx = [];
         bm.wallet.tx.unshift({ id: 'ref' + Date.now(), type: 'deposit', title: 'بازگشتِ وجهِ مرجوعی #' + (rec.orderNum || ''), date: '', amount });
+        if (cbRevert > 0) {
+          bm.wallet.cashback = Math.max(0, (Number(bm.wallet.cashback) || 0) - cbRevert);
+          bm.wallet.tx.unshift({ id: 'cbr' + Date.now(), type: 'cashback', title: 'برگشتِ کش‌بکِ مرجوعی', date: '', amount: -cbRevert });
+        }
         bm.wallet.tx = bm.wallet.tx.slice(0, 300);
         await client.query('UPDATE app_users SET meta=$2::jsonb WHERE id=$1', [buyerId, JSON.stringify(bm)]);
       }
@@ -276,7 +294,7 @@ router.post('/return/resolve', authRequired, async (req, res) => {
     const ntfId = 'ntf_' + Date.now() + Math.random().toString(36).slice(2, 5);
     await client.query("INSERT INTO documents (collection, id, company, data) VALUES ('u_notifications', $1, $2, $3::jsonb)", [buyerId + '__' + ntfId, 'user:' + buyerId, JSON.stringify({ id: ntfId, type: 'return_result', title: approve ? 'مرجوعیِ شما تأیید شد' : 'مرجوعیِ شما رد شد', message: approve ? ('مبلغِ ' + amount.toLocaleString('en-US') + ' تومان به کیفِ‌پولتان بازگشت') : 'درخواستِ مرجوعی پذیرفته نشد', date: new Date().toISOString(), read: false })]);
     await client.query('COMMIT');
-    res.json({ ok: true, status: rec.status, refunded: approve ? amount : 0 });
+    res.json({ ok: true, status: rec.status, refunded: approve ? (amount - cbRevert) : 0, cashbackReverted: cbRevert });
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch (_) {}
     res.status(500).json({ error: 'resolve_failed', detail: String(e?.message || e) });
