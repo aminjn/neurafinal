@@ -165,6 +165,8 @@ export const api = {
   myProductReviews: () => req<any[]>(`/shop/my-product-reviews?_=${Date.now()}`),
   // مرجوعی/بازگشتِ وجه (both-role)
   requestReturn: (orderId: string | number, reason: string) => req<any>(`/shop/order/return`, { method: 'POST', body: JSON.stringify({ orderId, reason }) }),
+  // پیگیریِ واقعیِ سفارش از فروشنده (R21: اکتِ واقعیِ ایجنت — نوتیفِ واقعی به فروشنده)
+  followUpOrder: (query?: string) => req<any>(`/ai/order/follow-up`, { method: 'POST', body: JSON.stringify({ query: query || '' }) }),
   listReturns: () => req<any[]>(`/shop/returns?_=${Date.now()}`),
   resolveReturn: (returnId: string, approve: boolean) => req<any>(`/shop/return/resolve`, { method: 'POST', body: JSON.stringify({ returnId, approve }) }),
   // داین: رستوران‌های منتشرشده + منوی هر رستوران + رمزگشاییِ QRِ میز

@@ -9,8 +9,8 @@ AUD="${AUDIT_DIR:-/var/tmp/neura-marketdb}"; PGPORT="${AUDIT_PGPORT:-5456}"; API
 RUNUSER=""; if [ "$(id -u)" = "0" ]; then id pgaudit >/dev/null 2>&1 || useradd -M -s /bin/bash pgaudit; RUNUSER="runuser -u pgaudit --"; fi
 psql_(){ $RUNUSER "$PGBIN/psql" -h 127.0.0.1 -p "$PGPORT" -U neura -d neura_audit -tc "$1" 2>&1; }
 
-# سرورهای زامبیِ اجراهای قبلی را ببند (وگرنه پورت را نگه می‌دارند و curl به کدِ قدیمی می‌خورد)
-pkill -f "node src/server.js" 2>/dev/null; sleep 1
+# سرورهای زامبیِ اجراهای قبلی را ببند (وگرنه پورت را نگه می‌دارند و curl به کدِ قدیمی می‌خورد → 403/باگِ کاذب)
+pkill -9 -f "node src/server.js" 2>/dev/null; sleep 2
 
 echo "==> PostgreSQL موقت"
 rm -rf "$AUD"; mkdir -p "$AUD"; [ -n "$RUNUSER" ] && chown -R pgaudit "$AUD"; chmod 700 "$AUD"
@@ -55,6 +55,12 @@ echo "-- ثبتِ نظر (خریدارِ واقعی):"; curl -s -X POST "$API/sh
 echo "-- درخواستِ مرجوعی (خریدار):"; curl -s -X POST "$API/shop/order/return" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d "{\"orderId\":\"$OID\",\"reason\":\"کالا معیوب بود\"}" | head -c 200; echo
 RID=$(curl -s "$API/shop/returns" -H "Authorization: Bearer $ST" | sed -n 's/.*"id":"\(ret_[^"]*\)".*/\1/p' | head -1)
 echo "-- returnId=$RID → تأییدِ فروشنده (بازپرداختِ اتمیک):"; curl -s -X POST "$API/shop/return/resolve" -H "Authorization: Bearer $ST" -H 'Content-Type: application/json' -d "{\"returnId\":\"$RID\",\"approve\":true}" | head -c 200; echo
+echo "-- R21: پیگیریِ واقعی از فروشنده (اکتِ ایجنت) — قبلِ مرجوعی باید سفارش هنوز باشد؛ این را زودتر می‌زنیم:"
+echo "   (نکته: چون بالا مرجوعی زدیم، برای تستِ پیگیری یک خریدِ تازه لازم نیست — follow_up آخرین سفارشِ non-sale را می‌گیرد)"
+FUP=$(curl -s -X POST "$API/ai/order/follow-up" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d '{}')
+echo "   follow-up resp: $(echo "$FUP" | head -c 160)"
+psql_ "SELECT 'seller_followup_notifs=' || count(*) FROM documents d JOIN app_users u ON d.company='user:'||u.id WHERE u.username='audiseller' AND d.collection='u_notifications' AND d.data->>'type'='order_followup'"
+
 echo "-- SQL: امتیازِ محصول / موجودیِ خریدار پس از بازپرداخت / وضعیتِ سفارش:"
 psql_ "SELECT 'reviews=' || count(*) FROM documents WHERE collection='u_product_reviews'"
 psql_ "SELECT 'buyer_wallet=' || (meta->'wallet'->>'balance') FROM app_users WHERE username='audituser'"

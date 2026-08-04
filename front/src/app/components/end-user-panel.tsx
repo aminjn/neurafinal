@@ -2339,7 +2339,12 @@ export function OrderDetail({ order: o }: { order: Order }) {
       </div>
       <div className="flex gap-2 mt-4">
         <button className="flex-1 py-2.5 px-3 border-none rounded-[10px] text-[13px] text-white cursor-pointer" style={{ background: 'var(--aw-primary, #2E86FF)', fontWeight: 600 }}
-          onClick={() => { closeModal(); setTimeout(() => openChat('assistant', 'eu', undefined, [{ id: Date.now(), text: `پیگیری سفارش #${__num} — وضعیت: ${__statusLabel}`, sent: false, time: '' } as any]), 200); }}>
+          onClick={() => {
+            // R21: پیگیری «واقعاً» به فروشنده می‌رود (نوتیفِ واقعی)، بعد گفتگو با دستیار باز می‌شود.
+            (api as any).followUpOrder(String(__num)).then((r: any) => { if (r && r.ok && r.notified) showToast && showToast('پیگیری به فروشنده ارسال شد ✅', 'success'); }).catch(() => {});
+            closeModal();
+            setTimeout(() => openChat('assistant', 'eu', undefined, [{ id: Date.now(), text: `پیگیری سفارش #${__num} — وضعیت: ${__statusLabel}`, sent: false, time: '' } as any]), 200);
+          }}>
           <i className="fa-solid fa-comment" /> پیگیری با دستیار
         </button>
         <button className="flex-1 py-2.5 px-3 rounded-[10px] text-[13px] cursor-pointer" style={{ background: 'transparent', border: '1px solid var(--aw-eu-primary)', color: 'var(--aw-eu-primary)', fontWeight: 600 }}

@@ -164,6 +164,43 @@ async function getMyOrders(sub, q) {
   });
 }
 
+// ابزارِ «پیگیریِ واقعیِ سفارش از فروشنده» (R21: اکتِ واقعی) — به فروشندهٔ همان سفارش نوتیفِ پیگیری می‌فرستد
+// (اثرِ واقعیِ قابلِ‌تأیید در DB) و وضعیتِ واقعی را برمی‌گرداند. نه پاسخِ کلی.
+const FOLLOW_UP_ORDER_TOOL = {
+  type: 'function',
+  function: {
+    name: 'follow_up_order',
+    description: 'سفارشِ کاربر را «واقعاً» از فروشنده پیگیری می‌کند: به فروشندهٔ همان سفارش یک نوتیفِ پیگیری می‌فرستد و وضعیتِ فعلی را برمی‌گرداند. هر وقت کاربر خواست سفارشش را پیگیری/جویا شوی (چه متن چه صوت)، حتماً این را صدا بزن — هرگز فقط نگو «پیگیری شد».',
+    parameters: { type: 'object', properties: { query: { type: 'string', description: 'شمارهٔ سفارش یا کلیدواژهٔ کالا/فروشگاه (اختیاری)؛ اگر ندهی، آخرین سفارش پیگیری می‌شود.' } } },
+  },
+};
+async function followUpOrder(sub, args) {
+  const term = String(args && args.query || '').replace(/[#\s]/g, '');
+  const { rows } = await query("SELECT data FROM documents WHERE collection='u_orders' AND company=$1 ORDER BY created_at DESC LIMIT 60", ['user:' + sub]);
+  let orders = rows.map((r) => r.data).filter((o) => o && o.kind !== 'sale');
+  if (term) orders = orders.filter((o) => JSON.stringify(o).replace(/\s/g, '').includes(term));
+  const o = orders[0];
+  if (!o) return { ok: false, msg: 'کاربر سفارشی برای پیگیری ندارد؛ صادقانه همین را بگو.' };
+  let buyerName = 'کاربر';
+  try { const u = await query('SELECT name, username FROM app_users WHERE id=$1', [sub]); buyerName = (u.rows[0] && (u.rows[0].name || u.rows[0].username)) || 'کاربر'; } catch (_) {}
+  const lines = Array.isArray(o.lines) ? o.lines : [];
+  const sellers = [...new Set(lines.map((l) => String(l.sellerId || l.venueId || '')).filter((s) => s && s !== String(sub)))];
+  const itemsTxt = lines.map((l) => (l.name || 'کالا') + (l.qty ? ' ×' + l.qty : '')).join('، ') || (typeof o.items === 'string' ? o.items : '');
+  const dineSt = Array.isArray(o.dineTickets) && o.dineTickets[0] ? (ORDER_STATUS_FA[o.dineTickets[0].status] || o.dineTickets[0].status) : null;
+  const status = dineSt || ORDER_STATUS_FA[o.status] || o.status || 'ثبت‌شده';
+  let notified = 0;
+  for (const sid of sellers) {
+    const ntfId = 'ntf_' + Date.now() + Math.random().toString(36).slice(2, 5);
+    await query("INSERT INTO documents (collection, id, company, data) VALUES ('u_notifications', $1, $2, $3::jsonb)",
+      [sid + '__' + ntfId, 'user:' + sid, JSON.stringify({ id: ntfId, type: 'order_followup', title: 'پیگیریِ سفارش از مشتری', message: buyerName + ' پیگیریِ سفارشِ #' + (o.num || '') + ' را خواست (' + itemsTxt + '). لطفاً وضعیت را به‌روزرسانی کنید.', body: itemsTxt, date: new Date().toISOString(), read: false, orderId: o.id, orderNum: o.num || '', buyerId: String(sub) })]);
+    notified++;
+  }
+  return { ok: true, notified, status, num: o.num || o.id,
+    msg: notified
+      ? ('پیگیری برای ' + notified + ' فروشنده ثبت و نوتیف ارسال شد. وضعیتِ فعلیِ سفارشِ #' + (o.num || '') + ': ' + status + '. به کاربر بگو پیگیری را واقعاً به فروشنده فرستادی و وضعیتِ فعلی چیست.')
+      : ('این سفارش فروشندهٔ قابلِ‌پیگیری ندارد (احتمالاً سفارشِ قدیمی/ویترین). وضعیتِ فعلی: ' + status + '. صادقانه همین را به کاربر بگو.') };
+}
+
 // اجرای واقعیِ ابزارهای دستیار: نوشتن در انبارِ per-userِ کاربر (همان جایی که myList فرانت می‌خواند).
 async function runAssistantTool(sub, fname, args) {
   const cid = Date.now() + Math.floor(Math.random() * 1000);
@@ -994,14 +1031,14 @@ async function runChat(req) {
     // حیطهٔ دستیارِ شخصی: ثبتِ واقعیِ رویداد/کار/یادداشت در روزمرگیِ خودِ کاربر
     const asstDomain = !phone && me && me.sub != null && agentId === 'assistant';
     if (asstDomain) {
-      toolList.push(CREATE_EVENT_TOOL, CREATE_TASK_TOOL, CREATE_NOTE_TOOL, GET_ORDERS_TOOL);
+      toolList.push(CREATE_EVENT_TOOL, CREATE_TASK_TOOL, CREATE_NOTE_TOOL, GET_ORDERS_TOOL, FOLLOW_UP_ORDER_TOOL);
       let nowFa = '';
       try { nowFa = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date()); } catch (_) {}
       sys += `\n\n— اقدامِ واقعی (بسیار مهم): تو فقط حرف نمی‌زنی؛ در حیطهٔ خودت واقعاً کار انجام می‌دهی.`
         + (nowFa ? ` زمانِ فعلی به وقتِ ایران: ${nowFa}.` : '')
         + ` هر وقت کاربر خواست چیزی در «روزمرگی»/تقویم/کارها/یادداشت‌هایش ثبت شود، حتماً ابزارِ مناسب را فراخوانی کن و بعد کوتاه تأیید کن — هرگز نگو «ثبت کردم» بدونِ اینکه واقعاً ابزار را صدا زده باشی.`
         + ` کارِ زمان‌دار/یادآوری/قرار→create_event (برای «۱ ساعت دیگه» مقدارِ in_minutes=۶۰)؛ کارِ بی‌زمان→create_task؛ یادداشت→create_note. عنوان را کوتاه و تمیز بده (بدونِ «یه تسک بساز»، «تو روزمرگی»، «برام»).`
-        + ` برای پیگیریِ سفارش/وضعیت/فاکتور/میزانِ خرید→get_my_orders را صدا بزن و فقط بر اساسِ همان دادهٔ واقعی جواب بده؛ اگر سفارشی نبود صادقانه بگو سفارشی ثبت نشده.`;
+        + ` برای دیدنِ وضعیت/فاکتور/میزانِ خرید→get_my_orders؛ و اگر کاربر خواست سفارشش را «پیگیری» کنی یا از فروشنده جویا شوی→حتماً follow_up_order را صدا بزن (این واقعاً به فروشنده نوتیف می‌فرستد)، نه پاسخِ کلی. فقط بر اساسِ دادهٔ واقعی جواب بده؛ اگر سفارشی نبود صادقانه بگو.`;
     }
     const tools = toolList.length ? toolList : null;
 
@@ -1103,6 +1140,13 @@ async function runChat(req) {
           catch (e) { content = 'خواندنِ سفارش‌ها ناموفق بود.'; }
           console.log('AI get_my_orders → sub=', me.sub, 'q=', args.query || '-');
           toolMsgs.push({ role: 'tool', tool_call_id: tc.id, content });
+          continue;
+        }
+        if (fname === 'follow_up_order' && asstDomain) {
+          let out; try { out = await followUpOrder(me.sub, args); } catch (e) { out = { msg: 'پیگیری ناموفق بود.' }; }
+          if (out && out.notified) dataChanged.add('notifications');
+          console.log('AI follow_up_order → sub=', me.sub, 'notified=', out && out.notified, 'num=', out && out.num);
+          toolMsgs.push({ role: 'tool', tool_call_id: tc.id, content: out.msg });
           continue;
         }
         if (fname === 'make_call' && didCall) {
@@ -1242,6 +1286,13 @@ router.get('/session', async (req, res) => {
 });
 
 // مخاطبینِ کاربر — لیست
+// پیگیریِ واقعیِ سفارش از فروشنده (همان منطقِ ابزارِ دستیار follow_up_order) — قابلِ فراخوانیِ مستقیم از UI هم،
+// تا «پیگیری» حتی بدونِ چرخهٔ کاملِ LLM هم واقعاً به فروشنده برسد (R21).
+router.post('/order/follow-up', authRequired, async (req, res) => {
+  try { const out = await followUpOrder(req.user.sub, { query: req.body && req.body.query }); res.json(out); }
+  catch (e) { res.status(500).json({ ok: false, error: 'followup_failed', detail: String(e?.message || e) }); }
+});
+
 router.get('/contacts', authRequired, async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const id = 'usr_' + req.user.sub;
