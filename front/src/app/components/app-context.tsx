@@ -1210,6 +1210,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       goTeam: (team) => { setRole('admin'); setAppStage('app'); setBriefingSeen(true); setAgentTeam(team); },
       goAdmin: (screen) => { setRole('admin'); setAppStage('app'); setBriefingSeen(true); setAdminScreen(screen); },
       goEu: (screen) => { setRole('admin'); setAppStage('app'); setBriefingSeen(true); setAgentTeam('assistant'); setEuScreen(screen); },
+      openChat: (id, type, meta) => { try { openChat(id, type as any, meta as any, []); } catch (_) {} },
       setStage: (s) => setAppStage(s),
       enterApp: () => { setAppStage('app'); setBriefingSeen(true); },
     };

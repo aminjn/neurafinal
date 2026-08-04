@@ -201,9 +201,8 @@ export default function ChatOverlay() {
     }
   }, [chat.open, chat.id]);
 
-  if (!chat.open) return null;
-
   // حضورِ واقعیِ طرفِ مقابل در گفتگوی مخاطبِ نورا (از سرورِ RTC) — «همه آنلاین»ِ فیک رفع می‌شود.
+  // نکتهٔ حیاتی: این hookها باید پیش از هر return زودهنگام باشند (قانونِ Hooks) وگرنه کلِ اپ کرش می‌کند.
   const [__peerOnline, setPeerOnline] = useState(false);
   useEffect(() => {
     const id = chat.id || '';
@@ -215,6 +214,8 @@ export default function ChatOverlay() {
     const iv = setInterval(check, 15000);
     return () => { live = false; clearInterval(iv); };
   }, [chat.open, chat.id, chat.type]);
+
+  if (!chat.open) return null;
 
   // Get header info
   let headerName = '';
