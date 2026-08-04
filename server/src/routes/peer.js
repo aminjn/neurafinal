@@ -71,6 +71,21 @@ router.get('/with', authRequired, async (req, res) => {
   res.json({ messages });
 });
 
+// تیکِ «خوانده‌شد» واقعی: گیرنده وقتی گفتگو را باز می‌کند، پیام‌هایی که «به او» فرستاده شده را read می‌کند؛
+// فرستنده در /with مقدارِ readAt را می‌بیند و تیکِ آبیِ دوتایی نشان می‌دهد. (نه تیکِ فیکِ همیشگی.)
+router.post('/read', authRequired, async (req, res) => {
+  const other = String(req.body?.sub || '');
+  if (!other) return res.json({ ok: true });
+  const conv = convId(req.user.sub, other);
+  try {
+    await query(
+      "UPDATE documents SET data = data || jsonb_build_object('readAt', $3::bigint) WHERE collection='peer_msgs' AND company=$1 AND data->>'to'=$2 AND (data ? 'readAt') = false",
+      [conv, String(req.user.sub), Date.now()]
+    );
+  } catch (_) {}
+  res.json({ ok: true });
+});
+
 // فهرستِ گفتگوهای کاربر-به-کاربرِ من (برای نمایش در لیستِ گفتگوها) — آخرین پیامِ هر گفتگو.
 router.get('/conversations', authRequired, async (req, res) => {
   const me = String(req.user.sub);

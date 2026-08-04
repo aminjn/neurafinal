@@ -316,7 +316,9 @@ export const api = {
   peerSend: (to: string, text: string) =>
     req<{ ok: boolean; message: any }>(`/peer/send`, { method: 'POST', body: JSON.stringify({ to, text }) }),
   peerWith: (sub: string) =>
-    req<{ messages: { from: string; to: string; text: string; ts: number; mine?: boolean }[] }>(`/peer/with?sub=${encodeURIComponent(sub)}&_=${Date.now()}`),
+    req<{ messages: { from: string; to: string; text: string; ts: number; mine?: boolean; readAt?: number }[] }>(`/peer/with?sub=${encodeURIComponent(sub)}&_=${Date.now()}`),
+  // تیکِ خوانده‌شدِ واقعی: پیام‌های رسیده به من را در این گفتگو read کن
+  peerMarkRead: (sub: string) => req<any>(`/peer/read`, { method: 'POST', body: JSON.stringify({ sub }) }),
   peerConversations: () =>
     req<{ conversations: { sub: string; name: string; lastText: string; ts: number }[] }>(`/peer/conversations?_=${Date.now()}`),
   // حضورِ واقعیِ کاربران از سرورِ تماس (RTC) — { sub: true/false }

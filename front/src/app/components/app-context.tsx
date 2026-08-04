@@ -1154,11 +1154,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const r: any = isGroup ? await (api as any).groupWith(other) : await (api as any).peerWith(other);
         if (stop) return;
-        const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, text: m.text, sent: !!m.mine, time: '', senderName: m.mine ? '' : (m.fromName || '') }));
+        // تیکِ خوانده‌شدِ واقعی: readAt را حمل کن؛ و پیام‌هایی که «به من» رسیده را read کن (فقط ۱:۱).
+        if (isPeer) { (api as any).peerMarkRead(other).catch(() => {}); }
+        const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, text: m.text, sent: !!m.mine, time: '', senderName: m.mine ? '' : (m.fromName || ''), readAt: m.readAt || null }));
         setContactMsgsMap(prev => {
           const cur = prev[chat.id as string] || [];
-          // فقط وقتی سرور پیامِ بیشتری دارد به‌روزرسانی کن تا پیامِ خوش‌بینانهٔ همین‌الان پاک نشود.
-          if (msgs.length <= cur.length) return prev;
+          // به‌روزرسانی وقتی پیامِ بیشتری هست، یا وضعیتِ «خوانده‌شد» تغییر کرده (تیکِ آبی تازه شود).
+          const readSig = msgs.filter((x: any) => x.sent && x.readAt).length;
+          const curReadSig = cur.filter((x: any) => x.sent && x.readAt).length;
+          if (msgs.length <= cur.length && readSig === curReadSig) return prev;
           return { ...prev, [chat.id as string]: msgs };
         });
       } catch (_) {}

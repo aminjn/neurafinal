@@ -780,7 +780,9 @@ export default function ChatOverlay() {
             }}>
               <div>{m.text}</div>
               <div className="text-[10px] mt-1 opacity-60 flex items-center gap-1" style={{ justifyContent: m.sent ? 'flex-end' : 'flex-start' }}>
-                {m.sent && <i className="fa-solid fa-check-double text-[8px]" />}
+                {m.sent && (((m as any).readAt || (m as any).read)
+                  ? <i className="fa-solid fa-check-double text-[8px]" style={{ color: '#34b7f1' }} title="خوانده شد" />
+                  : <i className="fa-solid fa-check text-[8px]" title="ارسال شد" />)}
                 {m.time}
                 {!m.sent && chat.type === 'eu' && (
                   <button onClick={() => speakMessage('co-' + m.id, m.text)} title="خواندن متن"
@@ -906,7 +908,20 @@ function EuGroupSettings({ groupId }: { groupId: string }) {
       setAddList((rr?.users || []).map((u: any) => ({ sub: String(u.sub), name: nameByPhone[String(u.phone).replace(/\D/g, '').slice(-10)] || u.name || u.phone })).filter((u: any) => !existing.has(u.sub)));
     } catch (_) { setAddList([]); }
   };
-  const copyInvite = () => { try { navigator.clipboard.writeText((info?.invite) || ''); showToast('لینکِ دعوت کپی شد'); } catch (_) { showToast(info?.invite || ''); } };
+  // لینکِ دعوتِ «واقعیِ قابلِ‌اشتراک» = URLِ کاملِ اپ + کدِ دعوت (نه فقط کدِ خام).
+  const inviteUrl = () => { const c = info?.invite || ''; if (!c) return ''; try { return (typeof window !== 'undefined' ? window.location.origin : 'https://nr.servein.ir') + '/?join=' + encodeURIComponent(c); } catch (_) { return 'https://nr.servein.ir/?join=' + c; } };
+  const copyInvite = () => { const u = inviteUrl(); if (!u) { showToast('هنوز لینکی ساخته نشده'); return; } try { navigator.clipboard.writeText(u); showToast('لینکِ دعوت کپی شد'); } catch (_) { showToast(u); } };
+  const shareInvite = async () => { const u = inviteUrl(); if (!u) { showToast('هنوز لینکی ساخته نشده'); return; } try { if ((navigator as any).share) { await (navigator as any).share({ title: info?.name || 'گروه', text: 'به گروهِ «' + (info?.name || '') + '» بپیوند:', url: u }); } else { copyInvite(); } } catch (_) {} };
+  const [addPhone, setAddPhone] = useState('');
+  const addByPhone = () => wrap(async () => {
+    const digits = addPhone.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\D/g, '');
+    if (digits.length < 10) { showToast('شمارهٔ معتبر وارد کنید'); return; }
+    const rr: any = await (api as any).peerResolve([digits]);
+    const u = (rr?.users || [])[0];
+    if (!u || !u.sub) { showToast('این شماره کاربرِ نورا نیست'); return; }
+    await api.groupAddMembers(groupId, [String(u.sub)]);
+    setAddPhone('');
+  }, 'عضو اضافه شد');
   const doLeave = () => wrap(async () => { await api.groupLeave(groupId); closeModal(); closeChat(); }, 'از گروه خارج شدید');
   const doDelete = () => { if (typeof window !== 'undefined' && !window.confirm('گروه برای همه حذف شود؟')) return; wrap(async () => { await (api as any).groupDelete(groupId); closeModal(); closeChat(); }, 'گروه حذف شد'); };
 
@@ -941,11 +956,12 @@ function EuGroupSettings({ groupId }: { groupId: string }) {
         </div>
       )}
 
-      {/* لینکِ دعوت */}
+      {/* لینکِ دعوتِ قابلِ‌اشتراک */}
       <div className="rounded-[10px] p-2.5 flex items-center gap-2" style={{ background: 'var(--aw-bg-card)', border: '1px solid var(--aw-border)' }}>
         <i className="fa-solid fa-link text-[13px] text-[var(--aw-eu-primary,#7B62FC)]" />
-        <span className="flex-1 text-[11px] truncate" dir="ltr" style={{ textAlign: 'left' }}>{info.invite}</span>
-        <button onClick={copyInvite} className="text-[11px] px-2 py-1 rounded-lg border-none cursor-pointer text-white" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 600 }}>کپی</button>
+        <span className="flex-1 text-[11px] truncate" dir="ltr" style={{ textAlign: 'left' }}>{inviteUrl() || '—'}</span>
+        <button onClick={shareInvite} className="text-[11px] px-2 py-1 rounded-lg border-none cursor-pointer text-white flex items-center gap-1" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 600 }} title="اشتراک‌گذاری"><i className="fa-solid fa-share-nodes text-[10px]" /> اشتراک</button>
+        <button onClick={copyInvite} className="text-[11px] px-2 py-1 rounded-lg border border-[var(--aw-border)] bg-transparent cursor-pointer" title="کپی"><i className="fa-solid fa-copy" /></button>
         {admin && <button onClick={() => wrap(() => (api as any).groupInvite(groupId, true), 'لینکِ نو ساخته شد')} className="text-[11px] px-2 py-1 rounded-lg border border-[var(--aw-border)] bg-transparent cursor-pointer" title="لینکِ جدید"><i className="fa-solid fa-rotate" /></button>}
       </div>
 
@@ -970,8 +986,14 @@ function EuGroupSettings({ groupId }: { groupId: string }) {
         {admin && <button onClick={() => { setShowAdd(s => !s); if (!showAdd) loadContacts(); }} className="text-[11px] px-2.5 py-1 rounded-lg border-none cursor-pointer text-white flex items-center gap-1" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 600 }}><i className="fa-solid fa-user-plus text-[10px]" /> افزودن</button>}
       </div>
       {showAdd && (
+        <>
+        {/* افزودن با شماره (مستقل از مخاطبینِ سینک‌شده) */}
+        <div className="flex items-center gap-1.5 mb-1">
+          <input value={addPhone} onChange={e => setAddPhone(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addByPhone(); }} placeholder="شمارهٔ موبایلِ کاربرِ نورا" inputMode="tel" dir="ltr" className="flex-1 text-[12px] py-2 px-2 rounded-lg border border-[var(--aw-border)] bg-[var(--aw-bg-input)] outline-none" style={{ textAlign: 'center' }} />
+          <button disabled={busy} onClick={addByPhone} className="text-[11px] px-3 py-2 rounded-lg border-none cursor-pointer text-white" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 700 }}>افزودن</button>
+        </div>
         <div className="rounded-[10px] border border-[var(--aw-border)] max-h-[150px] overflow-y-auto">
-          {addList.length === 0 ? <div className="text-center text-[11px] text-[var(--aw-text-muted)] py-4">مخاطبِ نورایی برای افزودن نیست</div> :
+          {addList.length === 0 ? <div className="text-center text-[11px] text-[var(--aw-text-muted)] py-3">از مخاطبین کسی برای افزودن نیست — با شمارهٔ بالا اضافه کن.</div> :
             addList.map((u: any) => (
               <div key={u.sub} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-[var(--aw-bg-card-hover)]" onClick={() => wrap(async () => { await api.groupAddMembers(groupId, [u.sub]); setShowAdd(false); }, 'عضو اضافه شد')}>
                 <LetterAvatar name={u.name} init={String(u.name || '?').charAt(0)} size={32} radius={10} />
@@ -980,6 +1002,7 @@ function EuGroupSettings({ groupId }: { groupId: string }) {
               </div>
             ))}
         </div>
+        </>
       )}
       <div className="flex flex-col gap-1">
         {(info.members || []).map((m: any) => (

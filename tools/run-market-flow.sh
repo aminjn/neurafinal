@@ -66,6 +66,12 @@ psql_ "SELECT 'reviews=' || count(*) FROM documents WHERE collection='u_product_
 psql_ "SELECT 'buyer_wallet=' || (meta->'wallet'->>'balance') FROM app_users WHERE username='audituser'"
 psql_ "SELECT 'order_status=' || (data->>'status') FROM documents d JOIN app_users u ON d.company='user:'||u.id WHERE u.username='audituser' AND d.collection='u_orders' AND d.data->>'kind'<>'sale' LIMIT 1"
 
+echo "-- تیکِ خوانده‌شدِ واقعی (peer read receipt): A→B، B می‌خواند، A باید readAt ببیند"
+curl -s -X POST "$API/peer/send" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d '{"to":"2","text":"سلام تست"}' >/dev/null
+echo "   قبلِ خواندن: $(curl -s "$API/peer/with?sub=2" -H "Authorization: Bearer $BT" | grep -o 'readAt' | head -1 || echo 'بدونِ readAt (تیکِ تکی=ارسال‌شد) ✓')"
+curl -s -X POST "$API/peer/read" -H "Authorization: Bearer $ST" -H 'Content-Type: application/json' -d '{"sub":"1"}' >/dev/null
+echo "   بعدِ خواندن: $(curl -s "$API/peer/with?sub=2" -H "Authorization: Bearer $BT" | grep -o 'readAt":[0-9]*' | head -1 || echo 'NOT-READ ✗')"
+
 echo "==> پاک‌سازی"
 [ -f "$AUD/server.pid" ] && kill "$(cat "$AUD/server.pid")" 2>/dev/null
 $RUNUSER "$PGBIN/pg_ctl" -D "$AUD/data" stop >/dev/null 2>&1
