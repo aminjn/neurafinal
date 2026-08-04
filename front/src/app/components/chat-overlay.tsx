@@ -326,8 +326,8 @@ export default function ChatOverlay() {
 
   const handleSend = () => {
     if (!inputText.trim()) return;
-    sendMessage(inputText);
-    setInputText('');
+    sendMessage(inputText, replyMsg?.mid);
+    setInputText(''); setReplyMsg(null);
     inputRef.current?.focus();
   };
 
@@ -371,6 +371,15 @@ export default function ChatOverlay() {
     } catch (_) { showToast('دسترسی به میکروفون داده نشد'); }
   };
   const stopVoiceMsg = () => { try { vmRef.current?.stop(); } catch (_) {} vmRef.current = null; setVmRecording(false); };
+
+  // منوی پیام: پاسخ/ری‌اکشن/حذف/کپی
+  const [menuMsg, setMenuMsg] = useState<any>(null);
+  const [replyMsg, setReplyMsg] = useState<any>(null);
+  const REACTS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  const doReact = (em: string) => { const m = menuMsg; setMenuMsg(null); if (!m?.mid) return; (api as any).msgReact(m.mid, em).catch(() => {}); };
+  const doDelete = () => { const m = menuMsg; setMenuMsg(null); if (!m?.mid) return; (api as any).msgDelete(m.mid).catch(() => {}); };
+  const doCopy = () => { const m = menuMsg; setMenuMsg(null); try { navigator.clipboard.writeText(m?.text || ''); showToast('کپی شد'); } catch (_) {} };
+  const doReply = () => { setReplyMsg(menuMsg); setMenuMsg(null); setTimeout(() => inputRef.current?.focus(), 30); };
 
 
   const handleCall = () => {
@@ -821,7 +830,10 @@ export default function ChatOverlay() {
               backdropFilter: m.sent ? 'none' : 'blur(8px)',
               border: m.sent ? 'none' : '0.5px solid var(--aw-chat-bd, rgba(255,255,255,0.8))',
               fontFamily: "'Kamand', sans-serif",
-            }}>
+            }}
+            onClick={() => { if ((isPeerChat || isGroupChat) && (m as any).mid && !(m as any).deleted) setMenuMsg(m); }}>
+              {/* نقلِ پاسخ */}
+              {(m as any).replyTo && (() => { const rep = messages.find((x: any) => x.mid === (m as any).replyTo); return rep ? (<div className="mb-1 px-2 py-1 rounded-lg text-[11px] opacity-90" style={{ borderRight: '2px solid ' + (m.sent ? 'rgba(255,255,255,0.7)' : 'var(--aw-eu-primary)'), background: m.sent ? 'rgba(255,255,255,0.14)' : 'rgba(123,98,252,0.08)' }}>{(rep as any).media ? ((rep as any).media.kind === 'image' ? '📷 عکس' : '🎤 پیام صوتی') : String((rep as any).text || '').slice(0, 60)}</div>) : null; })()}
               {(m as any).deleted ? (
                 <div className="italic opacity-60 text-[12px]"><i className="fa-solid fa-ban ml-1" />این پیام حذف شد</div>
               ) : (m as any).media ? (
@@ -852,6 +864,12 @@ export default function ChatOverlay() {
                   </button>
                 )}
               </div>
+              {/* ری‌اکشن‌ها */}
+              {(m as any).reactions && Object.keys((m as any).reactions).length > 0 && (
+                <div className="flex gap-0.5 mt-1 flex-wrap" style={{ justifyContent: m.sent ? 'flex-end' : 'flex-start' }}>
+                  {(() => { const counts: Record<string, number> = {}; Object.values((m as any).reactions as Record<string, string>).forEach((em) => { counts[em] = (counts[em] || 0) + 1; }); return Object.entries(counts).map(([em, n]) => (<span key={em} className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: m.sent ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.06)' }}>{em}{n > 1 ? ' ' + toFa(n) : ''}</span>)); })()}
+                </div>
+              )}
             </div>
           ))}
 
@@ -867,6 +885,29 @@ export default function ChatOverlay() {
           )}
         </div>
       </div>
+
+      {/* پیش‌نمایشِ پاسخ */}
+      {replyMsg && (
+        <div className="flex-shrink-0 flex items-center gap-2 px-4 py-1.5" style={{ background: 'var(--aw-chat-surface, rgba(255,255,255,0.35))', borderTop: '0.5px solid var(--aw-border)' }}>
+          <i className="fa-solid fa-reply text-[11px] text-[var(--aw-eu-primary)]" />
+          <div className="flex-1 min-w-0 text-[11px] truncate" style={{ borderRight: '2px solid var(--aw-eu-primary)', paddingRight: 6 }}>{(replyMsg as any).media ? '📎 مدیا' : String(replyMsg.text || '').slice(0, 60)}</div>
+          <button onClick={() => setReplyMsg(null)} className="border-none bg-transparent cursor-pointer text-[var(--aw-text-muted)]"><i className="fa-solid fa-xmark" /></button>
+        </div>
+      )}
+
+      {/* منوی پیام (پاسخ/ری‌اکشن/حذف/کپی) */}
+      {menuMsg && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.35)' }} onClick={() => setMenuMsg(null)}>
+          <div className="rounded-2xl p-2 w-[240px]" style={{ background: 'var(--aw-bg-app)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)', border: '1px solid var(--aw-border)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-around py-1.5 mb-1" style={{ borderBottom: '1px solid var(--aw-border-light)' }}>
+              {REACTS.map(em => <button key={em} onClick={() => doReact(em)} className="text-[20px] border-none bg-transparent cursor-pointer hover:scale-125 transition-transform">{em}</button>)}
+            </div>
+            <button onClick={doReply} className="w-full text-right px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-[13px] flex items-center gap-2 hover:bg-[var(--aw-bg-card-hover)]"><i className="fa-solid fa-reply text-[var(--aw-eu-primary)] w-4" /> پاسخ</button>
+            {!(menuMsg as any).media && <button onClick={doCopy} className="w-full text-right px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-[13px] flex items-center gap-2 hover:bg-[var(--aw-bg-card-hover)]"><i className="fa-solid fa-copy text-[var(--aw-text-secondary)] w-4" /> کپی</button>}
+            {menuMsg.sent && <button onClick={doDelete} className="w-full text-right px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-[13px] flex items-center gap-2 text-[#ef4444] hover:bg-[rgba(239,68,68,0.08)]"><i className="fa-solid fa-trash w-4" /> حذفِ پیام</button>}
+          </div>
+        </div>
+      )}
 
       {/* Input bar — Figma design */}
       <div

@@ -336,6 +336,20 @@ export function NeuraCallLayer() {
   }, [camOff]);
   const toggleSpeaker = useCallback(() => setSpeakerOn((v) => !v), []);
 
+  // جابه‌جاییِ دوربینِ جلو/عقب (روی موبایل) — track را با facingModeِ جدید عوض و روی producer جایگزین می‌کند.
+  const facingRef = useRef<'user' | 'environment'>('user');
+  const flipCam = useCallback(async () => {
+    if (kind !== 'video') return;
+    const next = facingRef.current === 'user' ? 'environment' : 'user';
+    try {
+      const ns = await navigator.mediaDevices.getUserMedia({ video: { facingMode: next }, audio: false });
+      const nt = ns.getVideoTracks()[0]; if (!nt) return;
+      const vp = producersRef.current.find((p: any) => p.kind === 'video'); if (vp) { try { await vp.replaceTrack({ track: nt }); } catch (_) {} }
+      const ls = localStreamRef.current; if (ls) { const old = ls.getVideoTracks()[0]; if (old) { ls.removeTrack(old); try { old.stop(); } catch (_) {} } ls.addTrack(nt); if (localVideoRef.current) localVideoRef.current.srcObject = ls; }
+      facingRef.current = next;
+    } catch (_) {}
+  }, [kind]);
+
   // ── افزودنِ فرد در حینِ تماس (واقعی): مخاطبینِ نورا را نشان بده و به همان اتاق دعوت کن ──
   const loadAddList = useCallback(async () => {
     try {
@@ -464,6 +478,7 @@ export function NeuraCallLayer() {
           <div className="mx-auto flex items-center justify-center gap-5 px-5 py-3 rounded-[28px] w-fit" style={{ background: 'rgba(255,255,255,0.10)', backdropFilter: 'blur(18px) saturate(1.4)', border: '1px solid rgba(255,255,255,0.14)' }}>
             {ctrlBtn(toggleMute, muted ? 'fa-microphone-slash' : 'fa-microphone', muted ? 'بی‌صدا' : 'صدا', muted)}
             {kind === 'video' && ctrlBtn(toggleCam, camOff ? 'fa-video-slash' : 'fa-video', camOff ? 'خاموش' : 'دوربین', camOff)}
+            {kind === 'video' && phase === 'connected' && ctrlBtn(flipCam, 'fa-camera-rotate', 'چرخش')}
             {ctrlBtn(toggleSpeaker, speakerOn ? 'fa-volume-high' : 'fa-volume-low', speakerOn ? 'بلندگو' : 'آرام', !speakerOn)}
             {phase === 'connected' && ctrlBtn(() => { setAddOpen(true); loadAddList(); }, 'fa-user-plus', 'افزودن')}
             {ctrlBtn(hangup, 'fa-phone-slash', 'پایان', false, true, 62)}

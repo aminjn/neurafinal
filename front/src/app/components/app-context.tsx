@@ -148,7 +148,7 @@ interface AppContextType {
   createNewTopic: () => void;
   renameTopic: (agentId: string, topicId: number, title: string) => void;
   removeTopic: (agentId: string, topicId: number) => void;
-  sendMessage: (text: string) => void;
+  sendMessage: (text: string, replyTo?: string) => void;
   sendContactMedia: (media: any, replyTo?: string) => void;
   getMessages: () => Message[];
   getTopics: (id: string) => Topic[];
@@ -1057,7 +1057,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [company, topicsMap]);
 
   // Send message
-  const sendMessage = useCallback((text: string) => {
+  const sendMessage = useCallback((text: string, replyTo?: string) => {
     if (!text.trim()) return;
     // DEMO gate: block chatting with an agent that hasn't been purchased yet.
     if (chat.type === 'agent' && chat.id && !isAgentOwned(chat.id)) {
@@ -1122,10 +1122,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else if (chat.type === 'group' && chat.id) {
       setGroupMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
     } else if (chat.type === 'contact' && chat.id) {
+      (msg as any).replyTo = replyTo || null;
       setContactMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
       // peerchat: پیام را واقعاً بفرست (بدونِ پاسخِ خودکار — طرفِ مقابل انسان است)
-      if (String(chat.id).startsWith('pgroup_')) { const gid = String(chat.id).slice('pgroup_'.length); (api as any).groupSend(gid, text).catch(() => {}); }
-      else if (String(chat.id).startsWith('peer_')) { const other = String(chat.id).slice(5); (api as any).peerSend(other, text).catch(() => {}); }
+      if (String(chat.id).startsWith('pgroup_')) { const gid = String(chat.id).slice('pgroup_'.length); (api as any).groupSend(gid, text, undefined, replyTo).catch(() => {}); }
+      else if (String(chat.id).startsWith('peer_')) { const other = String(chat.id).slice(5); (api as any).peerSend(other, text, undefined, replyTo).catch(() => {}); }
     } else if (chat.type === 'customer' && chat.id) {
       setCustMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
 
@@ -1169,10 +1170,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, mid: m.id, text: m.text, sent: !!m.mine, time: '', senderName: m.mine ? '' : (m.fromName || ''), readAt: m.readAt || null, media: m.media || null, replyTo: m.replyTo || null, reactions: m.reactions || null, deleted: !!m.deleted }));
         setContactMsgsMap(prev => {
           const cur = prev[chat.id as string] || [];
-          // به‌روزرسانی وقتی پیامِ بیشتری هست، یا وضعیتِ «خوانده‌شد» تغییر کرده (تیکِ آبی تازه شود).
-          const readSig = msgs.filter((x: any) => x.sent && x.readAt).length;
-          const curReadSig = cur.filter((x: any) => x.sent && x.readAt).length;
-          if (msgs.length <= cur.length && readSig === curReadSig) return prev;
+          // امضایِ محتوا: طول + خوانده‌شد + حذف + ری‌اکشن — تا تیکِ آبی/حذف/ری‌اکشن هم تازه شوند (نه فقط با پیامِ نو).
+          const sig = (arr: any[]) => arr.map((x: any) => (x.mid || x.id) + ':' + (x.readAt ? 1 : 0) + ':' + (x.deleted ? 1 : 0) + ':' + (x.reactions ? Object.values(x.reactions).join('') : '')).join('|');
+          if (msgs.length <= cur.length && sig(msgs) === sig(cur)) return prev;
           return { ...prev, [chat.id as string]: msgs };
         });
       } catch (_) {}

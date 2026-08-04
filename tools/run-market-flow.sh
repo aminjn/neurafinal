@@ -87,6 +87,13 @@ echo "   دریافتِ مدیا نزدِ گیرنده: $(curl -s "$API/peer/wit
 curl -s -X POST "$API/peer/call-log" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d '{"peerSub":"2","peerName":"فروشنده","kind":"audio","direction":"out","duration":42}' >/dev/null
 echo "   لاگِ تماس: $(curl -s "$API/peer/call-log" -H "Authorization: Bearer $BT" | grep -o '"duration":42' | head -1 || echo 'no-log')"
 
+echo "-- منوی پیام (ری‌اکشن/حذف):"
+MID=$(curl -s -X POST "$API/peer/send" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d '{"to":"2","text":"تستِ منو"}' | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
+curl -s -X POST "$API/peer/message/react" -H "Authorization: Bearer $ST" -H 'Content-Type: application/json' -d "{\"id\":\"$MID\",\"emoji\":\"👍\"}" >/dev/null
+echo "   ری‌اکشن: $(curl -s "$API/peer/with?sub=2" -H "Authorization: Bearer $BT" | grep -o '👍' | head -1 || echo 'no-react')"
+curl -s -X POST "$API/peer/message/delete" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d "{\"id\":\"$MID\"}" >/dev/null
+echo "   حذف: $(curl -s "$API/peer/with?sub=2" -H "Authorization: Bearer $BT" | grep -o '"deleted":true' | head -1 || echo 'not-deleted')"
+
 echo "==> پاک‌سازی"
 [ -f "$AUD/server.pid" ] && kill "$(cat "$AUD/server.pid")" 2>/dev/null
 $RUNUSER "$PGBIN/pg_ctl" -D "$AUD/data" stop >/dev/null 2>&1
