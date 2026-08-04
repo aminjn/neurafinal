@@ -32,6 +32,20 @@ function callErrMsg(e: any): string {
   return 'خطا در برقراری تماس';
 }
 
+// نوتیفیکیشنِ سیستمیِ تماسِ ورودی (صدا + لرزش) — مخصوصِ وقتی اپ در پس‌زمینه است تا گوشی خبر بدهد.
+const CALL_NOTIF_TAG = 'neura-incoming-call';
+function notifyIncomingCall(name: string, kind: Kind) {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const opts: any = { body: kind === 'video' ? 'تماس تصویری ورودی…' : 'تماس صوتی ورودی…', tag: CALL_NOTIF_TAG, renotify: true, requireInteraction: true, vibrate: [400, 200, 400, 200, 400], icon: '/pwa-192.png', badge: '/pwa-192.png', dir: 'rtl', lang: 'fa', data: { url: '/' } };
+    if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then((reg) => { if (reg) reg.showNotification(name, opts); else try { new Notification(name, opts); } catch (_) {} }).catch(() => { try { new Notification(name, opts); } catch (_) {} });
+    else try { new Notification(name, opts); } catch (_) {}
+  } catch (_) {}
+}
+function clearIncomingCallNotif() {
+  try { if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistration().then((reg) => { reg && reg.getNotifications({ tag: CALL_NOTIF_TAG }).then((ns) => ns.forEach((n) => n.close())).catch(() => {}); }).catch(() => {}); } catch (_) {}
+}
+
 // رویدادِ شروعِ تماس که از دکمهٔ گفتگو dispatch می‌شود.
 export function startPeerCall(opts: { toSubs: string[]; peerName: string; kind: Kind }) {
   try { window.dispatchEvent(new CustomEvent('neura:peer-call', { detail: opts })); } catch (_) {}
@@ -81,6 +95,8 @@ export function NeuraCallLayer() {
       incomingRef.current = { roomName: String(d.roomName), kind: (d.kind === 'video' ? 'video' : 'audio'), fromSub: String(d.fromSub), callerName: String(d.callerName || 'کاربر') };
       setKind(incomingRef.current.kind); setPeerName(incomingRef.current.callerName);
       setPhase('incoming'); startRing();
+      // اگر اپ در پس‌زمینه است، نوتیفیکیشنِ سیستمی با صدا/لرزش هم بزن تا گوشی خبر بدهد.
+      try { if (document.visibilityState !== 'visible') notifyIncomingCall(incomingRef.current.callerName, incomingRef.current.kind); } catch (_) {}
     });
     s.on('callCancelled', () => { if (phaseRef.current === 'incoming') { stopRing(); resetAll(); } });
     s.on('callRejected', () => { if (phaseRef.current === 'outgoing') { setStatusMsg('تماس رد شد'); setTimeout(() => resetAll(), 1200); } });
@@ -102,22 +118,30 @@ export function NeuraCallLayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // زنگِ کلاسیکِ تلفن: دو تنِ ۴۴۰+۴۸۰ هرتز، ۱٫۵ ثانیه روشن / ~۲٫۵ ثانیه خاموش، بلند و ممتد تا پاسخ/رد.
   function startRing() {
     stopRing();
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const beep = () => {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.frequency.value = 480; o.connect(g); g.connect(ctx.destination);
-        g.gain.setValueAtTime(0.001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.05);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-        o.start(); o.stop(ctx.currentTime + 0.65);
+      const AC = (window.AudioContext || (window as any).webkitAudioContext);
+      const ctx = new AC();
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      const ringOnce = () => {
+        const t0 = ctx.currentTime;
+        for (const f of [440, 480]) {
+          const o = ctx.createOscillator(); const g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.04);
+          g.gain.setValueAtTime(0.3, t0 + 1.4);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
+          o.start(t0); o.stop(t0 + 1.55);
+        }
       };
-      beep(); ringRef.current = setInterval(beep, 2000);
+      ringOnce(); ringRef.current = setInterval(ringOnce, 4000);
       (ringRef as any)._ctx = ctx;
     } catch (_) {}
   }
-  function stopRing() { if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; } try { (ringRef as any)._ctx?.close(); } catch (_) {} }
+  function stopRing() { if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; } try { (ringRef as any)._ctx?.close(); } catch (_) {} clearIncomingCallNotif(); }
 
   const resetAll = useCallback(() => {
     stopRing();
