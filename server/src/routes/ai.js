@@ -1697,6 +1697,19 @@ router.get('/agents', async (req, res) => {
             return { ...a, expiresAt: g.expiresAt || null, expired, active: g.active !== false && !expired };
           });
         }
+        // نمونه‌های خریداری‌شده برای ادمین/سوپرادمین هم نمایش داده شوند — خرید نباید فقط برای role=user
+        // دیده شود (باگ: کاربر نمونهٔ دستیار خرید ولی چون حسابش admin بود، در لیستش نیامد).
+        if (uRole === 'admin' || uRole === 'superadmin') {
+          const seenA = new Set(agents.map((a) => a.id));
+          for (const key of owned) {
+            const ci = String(key).indexOf('::'); const bare = ci >= 0 ? String(key).slice(ci + 2) : String(key);
+            const hi = bare.indexOf('#'); if (hi < 0 || seenA.has(bare)) continue; seenA.add(bare);
+            const baseId = bare.slice(0, hi); const base = baseById[baseId]; if (!base) continue;
+            let inst = applyPrefs({ ...base, id: bare, team: base.team || baseId, done: 0, pending: 0, unread: 0, voip: '', lastMsg: '', lastTime: '' }, bare);
+            if (!byAgent[bare] || !byAgent[bare].name) inst = { ...inst, name: (base.name || baseId) + ' ' + faNum(bare.slice(hi + 1)) };
+            agents.push(inst);
+          }
+        }
       } catch (_) {}
     }
     res.json(agents);
