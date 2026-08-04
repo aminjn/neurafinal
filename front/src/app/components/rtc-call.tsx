@@ -77,6 +77,7 @@ export function NeuraCallLayer() {
   const toSubsRef = useRef<string[]>([]);
   const timerRef = useRef<any>(null);
   const pollRef = useRef<any>(null);
+  const ringTimeoutRef = useRef<any>(null);
   const ringRef = useRef<any>(null);
   const incomingRef = useRef<{ roomName: string; kind: Kind; fromSub: string; callerName: string } | null>(null);
 
@@ -150,6 +151,7 @@ export function NeuraCallLayer() {
     stopRing();
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; }
     try { socketRef.current?.emit('leaveRoom'); } catch (_) {}
     for (const p of producersRef.current) { try { p.close(); } catch (_) {} }
     producersRef.current = [];
@@ -163,8 +165,19 @@ export function NeuraCallLayer() {
     setPhase('idle');
   }, []);
 
+  // وصل‌شدنِ واقعی: زنگ را قطع کن، تایمر را از صفر شروع کن، وضعیت را پاک کن.
+  const promoteConnected = useCallback(() => {
+    stopRing();
+    if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; }
+    setStatusMsg('');
+    setPhase('connected');
+    if (timerRef.current) clearInterval(timerRef.current);
+    setSecs(0); timerRef.current = setInterval(() => setSecs((x) => x + 1), 1000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── راه‌اندازیِ جلسهٔ مدیا پس از join ──
-  async function setupMedia(roomName: string, callKind: Kind) {
+  async function setupMedia(roomName: string, callKind: Kind, asCaller: boolean) {
     const s = ensureSocket();
     if (!s) throw new Error('no socket');
     // اطمینان از اتصالِ سوکت
@@ -214,14 +227,20 @@ export function NeuraCallLayer() {
       r === 'Success' ? cb() : eb(new Error('connect consume failed'));
     });
 
-    setPhase('connected');
-    setStatusMsg(''); // مهم: وگرنه «در حال اتصال…» روی صفحه گیر می‌کرد با اینکه تماس وصل شده بود
-    if (timerRef.current) clearInterval(timerRef.current);
-    setSecs(0); timerRef.current = setInterval(() => setSecs((x) => x + 1), 1000);
-    await refreshConsumers();
-    // نگه‌داشتنِ زندهٔ tileها: هر ۳ ثانیه producerهای جدید/رفته را همگام کن (ورود/خروجِ نفراتِ تماسِ گروهی + بازیابی)
+    // فقط «تماس‌گیرنده» باید در حالِ زنگ بماند تا طرفِ مقابل واقعاً بپیوندد؛ «گیرنده»‌ای که پاسخ داده فوراً وصل است.
+    // (باگِ قبلی: تماس‌گیرنده بی‌درنگ «وصل» و ثانیه‌شمار روشن می‌شد حتی اگر طرف آفلاین بود.)
+    if (asCaller) {
+      setStatusMsg('در حال زنگ‌زدن'); startRing();
+      if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
+      ringTimeoutRef.current = setTimeout(() => {
+        if (phaseRef.current === 'outgoing') { try { socketRef.current?.emit('cancelCall', { toSubs: toSubsRef.current, roomName: roomRef.current }); } catch (_) {} setStatusMsg('پاسخی داده نشد'); setTimeout(resetAll, 1600); }
+      }, 45000);
+    } else {
+      promoteConnected();
+    }
     if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(() => { refreshConsumers().catch(() => {}); }, 3000);
+    pollRef.current = setInterval(() => { refreshConsumers().catch(() => {}); }, 2500);
+    await refreshConsumers();
   }
 
   const refreshConsumers = useCallback(async () => {
@@ -245,7 +264,9 @@ export function NeuraCallLayer() {
         setRemotes((prev) => [...prev.filter((t) => t.producerId !== p.producerId), { producerId: p.producerId, kind: consumer.kind as any, ownerSub: String(p.ownerSub), ownerName: String(p.ownerName || 'کاربر'), stream }]);
       } catch (_) { consumedRef.current.delete(p.producerId); }
     }
-  }, []);
+    // تماس‌گیرنده: تا وقتی طرفِ مقابل واقعاً نپیوسته «در حال زنگ» بماند؛ با اولین producerِ طرف → وصل + تایمر.
+    if (phaseRef.current === 'outgoing' && list.some((p) => String(p.ownerSub) !== uidFromToken())) promoteConnected();
+  }, [promoteConnected]);
 
   // ── شروعِ تماسِ خروجی (از دکمهٔ گفتگو) ──
   useEffect(() => {
@@ -256,13 +277,14 @@ export function NeuraCallLayer() {
       const callKind: Kind = d.kind === 'video' ? 'video' : 'audio';
       const roomName = 'call_' + [uidFromToken(), ...toSubs].sort().join('_') + '_' + Date.now().toString(36);
       roomRef.current = roomName; toSubsRef.current = toSubs;
-      setKind(callKind); setPeerName(d.peerName || 'کاربر'); setStatusMsg('در حال تماس...'); setPhase('outgoing');
+      const _nm = (d.peerName && d.peerName !== 'undefined' && d.peerName !== 'null') ? String(d.peerName) : 'کاربر';
+      setKind(callKind); setPeerName(_nm); setStatusMsg('در حال زنگ‌زدن'); setPhase('outgoing');
       const s = ensureSocket();
       if (!s) { setStatusMsg('اتصال برقرار نشد'); setTimeout(resetAll, 1500); return; }
       if (!s.connected) await new Promise<void>((res) => { s.once('connect', () => res()); setTimeout(res, 4000); });
       try {
         await s.emitWithAck('callUser', { toSubs, roomName, kind: callKind, callerName: '' });
-        await setupMedia(roomName, callKind);
+        await setupMedia(roomName, callKind, true);
       } catch (err: any) { setStatusMsg(callErrMsg(err)); setTimeout(resetAll, 2600); }
     };
     window.addEventListener('neura:peer-call', onStart as any);
@@ -275,7 +297,7 @@ export function NeuraCallLayer() {
     stopRing();
     toSubsRef.current = [inc.fromSub];
     setStatusMsg('در حال اتصال...');
-    try { await setupMedia(inc.roomName, inc.kind); } catch (e: any) { setStatusMsg(callErrMsg(e)); setTimeout(resetAll, 2600); }
+    try { await setupMedia(inc.roomName, inc.kind, false); } catch (e: any) { setStatusMsg(callErrMsg(e)); setTimeout(resetAll, 2600); }
   }, [resetAll]);
 
   const rejectIncoming = useCallback(() => {
@@ -345,6 +367,9 @@ export function NeuraCallLayer() {
   const ringing = phase === 'outgoing' || (phase === 'connected' && !!statusMsg);
   const statusText = phase === 'outgoing' ? (statusMsg || 'در حال زنگ‌زدن') : phase === 'incoming' ? (kind === 'video' ? 'تماسِ تصویریِ ورودی' : 'تماسِ صوتیِ ورودی') : (statusMsg || fmt(secs));
   const partCount = Math.max(toSubsRef.current.length, remotes.length);
+  const isGroupCall = partCount > 1;
+  const partNames = Array.from(new Set(remotes.map((r) => r.ownerName).filter((n) => n && n !== 'کاربر')));
+  const displayName = (peerName && peerName !== 'undefined' && peerName !== 'null') ? peerName : 'کاربر';
   const ctrlBtn = (onClick: () => void, icon: string, label: string, active?: boolean, danger?: boolean, size = 56) => (
     <button onClick={onClick} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
       <span className="rounded-full flex items-center justify-center transition-all" style={{ width: size, height: size, background: danger ? '#ef4444' : active ? '#fff' : 'rgba(255,255,255,0.16)', color: danger ? '#fff' : active ? '#1a1530' : '#fff', backdropFilter: 'blur(8px)' }}><i className={`fa-solid ${icon} text-[18px]`} /></span>
@@ -363,13 +388,13 @@ export function NeuraCallLayer() {
 
       {/* هدر */}
       <div className="flex-shrink-0 pt-10 pb-3 text-center relative z-[2]">
-        <div className="text-[21px]" style={{ fontWeight: 800, textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}>{peerName}{partCount > 1 ? ' و دیگران' : ''}</div>
+        <div className="text-[21px]" style={{ fontWeight: 800, textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}>{displayName}{isGroupCall ? ' — تماسِ گروهی' : ''}</div>
         <div className="text-[13px] mt-1 opacity-90 flex items-center justify-center gap-1.5">
           {phase === 'connected' && !statusMsg && <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />}
           <span dir="ltr">{statusText}</span>
           {ringing && <span className="inline-flex gap-0.5">{[0, 1, 2].map((i) => <span key={i} className="w-1 h-1 rounded-full bg-white" style={{ animation: 'nrdot 1.2s infinite', animationDelay: i * 0.18 + 's' }} />)}</span>}
         </div>
-        {partCount > 1 && <div className="text-[11px] opacity-60 mt-0.5">{String(partCount + 1).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[+d])} نفر</div>}
+        {isGroupCall && <div className="text-[11px] opacity-70 mt-0.5 px-6 truncate">{String(partCount + 1).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[+d])} نفر{partNames.length ? ' · ' + partNames.join('، ') : ''}</div>}
       </div>
 
       {/* بدنه */}

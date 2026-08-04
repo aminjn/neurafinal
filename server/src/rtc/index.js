@@ -5,6 +5,7 @@ import { Server } from 'socket.io';
 import * as mediasoup from 'mediasoup';
 import jwt from 'jsonwebtoken';
 import { sendPush } from '../push.js';
+import { query } from '../db.js';
 
 const SECRET = process.env.JWT_SECRET || 'dev-insecure-secret';
 const ANNOUNCED_IP = process.env.MEDIASOUP_ANNOUNCED_IP || '';       // IP عمومیِ سرور (آروان) — الزامی برای تماسِ واقعی
@@ -83,7 +84,19 @@ export async function initRtc(server) {
       if (ack) ack({ ok: true, delivered });
     });
     socket.on('cancelCall', ({ toSubs, roomName }) => {
-      for (const t of (Array.isArray(toSubs) ? toSubs.map(String) : [])) { const set = online.get(t); if (set) for (const sid of set) io.to(sid).emit('callCancelled', { roomName, fromSub: sub }); }
+      const room = rooms.get(String(roomName));
+      const name = socket.data.name || 'کاربر';
+      for (const t of (Array.isArray(toSubs) ? toSubs.map(String) : [])) {
+        const set = online.get(t); if (set) for (const sid of set) io.to(sid).emit('callCancelled', { roomName, fromSub: sub });
+        // تماسِ بی‌پاسخ: اگر گیرنده به اتاق نپیوسته بود، «تماسِ ازدست‌رفته» ثبت و push کن (مثلِ واتساپ).
+        const answered = room && room.clients.some((c) => String(c.sub) === t);
+        if (!answered) {
+          const nid = 'ntf_' + Date.now() + Math.random().toString(36).slice(2, 5);
+          query("INSERT INTO documents (collection, id, company, data) VALUES ('u_notifications', $1, $2, $3::jsonb)",
+            [t + '__' + nid, 'user:' + t, JSON.stringify({ id: nid, type: 'missed_call', title: 'تماسِ ازدست‌رفته', message: 'تماسِ بی‌پاسخ از ' + name, body: name, fromSub: String(sub), date: new Date().toISOString(), read: false })]).catch(() => {});
+          sendPush(t, { title: name, body: 'تماسِ ازدست‌رفته', kind: 'missed_call', tag: 'miss_' + sub, url: '/', data: { peer: String(sub) } }).catch(() => {});
+        }
+      }
     });
     socket.on('rejectCall', ({ toSub, roomName }) => { const set = online.get(String(toSub)); if (set) for (const sid of set) io.to(sid).emit('callRejected', { roomName, fromSub: sub }); });
 
