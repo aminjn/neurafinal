@@ -736,12 +736,22 @@ function MarketCatalogTab({ selectedProduct, setSelectedProduct, onBack }: {
   const __isWished = (id: any) => __wish.some((w: any) => String(w.id) === String(id));
   const __toggleWish = (item: any, e: any) => { if (e) e.stopPropagation(); if (__isWished(item.id)) { setWish(prev => prev.filter((w: any) => String(w.id) !== String(item.id))); (api as any).myRemove('wishlist', item.id).catch(() => {}); } else { const doc = { id: item.id, t: item.name, s: item.shop, p: item.price, icon: 'fa-solid fa-box' }; setWish(prev => [...prev, doc]); (api as any).myCreate('wishlist', doc).catch(() => {}); if (showToast) showToast('به علاقه‌مندی‌ها اضافه شد ❤️'); } };
   const [__catProducts, __setCatProducts] = useState<MarketProduct[]>([]);
-  React.useEffect(() => { (api as any).marketAllProducts().then((r: any) => { const arr = Array.isArray(r) ? r : []; __setCatProducts(arr.map((it: any) => { const pn = Number(String((it && (it.salePrice || it.purchasePrice)) || 0).replace(/[^0-9]/g, '')) || 0; return { id: Number(it && it.id) || 0, name: (it && it.name) || 'کالا', desc: (it && (it.description || it.category)) || '', price: pn ? pn.toLocaleString('fa-IR') : '۰', priceNum: pn, category: 'all', shop: (it && it.shopName) || 'فروشگاه', shopId: (it && (it._shopId != null ? String(it._shopId) : '')), image: '', rating: 0, inStock: (Number(it && it.quantity) || 0) > 0 } as MarketProduct; })); }).catch(() => {}); }, []);
+  React.useEffect(() => { (api as any).marketAllProducts().then((r: any) => { const arr = Array.isArray(r) ? r : []; __setCatProducts(arr.map((it: any) => { const pn = Number(String((it && (it.salePrice || it.purchasePrice)) || 0).replace(/[^0-9]/g, '')) || 0; return { id: Number(it && it.id) || 0, name: (it && it.name) || 'کالا', desc: (it && (it.description || it.category)) || '', price: pn ? pn.toLocaleString('fa-IR') : '۰', priceNum: pn, category: (it && it.category) || 'all', shop: (it && it.shopName) || 'فروشگاه', shopId: (it && (it._shopId != null ? String(it._shopId) : '')), image: (it && it.image) || '', rating: Number(it && it.rating) || 0, ratingCount: Number(it && it.ratingCount) || 0, inStock: (Number(it && it.quantity) || 0) > 0 } as any; })); }).catch(() => {}); }, []);
+  // دسته‌ها از تنظیماتِ سوپرادمین (marketCategories) — سیم‌کشیِ R17، نه هاردکد.
+  const [__cats, __setCats] = useState<any[]>([{ id: 'all', label: 'همه', icon: 'fa-solid fa-border-all' }]);
+  React.useEffect(() => { (api as any).getSettings().then((st: any) => { if (st && Array.isArray(st.marketCategories) && st.marketCategories.length) __setCats([{ id: 'all', label: 'همه', icon: 'fa-solid fa-border-all' }, ...st.marketCategories]); }).catch(() => {}); }, []);
+  const [sort, setSort] = useState<'default' | 'cheap' | 'expensive' | 'rating'>('default');
   const isPromoted = (p: MarketProduct) => promotedMarket.includes('prod:' + p.id);
   const filtered = (__catProducts || [])
+    .filter(p => (cat === 'all' || (p as any).category === cat))
     .filter(p => (!search || p.name.includes(search) || p.desc.includes(search)))
     .slice()
-    .sort((a, b) => (isPromoted(b) ? 1 : 0) - (isPromoted(a) ? 1 : 0));
+    .sort((a, b) => {
+      if (sort === 'cheap') return a.priceNum - b.priceNum;
+      if (sort === 'expensive') return b.priceNum - a.priceNum;
+      if (sort === 'rating') return (Number((b as any).rating) || 0) - (Number((a as any).rating) || 0);
+      return (isPromoted(b) ? 1 : 0) - (isPromoted(a) ? 1 : 0);
+    });
 
   const lineFor = (item: MarketProduct) => ({ source: 'market', key: 'm-' + item.id, name: item.name, priceNum: item.priceNum, shop: item.shop, sellerId: (item as any).shopId || '', productId: item.id });
   const addToCart = useCallback((item: MarketProduct) => cartAdd(lineFor(item)), [cartAdd]);
@@ -781,17 +791,27 @@ function MarketCatalogTab({ selectedProduct, setSelectedProduct, onBack }: {
         </div>
       </div>
 
-      <div className="flex gap-2 px-4 pb-3 overflow-x-auto aw-scroll">
-        {[{ id: 'all', label: 'همه', icon: 'fa-solid fa-border-all' }].map(c => (
-          <button key={c.id}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition-all ${
-              cat === c.id ? 'text-white border-transparent' : 'bg-transparent text-[var(--aw-text-secondary)] border-[var(--aw-border)]'
-            }`}
-            style={cat === c.id ? { background: '#F59E0B', fontWeight: 600 } : { fontWeight: 500 }}
-            onClick={() => setCat(c.id)}>
-            <i className={c.icon} />{c.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2 px-4 pb-3">
+        <div className="flex gap-2 flex-1 overflow-x-auto aw-scroll">
+          {__cats.map(c => (
+            <button key={c.id}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[11px] whitespace-nowrap shrink-0 cursor-pointer transition-all ${
+                cat === c.id ? 'text-white border-transparent' : 'bg-transparent text-[var(--aw-text-secondary)] border-[var(--aw-border)]'
+              }`}
+              style={cat === c.id ? { background: '#F59E0B', fontWeight: 600 } : { fontWeight: 500 }}
+              onClick={() => setCat(c.id)}>
+              <i className={c.icon || 'fa-solid fa-tag'} />{c.label}
+            </button>
+          ))}
+        </div>
+        {/* مرتب‌سازی (پارِیتیِ لیدرها): پیش‌فرض/ارزان‌ترین/گران‌ترین/امتیاز */}
+        <select value={sort} onChange={e => setSort(e.target.value as any)} title="مرتب‌سازی"
+          className="shrink-0 text-[11px] rounded-xl border border-[var(--aw-border)] bg-[var(--aw-bg-input)] text-[var(--aw-text-primary)] px-2 py-2 outline-none cursor-pointer">
+          <option value="default">مرتب‌سازی</option>
+          <option value="cheap">ارزان‌ترین</option>
+          <option value="expensive">گران‌ترین</option>
+          <option value="rating">بیشترین امتیاز</option>
+        </select>
       </div>
 
       <div className="px-4 grid gap-2.5">
@@ -826,7 +846,7 @@ function MarketCatalogTab({ selectedProduct, setSelectedProduct, onBack }: {
                     <span className="text-[12px] text-[#F59E0B]" style={{ fontWeight: 700 }}>{item.price}</span>
                     <span className="text-[8px] text-[var(--aw-text-muted)] mr-0.5">تومان</span>
                   </div>
-                  <span className="text-[9px] text-[var(--aw-text-muted)]"><i className="fa-solid fa-star text-[#F59E0B] text-[7px]" /> {item.rating}</span>
+                  <span className="text-[9px] text-[var(--aw-text-muted)]">{(Number((item as any).rating) || 0) > 0 ? (<><i className="fa-solid fa-star text-[#F59E0B] text-[7px]" /> {toFa((item as any).rating)}{(item as any).ratingCount ? ' (' + toFa((item as any).ratingCount) + ')' : ''}</>) : <span className="opacity-70">بدون امتیاز</span>}</span>
                 </div>
                 {item.inStock && (
                   <div className="flex items-center justify-end mt-1">
@@ -1157,7 +1177,7 @@ function ShopDetailView({ shop, onBack, selectedProduct, setSelectedProduct, car
                       <span className="text-[12px] text-[#F59E0B]" style={{ fontWeight: 700 }}>{item.price}</span>
                       <span className="text-[8px] text-[var(--aw-text-muted)] mr-0.5">تومان</span>
                     </div>
-                    <span className="text-[9px] text-[var(--aw-text-muted)]"><i className="fa-solid fa-star text-[#F59E0B] text-[7px]" /> {item.rating}</span>
+                    <span className="text-[9px] text-[var(--aw-text-muted)]">{(Number((item as any).rating) || 0) > 0 ? (<><i className="fa-solid fa-star text-[#F59E0B] text-[7px]" /> {toFa((item as any).rating)}{(item as any).ratingCount ? ' (' + toFa((item as any).ratingCount) + ')' : ''}</>) : <span className="opacity-70">بدون امتیاز</span>}</span>
                   </div>
                   {item.inStock && (
                     <div className="flex items-center justify-end mt-1">

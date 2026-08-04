@@ -136,6 +136,34 @@ const CREATE_NOTE_TOOL = {
   },
 };
 
+// ابزارِ «پیگیریِ سفارش/فاکتور» — فقط‌خواندنی: دستیار سفارش‌های واقعیِ خودِ کاربر را از u_orders می‌خواند و
+// وضعیت/فاکتور را با دادهٔ واقعی پاسخ می‌دهد (نه ادعای دروغ). هیچ چیزی نمی‌نویسد.
+const GET_ORDERS_TOOL = {
+  type: 'function',
+  function: {
+    name: 'get_my_orders',
+    description: 'سفارش‌های واقعیِ خودِ کاربر (مارکت و سفارشِ غذا) را با وضعیت، اقلام، مبلغ، تاریخ و شمارهٔ فاکتور برمی‌گرداند. هر وقت کاربر دربارهٔ «سفارشم کجاست»، «پیگیریِ سفارش»، «وضعیتِ سفارش»، «فاکتور/رسیدِ خرید»، «چقدر خرج کردم» یا مشابه پرسید، حتماً این را فراخوانی کن و بر اساسِ همین داده پاسخ بده — از خودت عدد نساز.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'اختیاری: شمارهٔ سفارش یا کلیدواژه (مثلِ نامِ کالا/فروشگاه) برای فیلترِ سفارش‌ها.' },
+      },
+    },
+  },
+};
+const ORDER_STATUS_FA = { preparing: 'در حال آماده‌سازی', pending: 'در انتظار تأیید', confirmed: 'تأییدشده', shipping: 'در حال ارسال', delivered: 'تحویل‌شده', cancelled: 'لغوشده', received: 'ثبت‌شده', cooking: 'در حال آماده‌سازی', ready: 'آماده', served: 'سرو شد', paid: 'تسویه‌شده' };
+async function getMyOrders(sub, q) {
+  const { rows } = await query("SELECT data FROM documents WHERE collection='u_orders' AND company=$1 ORDER BY created_at DESC LIMIT 60", ['user:' + sub]);
+  let orders = rows.map((r) => r.data).filter((o) => o && o.kind !== 'sale'); // فقط خریدهای خودِ کاربر (نه فروش‌های فروشنده)
+  const term = String(q || '').trim().replace(/[#\s]/g, '');
+  if (term) orders = orders.filter((o) => JSON.stringify(o).replace(/\s/g, '').includes(term));
+  return orders.slice(0, 12).map((o) => {
+    const items = Array.isArray(o.items) ? o.items.map((it) => (it.name || 'کالا') + (it.qty ? ' ×' + it.qty : '')).join('، ') : (o.items || '');
+    const dineSt = Array.isArray(o.dineTickets) && o.dineTickets[0] ? (ORDER_STATUS_FA[o.dineTickets[0].status] || o.dineTickets[0].status) : null;
+    return { شماره: o.num || o.id, نوع: o.kind === 'dine' ? 'سفارش غذا' : 'خرید مارکت', وضعیت: dineSt || ORDER_STATUS_FA[o.status] || o.status || 'ثبت‌شده', فروشنده: o.vendor || '', اقلام: items, مبلغ: (Number(o.total) || 0).toLocaleString('en-US') + ' تومان', تاریخ: o.date || '', کش‌بک: o.cashback ? (Number(o.cashback).toLocaleString('en-US') + ' تومان') : undefined };
+  });
+}
+
 // اجرای واقعیِ ابزارهای دستیار: نوشتن در انبارِ per-userِ کاربر (همان جایی که myList فرانت می‌خواند).
 async function runAssistantTool(sub, fname, args) {
   const cid = Date.now() + Math.floor(Math.random() * 1000);
@@ -966,13 +994,14 @@ async function runChat(req) {
     // حیطهٔ دستیارِ شخصی: ثبتِ واقعیِ رویداد/کار/یادداشت در روزمرگیِ خودِ کاربر
     const asstDomain = !phone && me && me.sub != null && agentId === 'assistant';
     if (asstDomain) {
-      toolList.push(CREATE_EVENT_TOOL, CREATE_TASK_TOOL, CREATE_NOTE_TOOL);
+      toolList.push(CREATE_EVENT_TOOL, CREATE_TASK_TOOL, CREATE_NOTE_TOOL, GET_ORDERS_TOOL);
       let nowFa = '';
       try { nowFa = new Intl.DateTimeFormat('fa-IR', { timeZone: 'Asia/Tehran', weekday: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date()); } catch (_) {}
       sys += `\n\n— اقدامِ واقعی (بسیار مهم): تو فقط حرف نمی‌زنی؛ در حیطهٔ خودت واقعاً کار انجام می‌دهی.`
         + (nowFa ? ` زمانِ فعلی به وقتِ ایران: ${nowFa}.` : '')
         + ` هر وقت کاربر خواست چیزی در «روزمرگی»/تقویم/کارها/یادداشت‌هایش ثبت شود، حتماً ابزارِ مناسب را فراخوانی کن و بعد کوتاه تأیید کن — هرگز نگو «ثبت کردم» بدونِ اینکه واقعاً ابزار را صدا زده باشی.`
-        + ` کارِ زمان‌دار/یادآوری/قرار→create_event (برای «۱ ساعت دیگه» مقدارِ in_minutes=۶۰)؛ کارِ بی‌زمان→create_task؛ یادداشت→create_note. عنوان را کوتاه و تمیز بده (بدونِ «یه تسک بساز»، «تو روزمرگی»، «برام»).`;
+        + ` کارِ زمان‌دار/یادآوری/قرار→create_event (برای «۱ ساعت دیگه» مقدارِ in_minutes=۶۰)؛ کارِ بی‌زمان→create_task؛ یادداشت→create_note. عنوان را کوتاه و تمیز بده (بدونِ «یه تسک بساز»، «تو روزمرگی»، «برام»).`
+        + ` برای پیگیریِ سفارش/وضعیت/فاکتور/میزانِ خرید→get_my_orders را صدا بزن و فقط بر اساسِ همان دادهٔ واقعی جواب بده؛ اگر سفارشی نبود صادقانه بگو سفارشی ثبت نشده.`;
     }
     const tools = toolList.length ? toolList : null;
 
@@ -1066,6 +1095,14 @@ async function runChat(req) {
           if (out.coll) dataChanged.add(out.coll);
           console.log('AI', fname, '→', out.coll || 'noop', 'title=', args.title || args.text || '');
           toolMsgs.push({ role: 'tool', tool_call_id: tc.id, content: out.msg });
+          continue;
+        }
+        if (fname === 'get_my_orders' && asstDomain) {
+          let content;
+          try { const ords = await getMyOrders(me.sub, args.query); content = ords.length ? ('سفارش‌های واقعیِ کاربر (JSON):\n' + JSON.stringify(ords)) : 'کاربر هیچ سفارشی ثبت نکرده است.'; }
+          catch (e) { content = 'خواندنِ سفارش‌ها ناموفق بود.'; }
+          console.log('AI get_my_orders → sub=', me.sub, 'q=', args.query || '-');
+          toolMsgs.push({ role: 'tool', tool_call_id: tc.id, content });
           continue;
         }
         if (fname === 'make_call' && didCall) {

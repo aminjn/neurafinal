@@ -69,6 +69,7 @@ for (const [label, key] of TABS) {
 }
 
 // ── ۲) مسیرِ کاملِ خرید: افزودن به سبد ← سبد ← پرداخت ← سفارشات ──
+let result_extra = {};
 const balBefore = await balance(); const ordBefore = await orderCount();
 await goEu('euMarketScreen'); await p.waitForTimeout(600); await dismiss();
 await clickText('محصول'); await p.waitForTimeout(700);
@@ -80,8 +81,18 @@ await clickText('خانهٔ من'); await p.waitForTimeout(400); // انتخاب
 const paid = await clickText('پرداخت و ثبت سفارش'); await p.waitForTimeout(2200); await dismiss(); await shot('mkt_checkout_result');
 const balAfter = await balance(); const ordAfter = await orderCount();
 await goEu('euMarketScreen'); await p.waitForTimeout(600); await dismiss(); await clickText('سفارشات'); await p.waitForTimeout(700); await shot('mkt_orders_after');
+// فاکتور: پیگیری → جزئیاتِ سفارش → مشاهده فاکتور
+await clickText('پیگیری'); await p.waitForTimeout(800); await dismiss(); await shot('mkt_order_detail');
+const invoiceOpened = await clickText('مشاهده فاکتور'); await p.waitForTimeout(800); await shot('mkt_invoice');
+// بستنِ مودالِ فاکتور قبل از ادامه
+await p.evaluate(() => { const x = [...document.querySelectorAll('button')].find(b => /بستن/.test(b.getAttribute('title') || '') || b.querySelector('.fa-times,.fa-xmark')); if (x) x.click(); }).catch(() => {});
+await p.keyboard.press('Escape').catch(() => {}); await p.waitForTimeout(400);
+// فیلترِ دسته + مرتب‌سازی روی تبِ محصول
+await goEu('euMarketScreen'); await p.waitForTimeout(500); await dismiss(); await clickText('محصول'); await p.waitForTimeout(600);
+const catClicked = await clickText('دیجیتال'); await p.waitForTimeout(600); await shot('mkt_cat_digital');
+result_extra = { invoiceOpened, catClicked };
 
-const result = { tabs: tabReport, purchase: { added, paidClicked: paid, balBefore, balAfter, spent: (balBefore != null && balAfter != null) ? balBefore - balAfter : null, ordBefore, ordAfter, newOrders: (ordAfter >= 0 && ordBefore >= 0) ? ordAfter - ordBefore : null }, errors: log.slice(0, 5) };
+const result = { tabs: tabReport, purchase: { added, paidClicked: paid, balBefore, balAfter, spent: (balBefore != null && balAfter != null) ? balBefore - balAfter : null, ordBefore, ordAfter, newOrders: (ordAfter >= 0 && ordBefore >= 0) ? ordAfter - ordBefore : null }, extra: result_extra, errors: log.slice(0, 5) };
 fs.writeFileSync(path.resolve(ROOT, '..', '.audit-market-flow.json'), JSON.stringify(result, null, 2));
 console.log('\n===== نتیجهٔ خریدِ واقعی =====');
 console.log(JSON.stringify(result.purchase, null, 2));

@@ -85,6 +85,9 @@ const s = await query('SELECT data FROM settings WHERE id = 1');
 const sd = (s.rows[0] && s.rows[0].data) || {};
 sd.marketOffers = MARKET_OFFERS;
 sd.marketCategories = MARKET_CATEGORIES;
+// نقشه: نکسا مپ از سوپرادمین (R17). با ستِ mapTileUrl، فرانت به‌جای OSMِ خارجی از پراکسیِ سرور (/api/map/tile) می‌گیرد.
+sd.mapApiBase = sd.mapApiBase || 'https://api.neshan.example/v1';
+sd.mapTileUrl = sd.mapTileUrl || 'https://tile.neksa.example/{z}/{x}/{y}.png?key={key}';
 if (s.rows[0]) await query('UPDATE settings SET data = $1::jsonb WHERE id = 1', [JSON.stringify(sd)]);
 else await query("INSERT INTO settings (id, data) VALUES (1, $1::jsonb)", [JSON.stringify(sd)]);
 

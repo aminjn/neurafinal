@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from './app-context';
 import { LetterAvatar } from './letter-avatar';
 import { ProductDetail, OrderDetail, OrderFlow, SalesAlertsSection, SalesShiftScreen, BUSINESS_TYPES, type PresetCat } from './sales-extra';
+import { OrderInvoice } from './end-user-panel';
 
 // ========================
 // SHARED STYLES
@@ -627,9 +628,9 @@ export function SalesOrdersScreen() {
             <div className="flex items-center gap-2 mb-2"><i className="fa-solid fa-store text-[13px]" style={{ color: 'var(--aw-primary)' }} /><span className="text-[13px]" style={{ fontWeight: 800, color: 'var(--aw-primary)' }}>فروش‌های آنلاین ({(__onlineSales.length).toLocaleString('fa-IR')})</span></div>
             <div className="flex flex-col gap-1.5">
               {__onlineSales.slice(0, 20).map((o: any, i: number) => (
-                <div key={o.id || i} className="p-2.5 rounded-xl flex items-center gap-2" style={{ background: 'var(--aw-bg-card)', border: '1px solid var(--aw-border)' }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#10B98118' }}><i className="fa-solid fa-bag-shopping text-[12px] text-[#10B981]" /></div>
-                  <div className="flex-1 min-w-0"><div className="text-[12px] truncate" style={{ fontWeight: 700 }}>{o.itemsText || 'فروش'}</div><div className="text-[10px] text-[var(--aw-text-muted)]">{new Date(o.date || Date.now()).toLocaleDateString('fa-IR')}</div></div>
+                <div key={o.id || i} onClick={() => openModal('فاکتور فروش', <OrderInvoice order={o} />)} className="p-2.5 rounded-xl flex items-center gap-2 cursor-pointer" style={{ background: 'var(--aw-bg-card)', border: '1px solid var(--aw-border)' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#10B98118' }}><i className="fa-solid fa-file-invoice text-[12px] text-[#10B981]" /></div>
+                  <div className="flex-1 min-w-0"><div className="text-[12px] truncate" style={{ fontWeight: 700 }}>{o.itemsText || 'فروش'}</div><div className="text-[10px] text-[var(--aw-text-muted)]">{new Date(o.date || Date.now()).toLocaleDateString('fa-IR')} · مشاهدهٔ فاکتور</div></div>
                   <div className="text-[12px] text-[#10B981]" style={{ fontWeight: 800 }}>{(Number(o.total) || 0).toLocaleString('fa-IR')} <span className="text-[9px]">ت</span></div>
                 </div>
               ))}

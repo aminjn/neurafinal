@@ -2377,7 +2377,7 @@ function __faOrderDate(d: any): string {
 }
 
 export function OrderDetail({ order: o }: { order: Order }) {
-  const { closeModal, openChat } = useApp();
+  const { closeModal, openChat, openModal } = useApp();
   const __num = (o as any).num || (o as any).id || '';
   const __statusLabel = (ORDER_STATUS_LABELS as any)[o.status] || 'ثبت شد';
 
@@ -2404,12 +2404,71 @@ export function OrderDetail({ order: o }: { order: Order }) {
         <span style={{ fontWeight: 700 }}>{__faOrderDate(o.date)}</span>
       </div>
       <div className="flex gap-2 mt-4">
-        <button className="flex-1 py-2.5 px-5 border-none rounded-[10px] text-[13px] text-white cursor-pointer" style={{ background: 'var(--aw-primary, #2E86FF)', fontWeight: 600 }}
+        <button className="flex-1 py-2.5 px-3 border-none rounded-[10px] text-[13px] text-white cursor-pointer" style={{ background: 'var(--aw-primary, #2E86FF)', fontWeight: 600 }}
           onClick={() => { closeModal(); setTimeout(() => openChat('assistant', 'eu', undefined, [{ id: Date.now(), text: `پیگیری سفارش #${__num} — وضعیت: ${__statusLabel}`, sent: false, time: '' } as any]), 200); }}>
-          <i className="fa-solid fa-comment" /> پیگیری سفارش با دستیار
+          <i className="fa-solid fa-comment" /> پیگیری با دستیار
         </button>
-        {/* دکمهٔ «لغو» حذف شد: آرایهٔ اشتباه را دست‌کاری می‌کرد و toastِ «لغو شد» دروغ بود؛ لغوِ واقعی نیازِ endpointِ سرور + بازپرداخت + اطلاعِ صندوقدار دارد (کارِ بعدی). */}
+        <button className="flex-1 py-2.5 px-3 rounded-[10px] text-[13px] cursor-pointer" style={{ background: 'transparent', border: '1px solid var(--aw-eu-primary)', color: 'var(--aw-eu-primary)', fontWeight: 600 }}
+          onClick={() => openModal('فاکتور سفارش', <OrderInvoice order={o} />)}>
+          <i className="fa-solid fa-file-invoice" /> مشاهده فاکتور
+        </button>
       </div>
+    </div>
+  );
+}
+
+// فاکتورِ رسمیِ سفارش (مشتری و فروشنده هر دو): سرآیتم‌ها با قیمتِ واحد×تعداد=جمعِ خط، جمعِ جزء، حق‌سرویس/مالیاتِ
+// داین (اگر بود)، مبلغِ کل، کش‌بک، روشِ پرداخت، وضعیت. قابلِ چاپ/ذخیره‌یِ PDF (چاپِ مرورگر). دادهٔ واقعیِ همان سفارش.
+export function OrderInvoice({ order: o }: { order: any }) {
+  const num = o.num || o.id || '';
+  const __src: any[] = Array.isArray(o.lines) ? o.lines : (Array.isArray(o.items) ? o.items : []);
+  const lines: any[] = __src.map((it: any) => ({ name: it.name || 'کالا', qty: Number(it.qty) || 1, price: Number(it.priceNum ?? it.price) || 0 }));
+  const computed = lines.reduce((s, l) => s + l.price * l.qty, 0);
+  const total = Number(o.total) || computed;
+  const svc = Number(o.service) || 0, tax = Number(o.tax) || 0;
+  const subtotal = (svc || tax) ? Math.max(0, total - svc - tax) : (computed || total);
+  const fa = (n: number) => (Number(n) || 0).toLocaleString('fa-IR');
+  const row = (label: string, val: string, strong = false) => (
+    <div className="flex justify-between py-1.5 text-[12px]" style={{ borderBottom: '1px dashed var(--aw-border-light)' }}>
+      <span className="text-[var(--aw-text-secondary)]">{label}</span>
+      <span style={{ fontWeight: strong ? 800 : 600, color: 'var(--aw-text-primary)' }}>{val}</span>
+    </div>
+  );
+  return (
+    <div id="neura-invoice">
+      <div className="text-center mb-3">
+        <div className="text-[15px]" style={{ fontWeight: 800, color: 'var(--aw-eu-primary)' }}>فاکتور فروش</div>
+        <div className="text-[11px] text-[var(--aw-text-muted)]">نئورا · شماره #{toFa(String(num))}</div>
+      </div>
+      {row('فروشنده', o.vendor || o.shop || 'فروشگاه')}
+      {row('تاریخ', __faOrderDate(o.date))}
+      {row('وضعیت', (ORDER_STATUS_LABELS as any)[o.status] || 'ثبت‌شده')}
+      <div className="mt-3 mb-1 text-[12px]" style={{ fontWeight: 700 }}>اقلام</div>
+      <div className="rounded-[10px] overflow-hidden" style={{ border: '1px solid var(--aw-border)' }}>
+        <div className="flex text-[10px] px-2 py-1.5" style={{ background: 'var(--aw-bg-input)', color: 'var(--aw-text-muted)', fontWeight: 700 }}>
+          <span className="flex-1">کالا</span><span className="w-10 text-center">تعداد</span><span className="w-24 text-left">قیمت واحد</span><span className="w-24 text-left">جمع</span>
+        </div>
+        {lines.length === 0 && <div className="px-2 py-3 text-[11px] text-center text-[var(--aw-text-muted)]">{__orderItemsText(o)}</div>}
+        {lines.map((l, i) => (
+          <div key={i} className="flex text-[11px] px-2 py-1.5 items-center" style={{ borderTop: '1px solid var(--aw-border-light)' }}>
+            <span className="flex-1" style={{ fontWeight: 600 }}>{l.name}</span>
+            <span className="w-10 text-center">{toFa(l.qty)}</span>
+            <span className="w-24 text-left" style={{ direction: 'ltr' }}>{fa(l.price)}</span>
+            <span className="w-24 text-left" style={{ direction: 'ltr', fontWeight: 700 }}>{fa(l.price * l.qty)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3">
+        {row('جمع اقلام', fa(subtotal) + ' تومان')}
+        {svc > 0 && row('حق سرویس', fa(svc) + ' تومان')}
+        {tax > 0 && row('مالیات', fa(tax) + ' تومان')}
+        {o.cashback ? row('کش‌بک', '+' + fa(o.cashback) + ' تومان') : null}
+        {row('روش پرداخت', 'کیف پول نئورا')}
+        {row('مبلغ کل', fa(total) + ' تومان', true)}
+      </div>
+      <button onClick={() => { try { window.print(); } catch (_e) {} }} className="w-full mt-4 py-2.5 rounded-[10px] border-none text-white text-[13px] cursor-pointer" style={{ background: 'var(--aw-eu-primary, #7B62FC)', fontWeight: 700 }}>
+        <i className="fa-solid fa-print ml-1.5" /> چاپ / ذخیرهٔ فاکتور
+      </button>
     </div>
   );
 }
