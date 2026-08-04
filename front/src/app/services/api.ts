@@ -319,6 +319,10 @@ export const api = {
     req<{ messages: { from: string; to: string; text: string; ts: number; mine?: boolean; readAt?: number }[] }>(`/peer/with?sub=${encodeURIComponent(sub)}&_=${Date.now()}`),
   // تیکِ خوانده‌شدِ واقعی: پیام‌های رسیده به من را در این گفتگو read کن
   peerMarkRead: (sub: string) => req<any>(`/peer/read`, { method: 'POST', body: JSON.stringify({ sub }) }),
+  // تنظیماتِ گفتگوی ۱:۱ (واقعی)
+  peerPrefs: () => req<{ mutes: string[] }>(`/peer/prefs?_=${Date.now()}`),
+  peerMute: (sub: string, mute: boolean) => req<any>(`/peer/mute`, { method: 'POST', body: JSON.stringify({ sub, mute }) }),
+  peerClear: (sub: string) => req<any>(`/peer/clear`, { method: 'POST', body: JSON.stringify({ sub }) }),
   peerConversations: () =>
     req<{ conversations: { sub: string; name: string; lastText: string; ts: number }[] }>(`/peer/conversations?_=${Date.now()}`),
   // حضورِ واقعیِ کاربران از سرورِ تماس (RTC) — { sub: true/false }

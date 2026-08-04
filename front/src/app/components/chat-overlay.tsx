@@ -499,6 +499,9 @@ export default function ChatOverlay() {
               >
                 <i className="fa-solid fa-video" />
               </button>
+              <button className="w-8 h-8 rounded-[10px] border-none cursor-pointer flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.06)', color: 'var(--aw-text-primary)', fontSize: 13 }} title="تنظیماتِ گفتگو" onClick={() => peerSub && openModal('تنظیماتِ گفتگو', <EuPeerSettings peerSub={peerSub} peerName={headerName} />)}>
+                <i className="fa-solid fa-gear" />
+              </button>
             </>
           ) : headerName && !isEuAgentChat && (
             <button
@@ -884,6 +887,31 @@ export default function ChatOverlay() {
 const GROUP_COLORS = ['#7B62FC', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#14B8A6', '#8B5CF6'];
 // تنظیماتِ کاملِ گروه — همتراز/کامل‌تر از تلگرام/واتساپ: عکس(رنگ+ایموجی)، توضیح، ادمین‌ها+دسترسی،
 // لینکِ دعوت، پیامِ سنجاق‌شده، سیاستِ ارسال، بی‌صداکردن، خروج، حذفِ گروه.
+// تنظیماتِ گفتگوی ۱:۱ (واقعی): بی‌صداکردنِ اعلان + پاک‌کردنِ گفتگو.
+function EuPeerSettings({ peerSub, peerName }: { peerSub: string; peerName: string }) {
+  const { closeModal, showToast, closeChat } = useApp() as any;
+  const [muted, setMuted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { (api as any).peerPrefs().then((p: any) => { setMuted(((p?.mutes) || []).map(String).includes(String(peerSub))); }).catch(() => {}); }, [peerSub]);
+  const toggleMute = async () => { if (busy) return; setBusy(true); try { const nv = !muted; await (api as any).peerMute(peerSub, nv); setMuted(nv); showToast(nv ? 'اعلانِ این گفتگو بی‌صدا شد' : 'اعلان روشن شد'); } catch (_) { showToast('خطا'); } setBusy(false); };
+  const clearChat = async () => { if (typeof window !== 'undefined' && !window.confirm('کلِ این گفتگو پاک شود؟')) return; setBusy(true); try { await (api as any).peerClear(peerSub); try { window.dispatchEvent(new CustomEvent('neura:data-changed')); } catch (_) {} showToast('گفتگو پاک شد'); closeModal(); closeChat(); } catch (_) { showToast('خطا'); } setBusy(false); };
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col items-center gap-2 pb-1">
+        <LetterAvatar name={peerName} init={String(peerName || '?').charAt(0)} size={64} radius={22} />
+        <div className="text-[15px]" style={{ fontWeight: 700 }}>{peerName || 'کاربر'}</div>
+      </div>
+      <button onClick={toggleMute} disabled={busy} className="flex items-center justify-between rounded-[10px] p-3 border-none cursor-pointer text-right" style={{ background: 'var(--aw-bg-card)' }}>
+        <span className="text-[13px] flex items-center gap-2"><i className={`fa-solid ${muted ? 'fa-bell-slash' : 'fa-bell'} text-[var(--aw-eu-primary,#7B62FC)]`} /> اعلانِ گفتگو</span>
+        <span className="text-[11px] px-2.5 py-1 rounded-full" style={{ background: muted ? 'rgba(239,68,68,0.14)' : 'color-mix(in srgb, var(--aw-eu-primary) 16%, transparent)', color: muted ? '#ef4444' : 'var(--aw-eu-primary,#7B62FC)', fontWeight: 700 }}>{muted ? 'بی‌صدا' : 'روشن'}</span>
+      </button>
+      <button onClick={clearChat} disabled={busy} className="flex items-center gap-2 rounded-[10px] p-3 border-none cursor-pointer text-right text-[#ef4444]" style={{ background: 'rgba(239,68,68,0.08)', fontWeight: 700 }}>
+        <i className="fa-solid fa-trash text-[13px]" /> <span className="text-[13px]">پاک‌کردنِ گفتگو</span>
+      </button>
+    </div>
+  );
+}
+
 function EuGroupSettings({ groupId }: { groupId: string }) {
   const { closeModal, showToast, closeChat } = useApp() as any;
   const [info, setInfo] = useState<any>(null);

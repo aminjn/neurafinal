@@ -50,8 +50,11 @@ router.post('/send', authRequired, async (req, res) => {
     "INSERT INTO documents (collection, id, company, data) VALUES ('peer_msgs', $1, $2, $3::jsonb)",
     [id, conv, JSON.stringify(data)]
   );
-  // نوتیفیکیشنِ push به گیرنده (حتی اگر اپش بسته باشد).
-  sendPush(to, { title: String(req.user.name || 'پیام جدید'), body: text.slice(0, 120), kind: 'message', tag: 'peer_' + req.user.sub, url: '/', data: { peer: String(req.user.sub) } }).catch(() => {});
+  // نوتیفیکیشنِ push به گیرنده — مگر اینکه گیرنده این فرستنده را «بی‌صدا» کرده باشد (تنظیماتِ ۱:۱).
+  (async () => {
+    try { const pr = await query("SELECT data FROM documents WHERE collection='peer_prefs' AND id=$1", ['pp_' + to]); const mutes = (pr.rows[0]?.data?.mutes || []).map(String); if (mutes.includes(String(req.user.sub))) return; } catch (_) {}
+    sendPush(to, { title: String(req.user.name || 'پیام جدید'), body: text.slice(0, 120), kind: 'message', tag: 'peer_' + req.user.sub, url: '/', data: { peer: String(req.user.sub) } }).catch(() => {});
+  })();
   res.status(201).json({ ok: true, message: data });
 });
 
@@ -83,6 +86,27 @@ router.post('/read', authRequired, async (req, res) => {
       [conv, String(req.user.sub), Date.now()]
     );
   } catch (_) {}
+  res.json({ ok: true });
+});
+
+// ── تنظیماتِ گفتگوی ۱:۱ (واقعی): بی‌صداکردنِ اعلانِ یک مخاطب + پاک‌کردنِ گفتگو ──
+router.get('/prefs', authRequired, async (req, res) => {
+  try { const r = await query("SELECT data FROM documents WHERE collection='peer_prefs' AND id=$1", ['pp_' + req.user.sub]); res.json(r.rows[0]?.data || { mutes: [] }); }
+  catch (_) { res.json({ mutes: [] }); }
+});
+router.post('/mute', authRequired, async (req, res) => {
+  const other = String(req.body?.sub || ''); const mute = req.body?.mute !== false;
+  if (!other) return res.status(400).json({ error: 'sub_required' });
+  const id = 'pp_' + req.user.sub;
+  const r = await query("SELECT data FROM documents WHERE collection='peer_prefs' AND id=$1", [id]);
+  const d = r.rows[0]?.data || { mutes: [] }; const set = new Set((d.mutes || []).map(String));
+  if (mute) set.add(other); else set.delete(other); d.mutes = [...set];
+  await query("INSERT INTO documents (collection,id,company,data) VALUES ('peer_prefs',$1,$2,$3::jsonb) ON CONFLICT (collection,id) DO UPDATE SET data=$3::jsonb, updated_at=now()", [id, 'user:' + req.user.sub, JSON.stringify(d)]);
+  res.json({ ok: true, muted: mute });
+});
+router.post('/clear', authRequired, async (req, res) => {
+  const other = String(req.body?.sub || ''); if (!other) return res.status(400).json({ error: 'sub_required' });
+  try { await query("DELETE FROM documents WHERE collection='peer_msgs' AND company=$1", [convId(req.user.sub, other)]); } catch (_) {}
   res.json({ ok: true });
 });
 
