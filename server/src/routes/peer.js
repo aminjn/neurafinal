@@ -158,4 +158,77 @@ router.get('/group/with', authRequired, async (req, res) => {
   res.json({ group: { id: group.id, name: group.name, members: group.members, memberCount: (group.members || []).length }, messages });
 });
 
+// ── مدیریتِ گروه (تنظیمات) ──
+async function saveGroup(gid, data) { await query("UPDATE documents SET data=$2::jsonb WHERE collection='peer_groups' AND id=$1", [gid, JSON.stringify(data)]); }
+async function resolveNames(subs) {
+  const names = {};
+  if (!subs.length) return names;
+  try { const u = await query('SELECT id, name, username FROM app_users WHERE id::text = ANY($1::text[])', [subs.map(String)]); for (const r of u.rows) names[String(r.id)] = r.name || r.username; } catch (_) {}
+  return names;
+}
+
+// اطلاعاتِ گروه با نامِ اعضا (برای صفحهٔ تنظیمات).
+router.get('/group/info', authRequired, async (req, res) => {
+  const me = String(req.user.sub);
+  const group = await loadGroup(String(req.query.groupId || ''));
+  if (!group || !isMember(group, me)) return res.status(403).json({ error: 'not_member' });
+  const names = await resolveNames(group.members || []);
+  res.json({ group: { id: group.id, name: group.name, owner: group.owner, isOwner: String(group.owner) === me,
+    members: (group.members || []).map((s) => ({ sub: String(s), name: names[String(s)] || String(s), isOwner: String(group.owner) === String(s), me: String(s) === me })) } });
+});
+
+// تغییرِ نامِ گروه (فقط مالک).
+router.post('/group/rename', authRequired, async (req, res) => {
+  const me = String(req.user.sub);
+  const group = await loadGroup(String(req.body?.groupId || ''));
+  if (!group) return res.status(404).json({ error: 'not_found' });
+  if (String(group.owner) !== me) return res.status(403).json({ error: 'owner_only' });
+  const name = String(req.body?.name || '').trim().slice(0, 80);
+  if (!name) return res.status(400).json({ error: 'name_required' });
+  group.name = name; await saveGroup(group.id, group);
+  res.json({ ok: true, name });
+});
+
+// افزودنِ اعضا (فقط مالک) — فقط کاربرانِ واقعیِ نورا.
+router.post('/group/addMembers', authRequired, async (req, res) => {
+  const me = String(req.user.sub);
+  const group = await loadGroup(String(req.body?.groupId || ''));
+  if (!group) return res.status(404).json({ error: 'not_found' });
+  if (String(group.owner) !== me) return res.status(403).json({ error: 'owner_only' });
+  const add = Array.isArray(req.body?.members) ? req.body.members.map(String) : [];
+  let valid = [];
+  try { const r = await query('SELECT id FROM app_users WHERE id::text = ANY($1::text[])', [add]); valid = r.rows.map((x) => String(x.id)); } catch (_) {}
+  const before = new Set((group.members || []).map(String));
+  for (const s of valid) before.add(s);
+  group.members = Array.from(before);
+  await saveGroup(group.id, group);
+  for (const s of valid) sendPush(s, { title: group.name, body: 'به گروه اضافه شدید', kind: 'message', tag: 'grp_' + group.id, url: '/', data: { group: group.id } }).catch(() => {});
+  res.json({ ok: true, memberCount: group.members.length });
+});
+
+// حذفِ عضو (فقط مالک؛ مالک خودش را حذف نکند).
+router.post('/group/removeMember', authRequired, async (req, res) => {
+  const me = String(req.user.sub);
+  const group = await loadGroup(String(req.body?.groupId || ''));
+  if (!group) return res.status(404).json({ error: 'not_found' });
+  if (String(group.owner) !== me) return res.status(403).json({ error: 'owner_only' });
+  const sub = String(req.body?.sub || '');
+  if (sub === String(group.owner)) return res.status(400).json({ error: 'cannot_remove_owner' });
+  group.members = (group.members || []).map(String).filter((s) => s !== sub);
+  await saveGroup(group.id, group);
+  res.json({ ok: true, memberCount: group.members.length });
+});
+
+// خروج از گروه (هر عضو). اگر مالک خارج شود، مالکیت به عضوِ بعدی می‌رسد؛ اگر کسی نماند، گروه حذف می‌شود.
+router.post('/group/leave', authRequired, async (req, res) => {
+  const me = String(req.user.sub);
+  const group = await loadGroup(String(req.body?.groupId || ''));
+  if (!group || !isMember(group, me)) return res.status(403).json({ error: 'not_member' });
+  group.members = (group.members || []).map(String).filter((s) => s !== me);
+  if (group.members.length === 0) { await query("DELETE FROM documents WHERE collection='peer_groups' AND id=$1", [group.id]); return res.json({ ok: true, deleted: true }); }
+  if (String(group.owner) === me) group.owner = group.members[0]; // انتقالِ مالکیت
+  await saveGroup(group.id, group);
+  res.json({ ok: true });
+});
+
 export default router;

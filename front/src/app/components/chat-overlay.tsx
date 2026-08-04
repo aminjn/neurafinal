@@ -477,6 +477,9 @@ export default function ChatOverlay() {
               <button className="w-8 h-8 rounded-[10px] border-none cursor-pointer flex items-center justify-center" style={{ background: 'rgba(123,98,252,0.15)', color: '#7b62fc', fontSize: 14 }} title="تماس تصویریِ گروهی" onClick={() => startGroupCall('video')}>
                 <i className="fa-solid fa-video" />
               </button>
+              <button className="w-8 h-8 rounded-[10px] border-none cursor-pointer flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.06)', color: 'var(--aw-text-primary)', fontSize: 13 }} title="تنظیماتِ گروه" onClick={() => openModal('تنظیماتِ گروه', <EuGroupSettings groupId={groupGid} />)}>
+                <i className="fa-solid fa-gear" />
+              </button>
             </>
           ) : isPeerChat ? (
             <>
@@ -872,6 +875,82 @@ export default function ChatOverlay() {
       </div>
     </motion.div>
     </>
+  );
+}
+
+// تنظیماتِ گروهِ کاربر-به-کاربرِ نورا (واقعی، از سرور): نام، اعضا، افزودن/حذف، خروج.
+function EuGroupSettings({ groupId }: { groupId: string }) {
+  const { closeModal, showToast, closeChat } = useApp() as any;
+  const [info, setInfo] = useState<any>(null);
+  const [rename, setRename] = useState('');
+  const [addList, setAddList] = useState<any[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const load = async () => { try { const r: any = await api.groupInfo(groupId); setInfo(r?.group || null); setRename((r?.group?.name) || ''); } catch (_) {} };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [groupId]);
+  const loadContacts = async () => {
+    try {
+      const r: any = await api.contacts(); const list = (r && r.contacts) || [];
+      const phones = list.map((c: any) => c.phone).filter(Boolean);
+      if (!phones.length) { setAddList([]); return; }
+      const rr: any = await (api as any).peerResolve(phones);
+      const nameByPhone: any = {}; list.forEach((c: any) => { if (c.phone) nameByPhone[String(c.phone).replace(/\D/g, '').slice(-10)] = c.name; });
+      const existing = new Set((info?.members || []).map((m: any) => String(m.sub)));
+      setAddList((rr?.users || []).map((u: any) => ({ sub: String(u.sub), name: nameByPhone[String(u.phone).replace(/\D/g, '').slice(-10)] || u.name || u.phone })).filter((u: any) => !existing.has(u.sub)));
+    } catch (_) { setAddList([]); }
+  };
+  const doRename = async () => { const n = rename.trim(); if (!n || !info?.isOwner) return; setBusy(true); try { await api.groupRename(groupId, n); showToast('نامِ گروه تغییر کرد'); await load(); } catch (_) { showToast('خطا'); } setBusy(false); };
+  const doAdd = async (sub: string) => { setBusy(true); try { await api.groupAddMembers(groupId, [sub]); showToast('عضو اضافه شد'); setShowAdd(false); await load(); try { window.dispatchEvent(new CustomEvent('neura:data-changed')); } catch (_) {} } catch (_) { showToast('خطا'); } setBusy(false); };
+  const doRemove = async (sub: string) => { setBusy(true); try { await api.groupRemoveMember(groupId, sub); showToast('عضو حذف شد'); await load(); } catch (_) { showToast('خطا'); } setBusy(false); };
+  const doLeave = async () => { setBusy(true); try { await api.groupLeave(groupId); showToast('از گروه خارج شدید'); closeModal(); closeChat(); try { window.dispatchEvent(new CustomEvent('neura:data-changed')); } catch (_) {} } catch (_) { showToast('خطا'); setBusy(false); } };
+
+  if (!info) return <div className="py-8 text-center text-[12px] text-[var(--aw-text-muted)]">در حال بارگذاری…</div>;
+  return (
+    <div className="flex flex-col gap-3" style={{ maxHeight: '68vh' }}>
+      {/* آواتار + نام */}
+      <div className="flex flex-col items-center gap-2 pb-1">
+        <div className="w-16 h-16 rounded-[20px] flex items-center justify-center text-white" style={{ background: 'var(--aw-eu-primary,#7B62FC)' }}><i className="fa-solid fa-users text-[26px]" /></div>
+        {info.isOwner ? (
+          <div className="flex items-center gap-2 w-full max-w-[300px]">
+            <input value={rename} onChange={e => setRename(e.target.value)} className="flex-1 text-center text-[14px] py-2 rounded-[10px] border border-[var(--aw-border)] bg-[var(--aw-bg-input)] outline-none" style={{ fontWeight: 700 }} />
+            <button disabled={busy} onClick={doRename} className="px-3 py-2 rounded-[10px] border-none cursor-pointer text-white text-[12px]" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 700 }}>ذخیره</button>
+          </div>
+        ) : <div className="text-[15px]" style={{ fontWeight: 700 }}>{info.name}</div>}
+        <div className="text-[11px] text-[var(--aw-text-muted)]">{toFa((info.members || []).length)} عضو</div>
+      </div>
+
+      {/* اعضا */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[12px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 700 }}>اعضا</span>
+        {info.isOwner && <button onClick={() => { setShowAdd(s => !s); if (!showAdd) loadContacts(); }} className="text-[11px] px-2.5 py-1 rounded-lg border-none cursor-pointer text-white flex items-center gap-1" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 600 }}><i className="fa-solid fa-user-plus text-[10px]" /> افزودن</button>}
+      </div>
+      {showAdd && (
+        <div className="rounded-[10px] border border-[var(--aw-border)] max-h-[150px] overflow-y-auto">
+          {addList.length === 0 ? <div className="text-center text-[11px] text-[var(--aw-text-muted)] py-4">مخاطبِ نورایی برای افزودن نیست</div> :
+            addList.map((u: any) => (
+              <div key={u.sub} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-[var(--aw-bg-card-hover)]" onClick={() => doAdd(u.sub)}>
+                <LetterAvatar name={u.name} init={String(u.name || '?').charAt(0)} size={32} radius={10} />
+                <span className="flex-1 text-[12px]">{u.name}</span>
+                <i className="fa-solid fa-plus text-[11px] text-[var(--aw-eu-primary,#7B62FC)]" />
+              </div>
+            ))}
+        </div>
+      )}
+      <div className="flex flex-col gap-1 overflow-y-auto">
+        {(info.members || []).map((m: any) => (
+          <div key={m.sub} className="flex items-center gap-2.5 p-2 rounded-[10px]" style={{ background: 'var(--aw-bg-card)' }}>
+            <LetterAvatar name={m.name} init={String(m.name || '?').charAt(0)} size={36} radius={11} />
+            <div className="flex-1 min-w-0"><div className="text-[13px] truncate" style={{ fontWeight: 600 }}>{m.name}{m.me ? ' (شما)' : ''}</div>{m.isOwner && <div className="text-[10px] text-[var(--aw-eu-primary,#7B62FC)]">مدیرِ گروه</div>}</div>
+            {info.isOwner && !m.isOwner && <button disabled={busy} onClick={() => doRemove(m.sub)} className="w-7 h-7 rounded-lg border-none cursor-pointer" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }} title="حذف"><i className="fa-solid fa-user-minus text-[11px]" /></button>}
+          </div>
+        ))}
+      </div>
+
+      {/* خروج */}
+      <button disabled={busy} onClick={doLeave} className="mt-1 w-full py-2.5 rounded-[10px] border cursor-pointer text-[13px]" style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontWeight: 700 }}>
+        <i className="fa-solid fa-right-from-bracket" /> خروج از گروه
+      </button>
+    </div>
   );
 }
 

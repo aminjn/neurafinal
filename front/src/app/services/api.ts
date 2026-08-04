@@ -319,6 +319,16 @@ export const api = {
     req<{ ok: boolean; message: any }>(`/peer/group/send`, { method: 'POST', body: JSON.stringify({ groupId, text }) }),
   groupWith: (groupId: string) =>
     req<{ group: { id: string; name: string; members: string[]; memberCount: number }; messages: any[] }>(`/peer/group/with?groupId=${encodeURIComponent(groupId)}&_=${Date.now()}`),
+  groupInfo: (groupId: string) =>
+    req<{ group: { id: string; name: string; owner: string; isOwner: boolean; members: { sub: string; name: string; isOwner: boolean; me: boolean }[] } }>(`/peer/group/info?groupId=${encodeURIComponent(groupId)}&_=${Date.now()}`),
+  groupRename: (groupId: string, name: string) =>
+    req<{ ok: boolean; name: string }>(`/peer/group/rename`, { method: 'POST', body: JSON.stringify({ groupId, name }) }),
+  groupAddMembers: (groupId: string, members: string[]) =>
+    req<{ ok: boolean; memberCount: number }>(`/peer/group/addMembers`, { method: 'POST', body: JSON.stringify({ groupId, members }) }),
+  groupRemoveMember: (groupId: string, sub: string) =>
+    req<{ ok: boolean; memberCount: number }>(`/peer/group/removeMember`, { method: 'POST', body: JSON.stringify({ groupId, sub }) }),
+  groupLeave: (groupId: string) =>
+    req<{ ok: boolean; deleted?: boolean }>(`/peer/group/leave`, { method: 'POST', body: JSON.stringify({ groupId }) }),
   // Web Push
   pushVapid: () => req<{ publicKey: string; enabled: boolean }>(`/push/vapid`),
   pushSubscribe: (subscription: any) =>
