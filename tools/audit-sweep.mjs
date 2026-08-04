@@ -97,10 +97,29 @@ const visit = async (kind, name) => {
 
 for (const s of ADMIN) await visit('admin', s);
 for (const s of EU) await visit('eu', s);
+
+// ── ChatOverlay: گفتگوی تکی و گروهی را واقعاً باز کن (کرشِ hooks/رِندر را بگیر — سوییپِ صفحه‌ها این را نمی‌گیرد) ──
+const visitChat = async (label, id, meta) => {
+  if (FILTER && !label.toLowerCase().includes(FILTER.toLowerCase())) return;
+  await p.goto('http://localhost:' + PORT + '/index.html', { waitUntil: 'domcontentloaded' }).catch(() => {});
+  await p.waitForTimeout(700);
+  errBuf = [];
+  const ok = await p.evaluate(({ id, meta }) => { const n = window.__NEURA_NAV__; if (!n) return false; n.goEu('euChatListScreen'); if (n.openChat) { n.openChat(id, 'contact', meta); return true; } return false; }, { id, meta }).catch(() => false);
+  if (!ok) { results.push({ name: label, status: 'NO-BRIDGE' }); return; }
+  await p.waitForTimeout(1200);
+  const len = await p.evaluate(() => (document.body.innerText || '').replace(/\s+/g, '').length);
+  let status = 'OK';
+  if (errBuf.length) status = 'CRASH'; else if (len < 40) status = 'BLANK';
+  results.push({ name: label, status, len, err: errBuf.slice(0, 2).join(' | ') });
+  if (status !== 'OK') { try { await p.screenshot({ path: path.join(SHOTS, label.replace(/[:]/g, '_') + '.png') }); } catch (e) {} }
+};
+await visitChat('chat:peer', 'peer_2', { name: 'رضا', init: 'ر', bg: 'bg-[#7B62FC]', sub: 'کاربر نورا' });
+await visitChat('chat:group', 'pgroup_g1', { name: 'گروه تست', init: 'گ', bg: 'bg-[#7B62FC]', sub: '۳ عضو' });
+
 await br.close(); srv.close();
 
 const bad = results.filter(r => r.status !== 'OK');
-console.log('\n===== ممیزیِ صفحه‌ها: ' + results.length + ' صفحه بررسی شد، ' + bad.length + ' مشکل =====');
+console.log('\n===== ممیزیِ صفحه‌ها: ' + results.length + ' مورد بررسی شد، ' + bad.length + ' مشکل =====');
 for (const r of bad) console.log('❌ ' + r.name.padEnd(26) + ' ' + r.status + (r.err ? '  → ' + r.err : '') + (r.status === 'BLANK' ? '  (len=' + r.len + ')' : ''));
 console.log('\n--- سالم (' + (results.length - bad.length) + ') ---\n' + results.filter(r => r.status === 'OK').map(r => r.name).join(', '));
 if (bad.length) { console.log('\nاسکرین‌شاتِ مشکل‌دارها: ' + SHOTS); process.exitCode = 1; }
