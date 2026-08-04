@@ -80,6 +80,13 @@ curl -s -X POST "$API/peer/block" -H "Authorization: Bearer $ST" -H 'Content-Typ
 curl -s -X POST "$API/peer/mute" -H "Authorization: Bearer $ST" -H 'Content-Type: application/json' -d '{"sub":"1","mute":true,"durationMs":3600000}' >/dev/null
 echo "   بی‌صدا: $(curl -s "$API/peer/info?sub=1" -H "Authorization: Bearer $ST" | grep -o '"muteUntil":[0-9]*' || echo 'no-mute')"
 
+echo "-- عکس/ویس + لاگِ تماس (چت):"
+IMG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+echo "   ارسالِ عکس: $(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/peer/send" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d "{\"to\":\"2\",\"media\":{\"kind\":\"image\",\"data\":\"$IMG\"}}") (باید 201)"
+echo "   دریافتِ مدیا نزدِ گیرنده: $(curl -s "$API/peer/with?sub=1" -H "Authorization: Bearer $ST" | grep -o '"kind":"image"' | head -1 || echo 'no-media')"
+curl -s -X POST "$API/peer/call-log" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d '{"peerSub":"2","peerName":"فروشنده","kind":"audio","direction":"out","duration":42}' >/dev/null
+echo "   لاگِ تماس: $(curl -s "$API/peer/call-log" -H "Authorization: Bearer $BT" | grep -o '"duration":42' | head -1 || echo 'no-log')"
+
 echo "==> پاک‌سازی"
 [ -f "$AUD/server.pid" ] && kill "$(cat "$AUD/server.pid")" 2>/dev/null
 $RUNUSER "$PGBIN/pg_ctl" -D "$AUD/data" stop >/dev/null 2>&1

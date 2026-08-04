@@ -45,6 +45,37 @@ import { RoleSwitcher, AgentSelector, SubscribeContent, ProfileContent, FormGrou
 import { COMPANIES, NOTIFICATIONS, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, toFa, orderIcon, Agent, Order } from './data';
 import { EuDineScreen, EuAssistantScreen, EuContacts, EuSupportScreen, EuMarketScreen, EuPlannerScreen, EuSearchScreen, EuReportScreen } from './eu-agent-screens';
 import { MARKET_PROMO_ITEMS, MKT_OFFERS, AddressFormModal, openMarketOrders } from './eu-market-screen';
+import { startPeerCall } from './rtc-call';
+
+// لاگِ تماس‌ها (واقعی، از سرور) — تاریخچهٔ ورودی/خروجی/ازدست‌رفته با مدت و زمان. کلیک → تماسِ مجدد.
+function CallLogView() {
+  const [calls, setCalls] = React.useState<any[]>([]);
+  React.useEffect(() => { (api as any).callLog().then((r: any) => setCalls(Array.isArray(r?.calls) ? r.calls : [])).catch(() => {}); }, []);
+  const faNum = (n: number) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[+d]);
+  const fmtDur = (s: number) => { if (!s) return ''; const m = Math.floor(s / 60); return m ? faNum(m) + ':' + faNum(s % 60).padStart(2, '۰') : faNum(s) + ' ثانیه'; };
+  const fmtDate = (ts: number) => { try { return new Date(ts).toLocaleString('fa-IR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }); } catch (_) { return ''; } };
+  return (
+    <div className="px-3 pt-1">
+      {calls.length === 0 && <div className="text-center text-[12px] text-[var(--aw-text-muted)] py-10"><i className="fa-solid fa-phone-slash text-[28px] opacity-25 block mb-3" />تماسی ثبت نشده است.</div>}
+      {calls.map((c, i) => {
+        const missed = !!c.missed; const out = c.direction === 'out';
+        const dirIcon = missed ? 'fa-arrow-down-left' : out ? 'fa-arrow-up-right' : 'fa-arrow-down-left';
+        const color = missed ? '#ef4444' : '#10b981';
+        return (
+          <div key={c.id || i} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[var(--aw-bg-card-hover)]">
+            <span className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: color + '18', color }}><i className={`fa-solid ${c.kind === 'video' ? 'fa-video' : 'fa-phone'} text-[13px]`} /></span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] truncate" style={{ fontWeight: 700, color: missed ? '#ef4444' : 'var(--aw-text-primary)' }}>{c.peerName || 'کاربر'}</div>
+              <div className="text-[10px] text-[var(--aw-text-muted)] flex items-center gap-1"><i className={`fa-solid ${dirIcon} text-[8px]`} style={{ color }} />{missed ? 'بی‌پاسخ' : out ? 'خروجی' : 'ورودی'}{c.duration ? ' · ' + fmtDur(c.duration) : ''}</div>
+            </div>
+            <span className="text-[10px] text-[var(--aw-text-muted)] flex-shrink-0 ml-1">{fmtDate(c.ts)}</span>
+            <button onClick={() => startPeerCall({ toSubs: [String(c.peerSub)], peerName: c.peerName || 'کاربر', kind: c.kind === 'video' ? 'video' : 'audio' })} title="تماسِ مجدد" className="w-8 h-8 rounded-full border-none cursor-pointer flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}><i className={`fa-solid ${c.kind === 'video' ? 'fa-video' : 'fa-phone'} text-[12px]`} /></button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 import { OFFERS as DINE_OFFERS } from './eu-dine-screen';
 import { EuHomeScreen } from './eu-home-screen';
 import { EuAvatar } from './eu-spectrum-avatar';
@@ -1915,6 +1946,7 @@ function EuChatListScreen() {
               </button>
             </div>
           )}
+          {chatFilter === 'calls' ? <CallLogView /> : (
           <div className="px-3 pt-1">
             {(() => {
               // Build unified conversation list interleaved by recency
@@ -2077,6 +2109,7 @@ function EuChatListScreen() {
               </SwipeToCall>
             ))}
           </div>
+          )}
         </>
       ) : (
         <div className="p-4">

@@ -37,10 +37,21 @@ router.post('/resolve', authRequired, async (req, res) => {
 });
 
 // ارسالِ پیام به کاربرِ دیگرِ نورا
+// اعتبارسنجیِ مدیا (عکس/ویس/فایل) به‌صورتِ data-URLِ base64 با سقفِ حجم (~۴MB) — بدونِ زیرساختِ فایل، امن و واقعی.
+function sanitizeMedia(m) {
+  if (!m || typeof m !== 'object') return null;
+  const kind = ['image', 'voice', 'file'].includes(String(m.kind)) ? String(m.kind) : null;
+  const data = String(m.data || '');
+  if (!kind || !/^data:(image|audio|application|video)\//.test(data) || data.length > 5_600_000) return null;
+  return { kind, data, dur: Math.max(0, Math.min(600, Number(m.dur) || 0)), name: String(m.name || '').slice(0, 80) };
+}
+
 router.post('/send', authRequired, async (req, res) => {
   const to = String(req.body?.to || '');
   const text = String(req.body?.text || '').slice(0, 4000);
-  if (!to || !text.trim()) return res.status(400).json({ error: 'to_and_text_required' });
+  const media = sanitizeMedia(req.body?.media);
+  const replyTo = req.body?.replyTo ? String(req.body.replyTo).slice(0, 300) : '';
+  if (!to || (!text.trim() && !media)) return res.status(400).json({ error: 'to_and_text_required' });
   const u = await query('SELECT id FROM app_users WHERE id = $1', [to]);
   if (!u.rows[0]) return res.status(404).json({ error: 'user_not_found' });
   // مسدودسازیِ واقعی: اگر گیرنده مرا بلاک کرده یا من او را بلاک کرده‌ام، پیام رد می‌شود.
@@ -51,7 +62,7 @@ router.post('/send', authRequired, async (req, res) => {
   } catch (_) {}
   const conv = convId(req.user.sub, to);
   const id = conv + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  const data = { id, conv, from: String(req.user.sub), to, text, ts: Date.now() };
+  const data = { id, conv, from: String(req.user.sub), to, text, ts: Date.now(), ...(media ? { media } : {}), ...(replyTo ? { replyTo } : {}) };
   await query(
     "INSERT INTO documents (collection, id, company, data) VALUES ('peer_msgs', $1, $2, $3::jsonb)",
     [id, conv, JSON.stringify(data)]
@@ -59,7 +70,8 @@ router.post('/send', authRequired, async (req, res) => {
   // نوتیفیکیشنِ push به گیرنده — مگر اینکه گیرنده این فرستنده را «بی‌صدا» کرده باشد (تنظیماتِ ۱:۱).
   (async () => {
     try { const rp = await loadPrefs(to); if (isMutedNow(rp, req.user.sub)) return; } catch (_) {}
-    sendPush(to, { title: String(req.user.name || 'پیام جدید'), body: text.slice(0, 120), kind: 'message', tag: 'peer_' + req.user.sub, url: '/', data: { peer: String(req.user.sub) } }).catch(() => {});
+    const body = text ? text.slice(0, 120) : (media ? (media.kind === 'image' ? '📷 عکس' : media.kind === 'voice' ? '🎤 پیام صوتی' : '📎 فایل') : '');
+    sendPush(to, { title: String(req.user.name || 'پیام جدید'), body, kind: 'message', tag: 'peer_' + req.user.sub, url: '/', data: { peer: String(req.user.sub) } }).catch(() => {});
   })();
   res.status(201).json({ ok: true, message: data });
 });
@@ -93,6 +105,40 @@ router.post('/read', authRequired, async (req, res) => {
     );
   } catch (_) {}
   res.json({ ok: true });
+});
+
+// ── حذفِ پیام (برای همه، فقط فرستنده) ──
+router.post('/message/delete', authRequired, async (req, res) => {
+  const id = String(req.body?.id || ''); if (!id) return res.status(400).json({ error: 'id_required' });
+  const r = await query("SELECT data FROM documents WHERE collection='peer_msgs' AND id=$1", [id]);
+  const m = r.rows[0]?.data; if (!m) return res.json({ ok: true });
+  if (String(m.from) !== String(req.user.sub)) return res.status(403).json({ error: 'not_yours' });
+  await query("UPDATE documents SET data = data || '{\"deleted\":true,\"text\":\"\",\"media\":null}'::jsonb WHERE collection='peer_msgs' AND id=$1", [id]);
+  res.json({ ok: true });
+});
+// ── ری‌اکشنِ پیام (اموجی) ──
+router.post('/message/react', authRequired, async (req, res) => {
+  const id = String(req.body?.id || ''); const emoji = String(req.body?.emoji || '').slice(0, 8);
+  if (!id) return res.status(400).json({ error: 'id_required' });
+  const r = await query("SELECT data FROM documents WHERE collection='peer_msgs' AND id=$1", [id]);
+  const m = r.rows[0]?.data; if (!m) return res.status(404).json({ error: 'not_found' });
+  const reactions = (m.reactions && typeof m.reactions === 'object') ? m.reactions : {};
+  if (!emoji || reactions[String(req.user.sub)] === emoji) delete reactions[String(req.user.sub)]; else reactions[String(req.user.sub)] = emoji;
+  await query("UPDATE documents SET data = jsonb_set(data,'{reactions}',$2::jsonb) WHERE collection='peer_msgs' AND id=$1", [id, JSON.stringify(reactions)]);
+  res.json({ ok: true, reactions });
+});
+
+// ── لاگِ تماس‌ها (ورودی/خروجی/ازدست‌رفته، با مدت) ──
+router.post('/call-log', authRequired, async (req, res) => {
+  const peerSub = String(req.body?.peerSub || ''); if (!peerSub) return res.status(400).json({ error: 'peer_required' });
+  const id = 'cl_' + Date.now() + Math.random().toString(36).slice(2, 5);
+  const rec = { id, peerSub, peerName: String(req.body?.peerName || '').slice(0, 80), kind: req.body?.kind === 'video' ? 'video' : 'audio', direction: req.body?.direction === 'out' ? 'out' : 'in', duration: Math.max(0, Number(req.body?.duration) || 0), missed: !!req.body?.missed, ts: Date.now() };
+  try { await query("INSERT INTO documents (collection,id,company,data) VALUES ('u_call_log',$1,$2,$3::jsonb)", [req.user.sub + '__' + id, 'user:' + req.user.sub, JSON.stringify(rec)]); } catch (_) {}
+  res.json({ ok: true });
+});
+router.get('/call-log', authRequired, async (req, res) => {
+  try { const { rows } = await query("SELECT data FROM documents WHERE collection='u_call_log' AND company=$1 ORDER BY (data->>'ts')::bigint DESC LIMIT 200", ['user:' + req.user.sub]); res.json({ calls: rows.map((r) => r.data) }); }
+  catch (_) { res.json({ calls: [] }); }
 });
 
 // ── تنظیماتِ گفتگوی ۱:۱ (واقعی، هم‌ترازِ لیدرها): اطلاعاتِ مخاطب، بی‌صدا با مدت، مسدودسازی، گزارش، پاک‌کردن ──
@@ -213,17 +259,20 @@ router.post('/group/send', authRequired, async (req, res) => {
   const me = String(req.user.sub);
   const gid = String(req.body?.groupId || '');
   const text = String(req.body?.text || '').slice(0, 4000);
-  if (!gid || !text.trim()) return res.status(400).json({ error: 'group_and_text_required' });
+  const media = sanitizeMedia(req.body?.media);
+  const replyTo = req.body?.replyTo ? String(req.body.replyTo).slice(0, 300) : '';
+  if (!gid || (!text.trim() && !media)) return res.status(400).json({ error: 'group_and_text_required' });
   const group = await loadGroup(gid);
   if (!group || !isMember(group, me)) return res.status(403).json({ error: 'not_member' });
   // سیاستِ ارسال: اگر «فقط ادمین‌ها» باشد، عضوِ عادی نمی‌تواند پیام بدهد (مثلِ کانال/گروهِ محدودِ تلگرام).
   if (group.sendPolicy === 'admins' && !isAdmin(group, me)) return res.status(403).json({ error: 'admins_only' });
   const id = gid + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  const data = { id, conv: gid, from: me, fromName: String(req.user.name || ''), text, ts: Date.now(), group: true };
+  const data = { id, conv: gid, from: me, fromName: String(req.user.name || ''), text, ts: Date.now(), group: true, ...(media ? { media } : {}), ...(replyTo ? { replyTo } : {}) };
   await query("INSERT INTO documents (collection, id, company, data) VALUES ('peer_msgs', $1, $2, $3::jsonb)", [id, gid, JSON.stringify(data)]);
   // push به سایرِ اعضا — به‌جز کسانی که گروه را بی‌صدا کرده‌اند.
   const muted = new Set((group.mutes || []).map(String));
-  for (const mSub of group.members) { if (String(mSub) !== me && !muted.has(String(mSub))) sendPush(mSub, { title: group.name, body: (req.user.name ? req.user.name + ': ' : '') + text.slice(0, 100), kind: 'message', tag: 'grp_' + gid, url: '/', data: { group: gid } }).catch(() => {}); }
+  const pbody = text ? text.slice(0, 100) : (media ? (media.kind === 'image' ? '📷 عکس' : media.kind === 'voice' ? '🎤 پیام صوتی' : '📎 فایل') : '');
+  for (const mSub of group.members) { if (String(mSub) !== me && !muted.has(String(mSub))) sendPush(mSub, { title: group.name, body: (req.user.name ? req.user.name + ': ' : '') + pbody, kind: 'message', tag: 'grp_' + gid, url: '/', data: { group: gid } }).catch(() => {}); }
   res.status(201).json({ ok: true, message: data });
 });
 

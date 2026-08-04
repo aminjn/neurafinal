@@ -313,8 +313,13 @@ export const api = {
   // پیام‌رسانیِ کاربر-به-کاربرِ نورا
   peerResolve: (phones: string[]) =>
     req<{ users: { sub: string; name: string; phone: string }[] }>(`/peer/resolve`, { method: 'POST', body: JSON.stringify({ phones }) }),
-  peerSend: (to: string, text: string) =>
-    req<{ ok: boolean; message: any }>(`/peer/send`, { method: 'POST', body: JSON.stringify({ to, text }) }),
+  peerSend: (to: string, text: string, media?: any, replyTo?: string) =>
+    req<{ ok: boolean; message: any }>(`/peer/send`, { method: 'POST', body: JSON.stringify({ to, text, ...(media ? { media } : {}), ...(replyTo ? { replyTo } : {}) }) }),
+  // پیام: حذف/ری‌اکشن + لاگِ تماس
+  msgDelete: (id: string) => req<any>(`/peer/message/delete`, { method: 'POST', body: JSON.stringify({ id }) }),
+  msgReact: (id: string, emoji: string) => req<any>(`/peer/message/react`, { method: 'POST', body: JSON.stringify({ id, emoji }) }),
+  callLog: () => req<{ calls: any[] }>(`/peer/call-log?_=${Date.now()}`),
+  logCall: (rec: { peerSub: string; peerName?: string; kind?: string; direction?: string; duration?: number; missed?: boolean }) => req<any>(`/peer/call-log`, { method: 'POST', body: JSON.stringify(rec) }),
   peerWith: (sub: string) =>
     req<{ messages: { from: string; to: string; text: string; ts: number; mine?: boolean; readAt?: number }[] }>(`/peer/with?sub=${encodeURIComponent(sub)}&_=${Date.now()}`),
   // تیکِ خوانده‌شدِ واقعی: پیام‌های رسیده به من را در این گفتگو read کن
@@ -335,8 +340,8 @@ export const api = {
     req<{ group: { id: string; name: string; members: string[] } }>(`/peer/group/create`, { method: 'POST', body: JSON.stringify({ name, members }) }),
   groupList: () =>
     req<{ groups: { id: string; name: string; members: string[]; memberCount: number; lastText: string; ts: number }[] }>(`/peer/groups?_=${Date.now()}`),
-  groupSend: (groupId: string, text: string) =>
-    req<{ ok: boolean; message: any }>(`/peer/group/send`, { method: 'POST', body: JSON.stringify({ groupId, text }) }),
+  groupSend: (groupId: string, text: string, media?: any, replyTo?: string) =>
+    req<{ ok: boolean; message: any }>(`/peer/group/send`, { method: 'POST', body: JSON.stringify({ groupId, text, ...(media ? { media } : {}), ...(replyTo ? { replyTo } : {}) }) }),
   groupWith: (groupId: string) =>
     req<{ group: { id: string; name: string; members: string[]; memberCount: number }; messages: any[] }>(`/peer/group/with?groupId=${encodeURIComponent(groupId)}&_=${Date.now()}`),
   groupInfo: (groupId: string) =>

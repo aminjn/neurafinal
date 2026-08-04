@@ -32,7 +32,7 @@ export default function ChatOverlay() {
   const {
     chat, isTyping, closeChat, toggleTopics, switchTopic, createNewTopic,
     renameTopic, removeTopic,
-    sendMessage, getMessages, getTopics,
+    sendMessage, sendContactMedia, getMessages, getTopics,
     agents, personnel, customers, startCall, openModal, showToast,
     groupChats, updateGroupChat, removeGroupChat, speakMessage, speakingMsgId
   } = useApp();
@@ -330,6 +330,47 @@ export default function ChatOverlay() {
     setInputText('');
     inputRef.current?.focus();
   };
+
+  // ── ارسالِ عکس (انتخاب + کوچک‌سازی) و پیامِ صوتی (ضبط) — فقط در گفتگوی کاربر-به-کاربر/گروه ──
+  const [vmRecording, setVmRecording] = useState(false);
+  const vmRef = useRef<any>(null);
+  const pickImage = () => {
+    try {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = () => {
+        const f = inp.files && inp.files[0]; if (!f) return;
+        const rd = new FileReader();
+        rd.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const max = 1000; let w = img.width, h = img.height;
+            if (w > max || h > max) { const s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+            const c = document.createElement('canvas'); c.width = w; c.height = h;
+            const cx = c.getContext('2d'); if (cx) cx.drawImage(img, 0, 0, w, h);
+            try { (sendContactMedia as any)({ kind: 'image', data: c.toDataURL('image/jpeg', 0.72) }); } catch (_) {}
+          };
+          img.src = String(rd.result);
+        };
+        rd.readAsDataURL(f);
+      };
+      inp.click();
+    } catch (_) {}
+  };
+  const startVoiceMsg = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream); const chunks: Blob[] = []; const t0 = Date.now();
+      mr.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+      mr.onstop = () => {
+        for (const t of stream.getTracks()) t.stop();
+        const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
+        if (blob.size > 5_000_000) { showToast('پیامِ صوتی طولانی است'); return; }
+        const rd = new FileReader(); rd.onload = () => { try { (sendContactMedia as any)({ kind: 'voice', data: String(rd.result), dur: Math.round((Date.now() - t0) / 1000) }); } catch (_) {} }; rd.readAsDataURL(blob);
+      };
+      mr.start(); vmRef.current = mr; setVmRecording(true);
+    } catch (_) { showToast('دسترسی به میکروفون داده نشد'); }
+  };
+  const stopVoiceMsg = () => { try { vmRef.current?.stop(); } catch (_) {} vmRef.current = null; setVmRecording(false); };
 
 
   const handleCall = () => {
@@ -781,7 +822,21 @@ export default function ChatOverlay() {
               border: m.sent ? 'none' : '0.5px solid var(--aw-chat-bd, rgba(255,255,255,0.8))',
               fontFamily: "'Kamand', sans-serif",
             }}>
-              <div>{m.text}</div>
+              {(m as any).deleted ? (
+                <div className="italic opacity-60 text-[12px]"><i className="fa-solid fa-ban ml-1" />این پیام حذف شد</div>
+              ) : (m as any).media ? (
+                (m as any).media.kind === 'image' ? (
+                  <img src={(m as any).media.data} alt="" onClick={() => openModal('عکس', <img src={(m as any).media.data} alt="" style={{ maxWidth: '100%', borderRadius: 12 }} />)} style={{ maxWidth: 220, maxHeight: 260, borderRadius: 12, cursor: 'pointer', display: 'block' }} />
+                ) : (m as any).media.kind === 'voice' ? (
+                  <div className="flex items-center gap-2" style={{ minWidth: 160 }}>
+                    <i className="fa-solid fa-microphone-lines text-[13px] opacity-80" />
+                    <audio controls src={(m as any).media.data} style={{ height: 32, maxWidth: 180 }} />
+                    {(m as any).media.dur ? <span className="text-[10px] opacity-70">{toFa((m as any).media.dur)}″</span> : null}
+                  </div>
+                ) : (
+                  <a href={(m as any).media.data} download className="flex items-center gap-1.5 text-[12px] underline"><i className="fa-solid fa-paperclip" />{(m as any).media.name || 'فایل'}</a>
+                )
+              ) : <div>{m.text}</div>}
               <div className="text-[10px] mt-1 opacity-60 flex items-center gap-1" style={{ justifyContent: m.sent ? 'flex-end' : 'flex-start' }}>
                 {m.sent && (((m as any).readAt || (m as any).read)
                   ? <i className="fa-solid fa-check-double text-[8px]" style={{ color: '#34b7f1' }} title="خوانده شد" />
@@ -852,6 +907,17 @@ export default function ChatOverlay() {
             paddingLeft: 12,
           }}
         >
+          {/* عکس + پیامِ صوتی — فقط در گفتگوی کاربر-به-کاربر/گروه */}
+          {(isPeerChat || isGroupChat) && (
+            <>
+              <button onClick={pickImage} title="ارسال عکس" className="flex-shrink-0 w-[24px] h-[24px] border-none bg-transparent cursor-pointer flex items-center justify-center" style={{ color: '#565656' }}>
+                <i className="fa-solid fa-image text-[15px]" />
+              </button>
+              <button onClick={vmRecording ? stopVoiceMsg : startVoiceMsg} title={vmRecording ? 'پایانِ ضبط و ارسال' : 'پیامِ صوتی'} className="flex-shrink-0 w-[24px] h-[24px] border-none bg-transparent cursor-pointer flex items-center justify-center" style={{ color: vmRecording ? '#ef4444' : '#565656' }}>
+                <i className={`fa-solid ${vmRecording ? 'fa-circle-stop' : 'fa-microphone-lines'} text-[15px] ${vmRecording ? 'animate-pulse' : ''}`} />
+              </button>
+            </>
+          )}
           {/* Mic icon (RTL start = right side) — real STT */}
           <div className="flex-shrink-0 w-[22px] h-[22px] relative" onClick={toggleMic} style={{ cursor: 'pointer' }} title={recording ? 'در حال ضبط — برای پایان بزنید' : 'ضبط صدا'}>
             <svg width={22} height={22} viewBox="0 0 24 24" fill="none">

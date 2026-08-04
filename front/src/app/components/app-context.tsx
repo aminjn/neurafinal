@@ -149,6 +149,7 @@ interface AppContextType {
   renameTopic: (agentId: string, topicId: number, title: string) => void;
   removeTopic: (agentId: string, topicId: number) => void;
   sendMessage: (text: string) => void;
+  sendContactMedia: (media: any, replyTo?: string) => void;
   getMessages: () => Message[];
   getTopics: (id: string) => Topic[];
 
@@ -1141,6 +1142,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [chat, company, agents, isAgentOwned]);
 
+  // ارسالِ مدیا (عکس/ویس/فایل) در گفتگوی کاربر-به-کاربر/گروه — واقعی، با پیشِ‌نمایشِ خوش‌بینانه.
+  const sendContactMedia = useCallback((media: any, replyTo?: string) => {
+    if (chat.type !== 'contact' || !chat.id) return;
+    const msg: any = { id: ++msgIdRef.current, text: '', sent: true, time: nowTime(), media, replyTo: replyTo || null };
+    setContactMsgsMap(prev => ({ ...prev, [chat.id!]: [...(prev[chat.id!] || []), msg] }));
+    if (String(chat.id).startsWith('pgroup_')) { const gid = String(chat.id).slice('pgroup_'.length); (api as any).groupSend(gid, '', media, replyTo).catch(() => {}); }
+    else if (String(chat.id).startsWith('peer_')) { const other = String(chat.id).slice(5); (api as any).peerSend(other, '', media, replyTo).catch(() => {}); }
+  }, [chat.type, chat.id]);
+
   // peerlive: تا گفتگوی کاربر-به-کاربر باز است، هر چند ثانیه پیام‌های تازه را از سرور بگیر تا بدونِ
   // رفرش/بستنِ چت، پیامِ طرفِ مقابل زنده بیاید. (وقتی چت بسته شد، پولینگ متوقف می‌شود.)
   useEffect(() => {
@@ -1156,7 +1166,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (stop) return;
         // تیکِ خوانده‌شدِ واقعی: readAt را حمل کن؛ و پیام‌هایی که «به من» رسیده را read کن (فقط ۱:۱).
         if (isPeer) { (api as any).peerMarkRead(other).catch(() => {}); }
-        const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, text: m.text, sent: !!m.mine, time: '', senderName: m.mine ? '' : (m.fromName || ''), readAt: m.readAt || null }));
+        const msgs = (r?.messages || []).map((m: any) => ({ id: ++msgIdRef.current, mid: m.id, text: m.text, sent: !!m.mine, time: '', senderName: m.mine ? '' : (m.fromName || ''), readAt: m.readAt || null, media: m.media || null, replyTo: m.replyTo || null, reactions: m.reactions || null, deleted: !!m.deleted }));
         setContactMsgsMap(prev => {
           const cur = prev[chat.id as string] || [];
           // به‌روزرسانی وقتی پیامِ بیشتری هست، یا وضعیتِ «خوانده‌شد» تغییر کرده (تیکِ آبی تازه شود).
@@ -1331,7 +1341,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       userProfile, setUserProfile,
       euProfile, setEuProfile,
       tasks, setTasks,
-      chat, isTyping, openChat, closeChat, toggleTopics, switchTopic, createNewTopic, renameTopic, removeTopic, sendMessage, getMessages, getTopics,
+      chat, isTyping, openChat, closeChat, toggleTopics, switchTopic, createNewTopic, renameTopic, removeTopic, sendMessage, sendContactMedia, getMessages, getTopics,
       modal, openModal: openModalFn, closeModal: closeModalFn,
       call, startCall: startCallFn, endCall: endCallFn,
       unifiedCall, openUnifiedCall: openUnifiedCallFn, closeUnifiedCall: closeUnifiedCallFn,

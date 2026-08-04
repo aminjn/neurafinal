@@ -79,6 +79,8 @@ export function NeuraCallLayer() {
   const pollRef = useRef<any>(null);
   const ringTimeoutRef = useRef<any>(null);
   const ringRef = useRef<any>(null);
+  const callMetaRef = useRef<any>(null);   // {peerSub, peerName, kind, direction} برای لاگِ تماس
+  const startedAtRef = useRef<number>(0);   // زمانِ وصل‌شدنِ واقعی (برای مدت)
   const incomingRef = useRef<{ roomName: string; kind: Kind; fromSub: string; callerName: string } | null>(null);
 
   // ── سوکتِ سیگنالینگ: تا زمانِ ورود به سیستم متصل می‌ماند تا تماسِ ورودی همه‌جا دریافت شود ──
@@ -148,6 +150,14 @@ export function NeuraCallLayer() {
   function stopRing() { if (ringRef.current) { clearInterval(ringRef.current); ringRef.current = null; } try { (ringRef as any)._ctx?.close(); } catch (_) {} clearIncomingCallNotif(); }
 
   const resetAll = useCallback(() => {
+    // لاگِ تماس (واقعی): مدت از زمانِ وصل‌شدن؛ اگر خروجی بود و اصلاً وصل نشد = بی‌پاسخ.
+    const meta = callMetaRef.current;
+    if (meta && meta.peerSub) {
+      const duration = startedAtRef.current ? Math.round((Date.now() - startedAtRef.current) / 1000) : 0;
+      const missed = meta.direction === 'out' && !startedAtRef.current;
+      try { (api as any).logCall({ peerSub: meta.peerSub, peerName: meta.peerName, kind: meta.kind, direction: meta.direction, duration, missed }); } catch (_) {}
+    }
+    callMetaRef.current = null; startedAtRef.current = 0;
     stopRing();
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
@@ -171,6 +181,7 @@ export function NeuraCallLayer() {
     if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; }
     setStatusMsg('');
     setPhase('connected');
+    startedAtRef.current = Date.now();
     if (timerRef.current) clearInterval(timerRef.current);
     setSecs(0); timerRef.current = setInterval(() => setSecs((x) => x + 1), 1000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -278,6 +289,7 @@ export function NeuraCallLayer() {
       const roomName = 'call_' + [uidFromToken(), ...toSubs].sort().join('_') + '_' + Date.now().toString(36);
       roomRef.current = roomName; toSubsRef.current = toSubs;
       const _nm = (d.peerName && d.peerName !== 'undefined' && d.peerName !== 'null') ? String(d.peerName) : 'کاربر';
+      callMetaRef.current = { peerSub: String(toSubs[0]), peerName: _nm, kind: callKind, direction: 'out' }; startedAtRef.current = 0;
       setKind(callKind); setPeerName(_nm); setStatusMsg('در حال زنگ‌زدن'); setPhase('outgoing');
       const s = ensureSocket();
       if (!s) { setStatusMsg('اتصال برقرار نشد'); setTimeout(resetAll, 1500); return; }
@@ -296,6 +308,7 @@ export function NeuraCallLayer() {
     const inc = incomingRef.current; if (!inc) return;
     stopRing();
     toSubsRef.current = [inc.fromSub];
+    callMetaRef.current = { peerSub: String(inc.fromSub), peerName: inc.callerName || peerName || 'کاربر', kind: inc.kind, direction: 'in' }; startedAtRef.current = 0;
     setStatusMsg('در حال اتصال...');
     try { await setupMedia(inc.roomName, inc.kind, false); } catch (e: any) { setStatusMsg(callErrMsg(e)); setTimeout(resetAll, 2600); }
   }, [resetAll]);

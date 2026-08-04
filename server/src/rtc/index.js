@@ -94,6 +94,10 @@ export async function initRtc(server) {
           const nid = 'ntf_' + Date.now() + Math.random().toString(36).slice(2, 5);
           query("INSERT INTO documents (collection, id, company, data) VALUES ('u_notifications', $1, $2, $3::jsonb)",
             [t + '__' + nid, 'user:' + t, JSON.stringify({ id: nid, type: 'missed_call', title: 'تماسِ ازدست‌رفته', message: 'تماسِ بی‌پاسخ از ' + name, body: name, fromSub: String(sub), date: new Date().toISOString(), read: false })]).catch(() => {});
+          // لاگِ تماسِ ازدست‌رفتهٔ ورودی برای گیرنده
+          const clid = 'cl_' + Date.now() + Math.random().toString(36).slice(2, 5);
+          query("INSERT INTO documents (collection, id, company, data) VALUES ('u_call_log', $1, $2, $3::jsonb)",
+            [t + '__' + clid, 'user:' + t, JSON.stringify({ id: clid, peerSub: String(sub), peerName: name, kind: 'audio', direction: 'in', duration: 0, missed: true, ts: Date.now() })]).catch(() => {});
           sendPush(t, { title: name, body: 'تماسِ ازدست‌رفته', kind: 'missed_call', tag: 'miss_' + sub, url: '/', data: { peer: String(sub) } }).catch(() => {});
         }
       }
