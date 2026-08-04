@@ -331,6 +331,16 @@ export const api = {
     req<{ ok: boolean; memberCount: number }>(`/peer/group/removeMember`, { method: 'POST', body: JSON.stringify({ groupId, sub }) }),
   groupLeave: (groupId: string) =>
     req<{ ok: boolean; deleted?: boolean }>(`/peer/group/leave`, { method: 'POST', body: JSON.stringify({ groupId }) }),
+  groupUpdate: (groupId: string, patch: { name?: string; desc?: string; avatar?: { color?: string; emoji?: string } }) =>
+    req<{ ok: boolean }>(`/peer/group/update`, { method: 'POST', body: JSON.stringify({ groupId, ...patch }) }),
+  groupPromote: (groupId: string, sub: string) => req<{ ok: boolean }>(`/peer/group/promote`, { method: 'POST', body: JSON.stringify({ groupId, sub }) }),
+  groupDemote: (groupId: string, sub: string) => req<{ ok: boolean }>(`/peer/group/demote`, { method: 'POST', body: JSON.stringify({ groupId, sub }) }),
+  groupSendPolicy: (groupId: string, policy: 'all' | 'admins') => req<{ ok: boolean; sendPolicy: string }>(`/peer/group/sendPolicy`, { method: 'POST', body: JSON.stringify({ groupId, policy }) }),
+  groupMute: (groupId: string, muted: boolean) => req<{ ok: boolean; muted: boolean }>(`/peer/group/mute`, { method: 'POST', body: JSON.stringify({ groupId, muted }) }),
+  groupPin: (groupId: string, text: string | null) => req<{ ok: boolean; pinned: any }>(`/peer/group/pin`, { method: 'POST', body: JSON.stringify({ groupId, text }) }),
+  groupInvite: (groupId: string, regen?: boolean) => req<{ ok: boolean; invite: string }>(`/peer/group/invite`, { method: 'POST', body: JSON.stringify({ groupId, regen }) }),
+  groupJoin: (invite: string) => req<{ ok: boolean; group: { id: string; name: string } }>(`/peer/group/join`, { method: 'POST', body: JSON.stringify({ invite }) }),
+  groupDelete: (groupId: string) => req<{ ok: boolean; deleted: boolean }>(`/peer/group/delete`, { method: 'POST', body: JSON.stringify({ groupId }) }),
   // Web Push
   pushVapid: () => req<{ publicKey: string; enabled: boolean }>(`/push/vapid`),
   pushSubscribe: (subscription: any) =>

@@ -879,15 +879,22 @@ export default function ChatOverlay() {
 }
 
 // تنظیماتِ گروهِ کاربر-به-کاربرِ نورا (واقعی، از سرور): نام، اعضا، افزودن/حذف، خروج.
+const GROUP_COLORS = ['#7B62FC', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#14B8A6', '#8B5CF6'];
+// تنظیماتِ کاملِ گروه — همتراز/کامل‌تر از تلگرام/واتساپ: عکس(رنگ+ایموجی)، توضیح، ادمین‌ها+دسترسی،
+// لینکِ دعوت، پیامِ سنجاق‌شده، سیاستِ ارسال، بی‌صداکردن، خروج، حذفِ گروه.
 function EuGroupSettings({ groupId }: { groupId: string }) {
   const { closeModal, showToast, closeChat } = useApp() as any;
   const [info, setInfo] = useState<any>(null);
-  const [rename, setRename] = useState('');
+  const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
+  const [pinText, setPinText] = useState('');
   const [addList, setAddList] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [busy, setBusy] = useState(false);
-  const load = async () => { try { const r: any = await api.groupInfo(groupId); setInfo(r?.group || null); setRename((r?.group?.name) || ''); } catch (_) {} };
+  const load = async () => { try { const r: any = await api.groupInfo(groupId); const g = r?.group || null; setInfo(g); if (g) { setName(g.name || ''); setDesc(g.desc || ''); } } catch (_) {} };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [groupId]);
+  const notify = () => { try { window.dispatchEvent(new CustomEvent('neura:data-changed')); } catch (_) {} };
+  const wrap = async (fn: () => Promise<any>, okMsg?: string) => { setBusy(true); try { await fn(); if (okMsg) showToast(okMsg); await load(); notify(); } catch (e: any) { showToast(e && e.status === 403 ? 'دسترسی ندارید' : 'خطا'); } setBusy(false); };
   const loadContacts = async () => {
     try {
       const r: any = await api.contacts(); const list = (r && r.contacts) || [];
@@ -899,36 +906,74 @@ function EuGroupSettings({ groupId }: { groupId: string }) {
       setAddList((rr?.users || []).map((u: any) => ({ sub: String(u.sub), name: nameByPhone[String(u.phone).replace(/\D/g, '').slice(-10)] || u.name || u.phone })).filter((u: any) => !existing.has(u.sub)));
     } catch (_) { setAddList([]); }
   };
-  const doRename = async () => { const n = rename.trim(); if (!n || !info?.isOwner) return; setBusy(true); try { await api.groupRename(groupId, n); showToast('نامِ گروه تغییر کرد'); await load(); } catch (_) { showToast('خطا'); } setBusy(false); };
-  const doAdd = async (sub: string) => { setBusy(true); try { await api.groupAddMembers(groupId, [sub]); showToast('عضو اضافه شد'); setShowAdd(false); await load(); try { window.dispatchEvent(new CustomEvent('neura:data-changed')); } catch (_) {} } catch (_) { showToast('خطا'); } setBusy(false); };
-  const doRemove = async (sub: string) => { setBusy(true); try { await api.groupRemoveMember(groupId, sub); showToast('عضو حذف شد'); await load(); } catch (_) { showToast('خطا'); } setBusy(false); };
-  const doLeave = async () => { setBusy(true); try { await api.groupLeave(groupId); showToast('از گروه خارج شدید'); closeModal(); closeChat(); try { window.dispatchEvent(new CustomEvent('neura:data-changed')); } catch (_) {} } catch (_) { showToast('خطا'); setBusy(false); } };
+  const copyInvite = () => { try { navigator.clipboard.writeText((info?.invite) || ''); showToast('لینکِ دعوت کپی شد'); } catch (_) { showToast(info?.invite || ''); } };
+  const doLeave = () => wrap(async () => { await api.groupLeave(groupId); closeModal(); closeChat(); }, 'از گروه خارج شدید');
+  const doDelete = () => { if (typeof window !== 'undefined' && !window.confirm('گروه برای همه حذف شود؟')) return; wrap(async () => { await (api as any).groupDelete(groupId); closeModal(); closeChat(); }, 'گروه حذف شد'); };
 
   if (!info) return <div className="py-8 text-center text-[12px] text-[var(--aw-text-muted)]">در حال بارگذاری…</div>;
+  const admin = !!info.isAdmin; const owner = !!info.isOwner;
+  const av = info.avatar || { color: '#7B62FC', emoji: '' };
   return (
-    <div className="flex flex-col gap-3" style={{ maxHeight: '68vh' }}>
-      {/* آواتار + نام */}
+    <div className="flex flex-col gap-3" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+      {/* هویتِ گروه: عکس(رنگ+ایموجی) + نام + توضیح */}
       <div className="flex flex-col items-center gap-2 pb-1">
-        <div className="w-16 h-16 rounded-[20px] flex items-center justify-center text-white" style={{ background: 'var(--aw-eu-primary,#7B62FC)' }}><i className="fa-solid fa-users text-[26px]" /></div>
-        {info.isOwner ? (
-          <div className="flex items-center gap-2 w-full max-w-[300px]">
-            <input value={rename} onChange={e => setRename(e.target.value)} className="flex-1 text-center text-[14px] py-2 rounded-[10px] border border-[var(--aw-border)] bg-[var(--aw-bg-input)] outline-none" style={{ fontWeight: 700 }} />
-            <button disabled={busy} onClick={doRename} className="px-3 py-2 rounded-[10px] border-none cursor-pointer text-white text-[12px]" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 700 }}>ذخیره</button>
-          </div>
-        ) : <div className="text-[15px]" style={{ fontWeight: 700 }}>{info.name}</div>}
+        <div className="w-[68px] h-[68px] rounded-[22px] flex items-center justify-center text-white" style={{ background: av.color }}>{av.emoji ? <span style={{ fontSize: 30 }}>{av.emoji}</span> : <i className="fa-solid fa-users text-[26px]" />}</div>
+        {admin ? (
+          <>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="نامِ گروه" className="w-full max-w-[300px] text-center text-[14px] py-2 rounded-[10px] border border-[var(--aw-border)] bg-[var(--aw-bg-input)] outline-none" style={{ fontWeight: 700 }} />
+            <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="توضیحِ گروه…" rows={2} className="w-full max-w-[300px] text-[12px] py-2 px-2 rounded-[10px] border border-[var(--aw-border)] bg-[var(--aw-bg-input)] outline-none resize-none" />
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              {GROUP_COLORS.map(c => <button key={c} onClick={() => wrap(() => api.groupUpdate(groupId, { avatar: { color: c, emoji: av.emoji } }))} className="w-6 h-6 rounded-full border-2 cursor-pointer" style={{ background: c, borderColor: av.color === c ? '#fff' : 'transparent', boxShadow: av.color === c ? '0 0 0 2px ' + c : 'none' }} />)}
+              <input value={av.emoji} onChange={e => wrap(() => api.groupUpdate(groupId, { avatar: { color: av.color, emoji: e.target.value.slice(0, 2) } }))} maxLength={2} placeholder="🙂" className="w-8 h-6 text-center rounded-lg border border-[var(--aw-border)] bg-[var(--aw-bg-input)] outline-none text-[14px]" />
+            </div>
+            <button disabled={busy} onClick={() => wrap(() => api.groupUpdate(groupId, { name: name.trim(), desc }), 'ذخیره شد')} className="px-4 py-1.5 rounded-[10px] border-none cursor-pointer text-white text-[12px]" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 700 }}>ذخیرهٔ نام و توضیح</button>
+          </>
+        ) : (<><div className="text-[15px]" style={{ fontWeight: 700 }}>{info.name}</div>{info.desc && <div className="text-[12px] text-[var(--aw-text-secondary)] text-center px-3">{info.desc}</div>}</>)}
         <div className="text-[11px] text-[var(--aw-text-muted)]">{toFa((info.members || []).length)} عضو</div>
       </div>
 
-      {/* اعضا */}
+      {/* پیامِ سنجاق‌شده */}
+      {(info.pinned || admin) && (
+        <div className="rounded-[10px] p-2.5" style={{ background: 'var(--aw-bg-card)', border: '1px solid var(--aw-border)' }}>
+          <div className="flex items-center gap-1.5 text-[11px] text-[var(--aw-eu-primary,#7B62FC)] mb-1" style={{ fontWeight: 700 }}><i className="fa-solid fa-thumbtack" /> پیامِ سنجاق‌شده</div>
+          {info.pinned ? <div className="flex items-center gap-2"><span className="flex-1 text-[12px]">{info.pinned.text}</span>{admin && <button onClick={() => wrap(() => api.groupPin(groupId, null), 'برداشته شد')} className="text-[11px] text-[#ef4444] border-none bg-transparent cursor-pointer">برداشتن</button>}</div>
+            : admin && <div className="flex items-center gap-1.5"><input value={pinText} onChange={e => setPinText(e.target.value)} placeholder="متنِ سنجاق…" className="flex-1 text-[12px] py-1.5 px-2 rounded-lg border border-[var(--aw-border)] bg-[var(--aw-bg-input)] outline-none" /><button onClick={() => { if (pinText.trim()) wrap(() => api.groupPin(groupId, pinText.trim()), 'سنجاق شد').then(() => setPinText('')); }} className="text-[11px] px-2 py-1.5 rounded-lg border-none cursor-pointer text-white" style={{ background: 'var(--aw-eu-primary,#7B62FC)' }}>سنجاق</button></div>}
+        </div>
+      )}
+
+      {/* لینکِ دعوت */}
+      <div className="rounded-[10px] p-2.5 flex items-center gap-2" style={{ background: 'var(--aw-bg-card)', border: '1px solid var(--aw-border)' }}>
+        <i className="fa-solid fa-link text-[13px] text-[var(--aw-eu-primary,#7B62FC)]" />
+        <span className="flex-1 text-[11px] truncate" dir="ltr" style={{ textAlign: 'left' }}>{info.invite}</span>
+        <button onClick={copyInvite} className="text-[11px] px-2 py-1 rounded-lg border-none cursor-pointer text-white" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 600 }}>کپی</button>
+        {admin && <button onClick={() => wrap(() => (api as any).groupInvite(groupId, true), 'لینکِ نو ساخته شد')} className="text-[11px] px-2 py-1 rounded-lg border border-[var(--aw-border)] bg-transparent cursor-pointer" title="لینکِ جدید"><i className="fa-solid fa-rotate" /></button>}
+      </div>
+
+      {/* اعلان + سیاستِ ارسال */}
+      <div className="flex items-center justify-between rounded-[10px] p-2.5" style={{ background: 'var(--aw-bg-card)' }}>
+        <span className="text-[12px] flex items-center gap-1.5"><i className={`fa-solid ${info.muted ? 'fa-bell-slash' : 'fa-bell'} text-[var(--aw-eu-primary,#7B62FC)]`} /> اعلانِ گروه</span>
+        <button onClick={() => wrap(() => api.groupMute(groupId, !info.muted))} className="text-[11px] px-2.5 py-1 rounded-full border-none cursor-pointer" style={{ background: info.muted ? 'rgba(239,68,68,0.14)' : 'color-mix(in srgb, var(--aw-eu-primary) 16%, transparent)', color: info.muted ? '#ef4444' : 'var(--aw-eu-primary,#7B62FC)', fontWeight: 700 }}>{info.muted ? 'بی‌صدا' : 'روشن'}</button>
+      </div>
+      {admin && (
+        <div className="flex items-center justify-between rounded-[10px] p-2.5" style={{ background: 'var(--aw-bg-card)' }}>
+          <span className="text-[12px] flex items-center gap-1.5"><i className="fa-solid fa-comment-dots text-[var(--aw-eu-primary,#7B62FC)]" /> چه کسی پیام دهد</span>
+          <div className="flex items-center gap-1 p-0.5 rounded-full" style={{ background: 'var(--aw-bg-input)' }}>
+            <button onClick={() => wrap(() => api.groupSendPolicy(groupId, 'all'))} className="text-[11px] px-2.5 py-1 rounded-full border-none cursor-pointer" style={info.sendPolicy !== 'admins' ? { background: 'var(--aw-eu-primary,#7B62FC)', color: '#fff', fontWeight: 700 } : { background: 'transparent', color: 'var(--aw-text-secondary)' }}>همه</button>
+            <button onClick={() => wrap(() => api.groupSendPolicy(groupId, 'admins'))} className="text-[11px] px-2.5 py-1 rounded-full border-none cursor-pointer" style={info.sendPolicy === 'admins' ? { background: 'var(--aw-eu-primary,#7B62FC)', color: '#fff', fontWeight: 700 } : { background: 'transparent', color: 'var(--aw-text-secondary)' }}>فقط ادمین‌ها</button>
+          </div>
+        </div>
+      )}
+
+      {/* اعضا + ادمین‌ها */}
       <div className="flex items-center justify-between px-1">
-        <span className="text-[12px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 700 }}>اعضا</span>
-        {info.isOwner && <button onClick={() => { setShowAdd(s => !s); if (!showAdd) loadContacts(); }} className="text-[11px] px-2.5 py-1 rounded-lg border-none cursor-pointer text-white flex items-center gap-1" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 600 }}><i className="fa-solid fa-user-plus text-[10px]" /> افزودن</button>}
+        <span className="text-[12px] text-[var(--aw-text-secondary)]" style={{ fontWeight: 700 }}>اعضا ({toFa((info.members || []).length)})</span>
+        {admin && <button onClick={() => { setShowAdd(s => !s); if (!showAdd) loadContacts(); }} className="text-[11px] px-2.5 py-1 rounded-lg border-none cursor-pointer text-white flex items-center gap-1" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 600 }}><i className="fa-solid fa-user-plus text-[10px]" /> افزودن</button>}
       </div>
       {showAdd && (
         <div className="rounded-[10px] border border-[var(--aw-border)] max-h-[150px] overflow-y-auto">
           {addList.length === 0 ? <div className="text-center text-[11px] text-[var(--aw-text-muted)] py-4">مخاطبِ نورایی برای افزودن نیست</div> :
             addList.map((u: any) => (
-              <div key={u.sub} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-[var(--aw-bg-card-hover)]" onClick={() => doAdd(u.sub)}>
+              <div key={u.sub} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-[var(--aw-bg-card-hover)]" onClick={() => wrap(async () => { await api.groupAddMembers(groupId, [u.sub]); setShowAdd(false); }, 'عضو اضافه شد')}>
                 <LetterAvatar name={u.name} init={String(u.name || '?').charAt(0)} size={32} radius={10} />
                 <span className="flex-1 text-[12px]">{u.name}</span>
                 <i className="fa-solid fa-plus text-[11px] text-[var(--aw-eu-primary,#7B62FC)]" />
@@ -936,20 +981,25 @@ function EuGroupSettings({ groupId }: { groupId: string }) {
             ))}
         </div>
       )}
-      <div className="flex flex-col gap-1 overflow-y-auto">
+      <div className="flex flex-col gap-1">
         {(info.members || []).map((m: any) => (
           <div key={m.sub} className="flex items-center gap-2.5 p-2 rounded-[10px]" style={{ background: 'var(--aw-bg-card)' }}>
             <LetterAvatar name={m.name} init={String(m.name || '?').charAt(0)} size={36} radius={11} />
-            <div className="flex-1 min-w-0"><div className="text-[13px] truncate" style={{ fontWeight: 600 }}>{m.name}{m.me ? ' (شما)' : ''}</div>{m.isOwner && <div className="text-[10px] text-[var(--aw-eu-primary,#7B62FC)]">مدیرِ گروه</div>}</div>
-            {info.isOwner && !m.isOwner && <button disabled={busy} onClick={() => doRemove(m.sub)} className="w-7 h-7 rounded-lg border-none cursor-pointer" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }} title="حذف"><i className="fa-solid fa-user-minus text-[11px]" /></button>}
+            <div className="flex-1 min-w-0"><div className="text-[13px] truncate" style={{ fontWeight: 600 }}>{m.name}{m.me ? ' (شما)' : ''}</div>{(m.isOwner || m.isAdmin) && <div className="text-[10px] text-[var(--aw-eu-primary,#7B62FC)]">{m.isOwner ? 'مالکِ گروه' : 'ادمین'}</div>}</div>
+            {/* مالک می‌تواند ادمین/حذف کند */}
+            {owner && !m.isOwner && (m.isAdmin
+              ? <button disabled={busy} onClick={() => wrap(() => api.groupDemote(groupId, m.sub), 'ادمین برداشته شد')} className="text-[10px] px-2 py-1 rounded-lg border-none cursor-pointer" style={{ background: 'rgba(245,158,11,0.14)', color: '#F59E0B', fontWeight: 700 }} title="حذفِ ادمین">مالک‌زدایی</button>
+              : <button disabled={busy} onClick={() => wrap(() => api.groupPromote(groupId, m.sub), 'ادمین شد')} className="text-[10px] px-2 py-1 rounded-lg border-none cursor-pointer" style={{ background: 'color-mix(in srgb, var(--aw-eu-primary) 14%, transparent)', color: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 700 }} title="ارتقا به ادمین">ادمین</button>)}
+            {admin && !m.isOwner && !m.me && (!(m.isAdmin && !owner)) && <button disabled={busy} onClick={() => wrap(() => api.groupRemoveMember(groupId, m.sub), 'عضو حذف شد')} className="w-7 h-7 rounded-lg border-none cursor-pointer flex-shrink-0" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }} title="حذف"><i className="fa-solid fa-user-minus text-[11px]" /></button>}
           </div>
         ))}
       </div>
 
-      {/* خروج */}
+      {/* خروج / حذف */}
       <button disabled={busy} onClick={doLeave} className="mt-1 w-full py-2.5 rounded-[10px] border cursor-pointer text-[13px]" style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontWeight: 700 }}>
         <i className="fa-solid fa-right-from-bracket" /> خروج از گروه
       </button>
+      {owner && <button disabled={busy} onClick={doDelete} className="w-full py-2.5 rounded-[10px] border-none cursor-pointer text-[13px] text-white" style={{ background: '#ef4444', fontWeight: 700 }}><i className="fa-solid fa-trash" /> حذفِ گروه برای همه</button>}
     </div>
   );
 }
