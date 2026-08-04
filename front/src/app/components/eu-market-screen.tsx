@@ -894,7 +894,7 @@ function MarketOrdersTab() {
               )}
               <div className="flex items-center gap-3 text-[10px] text-[var(--aw-text-muted)]">
                 <span><i className="fa-solid fa-store text-[8px] ml-1" />{ord.shop}</span>
-                <span><i className="fa-regular fa-clock text-[8px] ml-1" />{ord.date}</span>
+                <span><i className="fa-regular fa-clock text-[8px] ml-1" />{/^\d{4}-\d{2}-\d{2}T/.test(String(ord.date || '')) ? new Date(ord.date).toLocaleDateString('fa-IR') : (ord.date || '')}</span>
               </div>
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-[rgba(126,95,170,0.1)]">
                 <span className="text-[12px] text-[var(--aw-text-primary)]" style={{ fontWeight: 700 }}>{(Number(String(ord.total).replace(/[^\d]/g, '')) || 0).toLocaleString('fa-IR')} <span className="text-[9px] text-[var(--aw-text-muted)]">تومان</span></span>
