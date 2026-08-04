@@ -1,6 +1,7 @@
 import express from 'express';
 import { query } from '../db.js';
 import { authRequired, roleRequired, optionalUser } from '../auth.js';
+import { purchase } from '../billing.js';
 import { getVoipSettings, placeCall } from '../voip.js';
 import { shecanRequest } from '../shecan.js';
 import { computeDineInsights, dineInsightsText, computeDineCustomers, computeDineForecast, computeDinePricing, computeDineCompetitors, computeDineReviews } from '../dine-insights.js'; // مغزِ داین — غنی‌سازیِ چت با دادهٔ واقعیِ رستوران
@@ -1699,6 +1700,39 @@ router.get('/agents', async (req, res) => {
       } catch (_) {}
     }
     res.json(agents);
+  } catch (e) {
+    res.status(500).json({ error: 'server_error', detail: String(e?.message || e) });
+  }
+});
+
+// خریدِ «نمونهٔ دیگرِ» یک ایجنت (مثلاً دستیارِ دوم) — از کیف‌پول، از طریقِ ماژولِ خریدِ متمرکز.
+// نمونه‌ها با کلیدِ owned مثلِ ::baseId#N نگه‌داری می‌شوند و endpointِ /agents خودش آن‌ها را به ایجنتِ جدا بسط می‌دهد.
+router.post('/agent/instance', authRequired, async (req, res) => {
+  try {
+    const sub = String(req.user.sub);
+    const baseId = String(req.body?.baseId || 'assistant').trim();
+    if (!/^[a-zA-Z0-9_]+$/.test(baseId)) return res.status(400).json({ error: 'bad_base' });
+    // قیمت از تنظیماتِ سوپرادمین (agentInstancePrice) یا پیش‌فرض.
+    let price = 50000;
+    try { const { rows } = await query("SELECT data->>'agentInstancePrice' AS p FROM settings WHERE id = 1"); const p = Number(rows[0]?.p); if (!isNaN(p) && p >= 0) price = p; } catch (_) {}
+
+    const bareOf = (k) => String(k).split('::').pop().split('#')[0];
+    const out = await purchase(sub, {
+      amount: price, txType: 'agent_instance', txLabel: 'خرید نمونهٔ دیگرِ ایجنت (' + baseId + ')',
+      apply: (meta) => {
+        const owned = Array.isArray(meta.ownedAgents) ? meta.ownedAgents : [];
+        // بزرگ‌ترین اندیسِ موجود برای این baseId را پیدا کن؛ نمونهٔ بعدی = max+1 (پایه بدونِ # است، پس از ۲ شروع).
+        let maxN = 1;
+        for (const k of owned) { if (bareOf(k) === baseId) { const hi = String(k).indexOf('#'); if (hi >= 0) { const n = parseInt(String(k).slice(hi + 1), 10); if (!isNaN(n) && n > maxN) maxN = n; } } }
+        const N = maxN + 1;
+        const key = '::' + baseId + '#' + N;
+        owned.push(key);
+        meta.ownedAgents = owned;
+        return { instanceId: baseId + '#' + N };
+      },
+    });
+    if (out.error) return res.status(out.status || 400).json({ error: out.error, balance: out.balance });
+    res.json({ ok: true, instanceId: out.instanceId, balance: out.balance, ownedAgents: out.ownedAgents });
   } catch (e) {
     res.status(500).json({ error: 'server_error', detail: String(e?.message || e) });
   }

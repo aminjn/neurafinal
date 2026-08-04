@@ -59,6 +59,53 @@ const euPageVariants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
 };
 
+// خریدِ «نمونهٔ دیگرِ» یک ایجنت از کیف‌پول — کامپوننتِ مشترک (وقتی درگاهِ پرداخت اضافه شد، فقط سرور/همین‌جا
+// عوض می‌شود، نه همه‌جای برنامه). قیمت از سرور اعمال می‌شود؛ اینجا فقط نمایش و تأیید است.
+function BuyAgentInstanceContent({ baseId = 'assistant', title = 'دستیار' }: { baseId?: string; title?: string }) {
+  const { closeModal, showToast, setAgents, setAssistantId, walletBalance } = useApp() as any;
+  const [busy, setBusy] = useState(false);
+  const PRICE = 50000; // پیش‌فرض؛ سرور مقدارِ واقعی (تنظیماتِ سوپرادمین) را اعمال می‌کند
+  const enough = (Number(walletBalance) || 0) >= PRICE;
+  const pay = async () => {
+    setBusy(true);
+    try {
+      const r: any = await (api as any).buyAgentInstance(baseId);
+      if (r && r.ok) {
+        try { const ag: any = await api.agents(); if (Array.isArray(ag) && ag.length) setAgents(ag as any); } catch (_) {}
+        if (r.instanceId) setAssistantId(r.instanceId);
+        try { window.dispatchEvent(new CustomEvent('neura:data-changed')); } catch (_) {}
+        showToast(title + 'ِ جدید اضافه شد ✓', 'success');
+        closeModal();
+      } else showToast('خطا در خرید', 'error');
+    } catch (e: any) {
+      showToast(e && e.status === 402 ? 'موجودی کیف‌پول کافی نیست — اول شارژ کنید' : 'خطا در خرید', 'error');
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col items-center gap-2 py-1">
+        <div className="w-14 h-14 rounded-[18px] flex items-center justify-center text-white" style={{ background: 'var(--aw-eu-primary,#7B62FC)' }}><i className="fa-solid fa-user-plus text-[22px]" /></div>
+        <div className="text-[14px]" style={{ fontWeight: 700 }}>افزودنِ {title}ِ دیگر</div>
+        <div className="text-[12px] text-[var(--aw-text-muted)] text-center px-2">یک {title}ِ مستقلِ دیگر با نام، گفتگو و تنظیماتِ جدا اضافه می‌شود.</div>
+      </div>
+      <div className="flex items-center justify-between px-3 py-2.5 rounded-[12px]" style={{ background: 'var(--aw-bg-card)' }}>
+        <span className="text-[12px] text-[var(--aw-text-secondary)]">هزینه</span>
+        <span className="text-[14px]" style={{ fontWeight: 800 }}>{PRICE.toLocaleString('fa-IR')} تومان</span>
+      </div>
+      <div className="flex items-center justify-between px-3 py-2 rounded-[12px]" style={{ background: 'var(--aw-bg-card)' }}>
+        <span className="text-[12px] text-[var(--aw-text-secondary)]">موجودی کیف‌پول</span>
+        <span className="text-[13px]" style={{ fontWeight: 700, color: enough ? '#10B981' : '#ef4444' }}>{(Number(walletBalance) || 0).toLocaleString('fa-IR')} تومان</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 mt-1">
+        <button disabled={busy} onClick={pay} className="py-2.5 rounded-[12px] border-none cursor-pointer text-white text-[13px]" style={{ background: 'var(--aw-eu-primary,#7B62FC)', opacity: busy ? 0.7 : 1, fontWeight: 700 }}>
+          <i className="fa-solid fa-wallet" /> {busy ? 'در حال پرداخت…' : 'پرداخت از کیف‌پول'}
+        </button>
+        <button disabled={busy} onClick={closeModal} className="py-2.5 rounded-[12px] cursor-pointer text-[13px] bg-transparent" style={{ border: '1px solid var(--aw-border)', color: 'var(--aw-text-secondary)', fontWeight: 700 }}>انصراف</button>
+      </div>
+    </div>
+  );
+}
+
 // ========================
 // EU HEADER
 // ========================
@@ -177,7 +224,7 @@ function EuHeader() {
 
         {/* Avatar row — draggable: up = shrink/deactivate, down = activate. Agent selector sits bottom-right. */}
         <div className="md:hidden relative" style={{ zIndex: 1 }} data-chat-top-anchor>
-          <EuAvatar speaking={ttsSpeaking} portrait={(activeAsst as any)?.avatar || ((activeAsst as any)?.gender === 'm' ? '/src/avatars/m4.png' : '/src/assets/avatar-portrait.png')} /* asstavatar */ name={activeAsst ? asstDisplayName(activeAsst.id) : undefined} accent={activeAsst?.accent || undefined} nameOptions={asstNameOptions} activeNameId={activeAsst?.id} onPickName={(id) => setAssistantId(id)} cornerSlot={<AgentSelector />} onChatClick={() => setEuScreen('euAssistantScreen')} onLongPress={() => openModal('شخصی‌سازی دستیار', <CustomizeAgentContent agentId={activeAsst?.id || 'assistant'} />)} />
+          <EuAvatar speaking={ttsSpeaking} portrait={(activeAsst as any)?.avatar || ((activeAsst as any)?.gender === 'm' ? '/src/avatars/m4.png' : '/src/assets/avatar-portrait.png')} /* asstavatar */ name={activeAsst ? asstDisplayName(activeAsst.id) : undefined} accent={activeAsst?.accent || undefined} nameOptions={asstNameOptions} activeNameId={activeAsst?.id} onPickName={(id) => setAssistantId(id)} onAddName={() => openModal('افزودنِ دستیار', <BuyAgentInstanceContent baseId="assistant" title="دستیار" />)} cornerSlot={<AgentSelector />} onChatClick={() => setEuScreen('euAssistantScreen')} onLongPress={() => openModal('شخصی‌سازی دستیار', <CustomizeAgentContent agentId={activeAsst?.id || 'assistant'} />)} />
         </div>
       </header>
     );

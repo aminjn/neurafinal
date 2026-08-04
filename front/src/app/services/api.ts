@@ -149,6 +149,8 @@ export const api = {
 
   // خرید/فعال‌سازی ایجنت برای کاربرِ واردشده
   buyAgent: (id: string) => req<{ ok: boolean; ownedAgents: string[] }>(`/auth/owned-agents/${encodeURIComponent(id)}`, { method: 'POST' }),
+  // خریدِ نمونهٔ دیگرِ یک ایجنت (مثلاً دستیارِ دوم) از کیف‌پول — از ماژولِ خریدِ متمرکز عبور می‌کند.
+  buyAgentInstance: (baseId: string) => req<{ ok: boolean; instanceId: string; balance: number; ownedAgents: string[] }>(`/ai/agent/instance`, { method: 'POST', body: JSON.stringify({ baseId }) }),
   removeOwnedAgent: (id: string) => req<{ ok: boolean; ownedAgents: string[] }>(`/auth/owned-agents/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   // جستجوی کاربرِ ثبت‌نام‌شده و تأییدشده با شاهکار برای افزودنِ پرسنل (نامِ واقعی برمی‌گردد)
   lookupUserByPhone: (phone: string) => req<{ found: boolean; name?: string; phone?: string; verified?: boolean }>(`/users/lookup?phone=${encodeURIComponent(phone)}`),
