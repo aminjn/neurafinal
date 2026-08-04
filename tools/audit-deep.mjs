@@ -29,7 +29,7 @@ const FILTER = process.argv[2] || '';
 // فیلترِ کاما-جدا برای اجرای تکه‌ای. اگر ترم با * تمام شود = پیشوندی؛ وگرنه تطبیقِ دقیق (بدونِ هم‌پوشانی).
 const FILTERS = FILTER.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 const matchFilter = (name) => { if (!FILTERS.length) return true; const n = name.toLowerCase(); return FILTERS.some(f => f.endsWith('*') ? n.startsWith(f.slice(0, -1)) : n === f); };
-const MAX_BTN = Number(process.env.MAX_BTN || 18);        // سقفِ دکمه در هر صفحه (سرعت)
+const MAX_BTN = Number(process.env.MAX_BTN || 60);        // سقفِ دکمه در هر صفحه (بالا بردیم تا تبِ زیرِ فولد جا نیفتد)
 const SHOTS = path.resolve(ROOT, '..', '.audit-deep-shots');
 const REPORT = process.env.AUDIT_REPORT || path.resolve(ROOT, '..', '.audit-deep-report' + (MODE === 'admin' ? '-admin' : '') + '.json');
 if (!fs.existsSync(path.join(DIST, 'index.html'))) { console.error('dist نیست — build کنید'); process.exit(2); }
@@ -106,19 +106,54 @@ const auditScreen = async (kind, name) => {
   });
   const fakeSuspect = loadApiHits === 0 && dataRows >= 6;
 
+  // R18: مودالِ مسدودکننده (مثلِ «دسترسی به میکروفون/دوربین») را ببند وگرنه backdrop-blurِ آن کلِ صفحه را
+  // تار/پوشیده می‌کند و اسکرین‌شات ناخواناست — علتِ اصلیِ «نمی‌بینم»ِ تب‌های خانه همین بود.
+  const dismissOverlay = async () => {
+    for (let i = 0; i < 3; i++) {
+      const closed = await p.evaluate(() => {
+        const btns = [...document.querySelectorAll('button,[role="button"],.cursor-pointer')];
+        const hit = btns.find(b => { const t = (b.innerText || b.getAttribute('aria-label') || '').trim(); return b.offsetParent !== null && /^(بعدا|بعداً|بعد|باشه|فهمیدم|رد کردن|بستن|انصراف|رد|متوجه شدم|بعداً یادآوری کن)$/.test(t); });
+        if (hit) { hit.click(); return true; }
+        return false;
+      }).catch(() => false);
+      if (!closed) { await p.keyboard.press('Escape').catch(() => {}); }
+      await p.waitForTimeout(220);
+      const stillBlocked = await p.evaluate(() => /میکروفون|دوربین|دسترسی به/.test((document.body.innerText || ''))).catch(() => false);
+      if (!stillBlocked && !closed) break;
+    }
+  };
+  await dismissOverlay();
   // پرونده را «همین‌جا» (صفحهٔ تازه‌لود، بدونِ منوی باز) بگیر — نه بعد از کلیک‌ها (وگرنه مودالِ باز روی عکس می‌افتد).
   const visibleText = await p.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 700));
+  // R18: کلِ صفحه را از بالا تا پایین اسکرول کن (لود لِیزی/پدیدارشدنِ تبِ زیرِ فولد) تا هیچ بخشی جا نماند.
+  await p.evaluate(async () => {
+    const sc = document.scrollingElement || document.body;
+    const inner = [...document.querySelectorAll('*')].find(e => e.scrollHeight > e.clientHeight + 80 && /auto|scroll/.test(getComputedStyle(e).overflowY));
+    const el = inner || sc;
+    const step = Math.max(200, el.clientHeight - 60);
+    for (let y = 0; y <= el.scrollHeight; y += step) { el.scrollTop = y; await new Promise(r => setTimeout(r, 90)); }
+    el.scrollTop = 0; await new Promise(r => setTimeout(r, 120));
+  }).catch(() => {});
+  // R18: اسکرین‌شاتِ fullPage (نه فقط ۸۴۴px نخست) + یک پاسِ دوم در عرضِ دسکتاپ ۱۰۲۴ تا لِی‌اوتِ رِسپانسیو هم دیده شود.
   const shot = (MODE === 'admin' ? 'sa_' : '') + name + '.png';
-  try { await p.screenshot({ path: path.join(SHOTS, shot) }); } catch (e) {}
+  try { await p.screenshot({ path: path.join(SHOTS, shot), fullPage: true }); } catch (e) {}
+  const shotWide = (MODE === 'admin' ? 'sa_' : '') + name + '.wide.png';
+  try {
+    await p.setViewportSize({ width: 1024, height: 900 }); await p.waitForTimeout(350);
+    await p.screenshot({ path: path.join(SHOTS, shotWide), fullPage: true });
+    await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(250);
+  } catch (e) {}
 
-  // فهرستِ دکمه‌ها/تب‌ها — فقط برچسب‌های متنیِ یکتا (برچسبِ خالی قابلِ هدف‌گیریِ مطمئن نیست، رد می‌شود).
+  // فهرستِ دکمه‌ها/تب‌ها — یکتا. R18: کارت‌های چندخطیِ خانه (لیبل+زیرلیبل+قیمت) قبلاً به‌خاطرِ سقفِ ۴۰
+  // نویسه دور ریخته می‌شدند؛ حالا «خطِ نخست» را برچسب می‌گیریم و سقف را ۸۰ گذاشتیم تا هیچ تب/کارتی جا نماند.
   const labels = await p.evaluate((MAX) => {
     const out = []; const seen = new Set();
     const els = [...document.querySelectorAll('button,[role="tab"],[role="button"],a[href],.cursor-pointer')];
     for (const e of els) {
       if (e.offsetParent === null) continue; // نامرئی
-      const t = (e.innerText || e.getAttribute('aria-label') || e.getAttribute('title') || '').trim().replace(/\s+/g, ' ');
-      if (!t || t.length > 40 || seen.has(t)) continue;
+      const raw = (e.innerText || e.getAttribute('aria-label') || e.getAttribute('title') || '').trim();
+      const t = (raw.split('\n')[0] || raw).trim().replace(/\s+/g, ' ').slice(0, 80); // خطِ نخستِ کارتِ چندخطی
+      if (!t || seen.has(t)) continue;
       if (/خانه|گفتگو|پروفایل|فروشگاه|سفارش‌ها|بیشتر|منو/.test(t) && e.closest('nav')) continue; // ناوبریِ سراسری
       seen.add(t); out.push(t);
       if (out.length >= MAX) break;
@@ -127,8 +162,10 @@ const auditScreen = async (kind, name) => {
   }, MAX_BTN);
 
   const clickByLabel = (label) => p.evaluate((label) => {
+    // همان نرمال‌سازیِ فهرست‌گیری: خطِ نخست، برشِ ۸۰ — تا کارتِ چندخطی هم پیدا شود.
+    const norm = (e) => { const raw = (e.innerText || e.getAttribute('aria-label') || e.getAttribute('title') || '').trim(); return (raw.split('\n')[0] || raw).trim().replace(/\s+/g, ' ').slice(0, 80); };
     const els = [...document.querySelectorAll('button,[role="tab"],[role="button"],a[href],.cursor-pointer')];
-    const el = els.find(e => ((e.innerText || e.getAttribute('aria-label') || e.getAttribute('title') || '').trim().replace(/\s+/g, ' ')) === label && e.offsetParent !== null);
+    const el = els.find(e => norm(e) === label && e.offsetParent !== null);
     if (el) { el.scrollIntoView({ block: 'center' }); el.click(); return true; } return false;
   }, label).catch(() => false);
 

@@ -304,6 +304,16 @@ export const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string }> =
   pending: { bg: 'rgba(155,89,182,0.2)', text: '#9B59B6' },
 };
 
+// آیکونِ ردیفِ سفارش — «تک‌منبعِ حقیقت» (R10): هرجا ردیفِ سفارش رندر می‌شود از این استفاده کند
+// تا اصلاح در یک نقطه همه‌جا اعمال شود. غذا (source==='dine') → قاشق‌چنگال؛ در غیرِ اینصورت
+// «سبدِ خرید» (نه کیف/قفل) چون کاربر همیشه غذا نمی‌خرد.
+export function orderIcon(order: any): { icon: string; bg: string; color: string } {
+  const isDine = order && order.source === 'dine';
+  return isDine
+    ? { icon: 'fa-solid fa-utensils',      bg: 'rgba(20,184,166,0.16)',  color: '#14b8a6' }
+    : { icon: 'fa-solid fa-cart-shopping', bg: 'rgba(139,92,246,0.16)',  color: '#8B5CF6' };
+}
+
 export function generateReply(text: string, agent?: Agent): string {
   // پاسخِ آفلاینِ صادق — هیچ عدد/دادهٔ ساختگی تولید نمی‌کند. پاسخِ واقعی از بک‌اند (api.chat) می‌آید؛
   // این تابع فقط زمانی استفاده می‌شود که ارتباط با سرور برقرار نشود.

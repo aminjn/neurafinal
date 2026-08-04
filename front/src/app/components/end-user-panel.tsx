@@ -42,7 +42,7 @@ import { api } from '../services/api';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp, EuScreen } from './app-context';
 import { RoleSwitcher, AgentSelector, SubscribeContent, ProfileContent, FormGroup, FormInput, SettingsGroup, SettingsItem, CustomizeAgentContent, AgentSettingsContent, MoreScreenModal, NOTIF_ICON_SRC } from './admin-panel';
-import { COMPANIES, NOTIFICATIONS, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, toFa, Agent, Order } from './data';
+import { COMPANIES, NOTIFICATIONS, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, toFa, orderIcon, Agent, Order } from './data';
 import { EuDineScreen, EuAssistantScreen, EuContacts, EuSupportScreen, EuMarketScreen, EuPlannerScreen, EuSearchScreen, EuReportScreen } from './eu-agent-screens';
 import { MARKET_PROMO_ITEMS, MKT_OFFERS, AddressFormModal } from './eu-market-screen';
 import { OFFERS as DINE_OFFERS } from './eu-dine-screen';
@@ -912,7 +912,7 @@ const __euFmtDate = (d: any) => /^\d{4}-\d{2}-\d{2}T/.test(String(d)) ? new Date
 function buildEuFeed({ stored, calendar, tasks, orders }: { stored: any[]; calendar: any[]; tasks: any[]; orders: any[] }) {
   const out: any[] = [];
   (orders || []).filter(__euActiveOrder).forEach((o: any) => out.push({
-    id: 'ord_' + o.id, type: 'order', icon: 'fa-solid fa-bag-shopping',
+    id: 'ord_' + o.id, type: 'order', icon: orderIcon(o).icon,
     title: 'سفارش ' + (o.num ? '#' + o.num : '') + (o.source === 'dine' ? ' (غذا)' : ' (مارکت)'),
     desc: __EU_ORD_FA[String(o.status)] || String(o.status || ''), time: __euFmtDate(o.date), _sort: 4,
   }));
@@ -2384,7 +2384,7 @@ export function OrderDetail({ order: o }: { order: Order }) {
   return (
     <div>
       <div className="text-center mb-4">
-        <i className={`fa-solid ${(o as any).source === 'dine' ? 'fa-utensils' : 'fa-bag-shopping'} text-[40px] text-[var(--aw-eu-primary)] mb-2.5 block`} />
+        <i className={`${orderIcon(o).icon} text-[40px] text-[var(--aw-eu-primary)] mb-2.5 block`} />
         <h3>سفارش #{__num}</h3>
       </div>
       <div className="flex justify-between py-2 border-b border-[var(--aw-border-light)] text-[12px]">

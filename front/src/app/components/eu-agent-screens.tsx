@@ -1513,7 +1513,7 @@ function AssistantReportTab({ tasks, events, orders }: { tasks: AsstTask[]; even
             ? { icon: 'fa-solid fa-list-check', color: '#10B981', label: 'وظیفه' }
             : l.type === 'plan'
               ? { icon: 'fa-solid fa-calendar-days', color: '#3B82F6', label: 'برنامه' }
-              : { icon: 'fa-solid fa-bag-shopping', color: '#F59E0B', label: 'سفارش' };
+              : { icon: 'fa-solid fa-cart-shopping', color: '#F59E0B', label: 'سفارش' };
           return (
             <div key={`${l.type}-${i}`} className="flex items-center gap-2.5 py-2 border-b border-[rgba(126,95,170,0.08)] last:border-0">
               <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${meta.color}18` }}>

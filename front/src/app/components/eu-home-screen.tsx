@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from './app-context';
 import { QuickForm } from './quick-actions';
-import { toFa, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from './data';
+import { toFa, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, orderIcon } from './data';
 import { OrderDetail } from './end-user-panel';
 
 // Figma-exported icon components
@@ -250,7 +250,7 @@ function EuHomeScreenGlass() {
   // فقط سفارش‌های واقعی — بدونِ دموِ فیک؛ خالی وقتی سفارشی نیست.
   const displayOrders = activeOrders.slice(0, 2).map((o, i) => ({
         key: o.id,
-        icon: i === 0 ? 'fa-solid fa-utensils' : 'fa-regular fa-hourglass-half',
+        icon: orderIcon(o).icon,
         title: 'سفارش' + ((o as any).id ? ' #' + (o as any).id : ''),
         subtitle: ((o as any).items?.[0]?.name || 'سفارش') + ' × ' + toFa((o as any).items?.[0]?.qty || 1),
         price: (Number((o as any).total) || 0).toLocaleString('fa-IR'),
@@ -409,9 +409,8 @@ function EuHomeScreenGlass() {
       {/* ── فعالیت‌های اخیر ── */}
       <div className="px-4 mt-3">
         {orders.slice(0, 4).map((o: any, i: number) => {
-          // euorders: آیکون بر اساسِ منبعِ واقعی (مارکت=کیف، دین=قاشق‌چنگال)، تاریخِ فارسی، کلیک→جزئیاتِ واقعی (نه صفحهٔ سفید)
-          const isDine = o.source === 'dine';
-          const ic = isDine ? { icon: 'fa-solid fa-utensils', bg: 'rgba(255,141,40,0.16)', color: '#FF8D28' } : { icon: 'fa-solid fa-bag-shopping', bg: 'rgba(139,92,246,0.16)', color: '#8B5CF6' };
+          // euorders: آیکون از هِلپرِ مشترکِ orderIcon (R10) — غذا=قاشق‌چنگال، در غیرِ اینصورت سبدِ خرید (نه کیف/قفل)
+          const ic = orderIcon(o);
           const ds = String(o.date || '');
           const time = /^\d{4}-\d{2}-\d{2}T/.test(ds) ? new Date(ds).toLocaleDateString('fa-IR') : ds;
           const title = 'سفارش' + (o.num ? (' #' + o.num) : '');
@@ -513,9 +512,9 @@ function EuHomeScreenDefault() {
               style={{ background: 'var(--aw-eu-card)', borderColor: 'rgba(126,95,170,0.15)' }}
               onClick={() => openModal('جزئیات سفارش', <OrderDetail order={o} />)}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ background: ORDER_STATUS_COLORS[o.status]?.bg || 'var(--aw-primary-bg)' }}>
-                <i className={`fa-solid ${o.source === 'dine' ? 'fa-utensils' : 'fa-bag-shopping'} text-[14px]`}
-                  style={{ color: ORDER_STATUS_COLORS[o.status]?.text || 'var(--aw-eu-primary)' }} />
+                style={{ background: ORDER_STATUS_COLORS[o.status]?.bg || orderIcon(o).bg }}>
+                <i className={`${orderIcon(o).icon} text-[14px]`}
+                  style={{ color: ORDER_STATUS_COLORS[o.status]?.text || orderIcon(o).color }} />
               </div>
               <div className="flex-1 text-right">
                 <div style={{ fontSize: 12, fontWeight: 700 }}>سفارش{o.num ? ' #' + o.num : ''}</div>
