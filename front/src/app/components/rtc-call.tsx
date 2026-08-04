@@ -74,6 +74,7 @@ export function NeuraCallLayer() {
   const roomRef = useRef<string>('');
   const toSubsRef = useRef<string[]>([]);
   const timerRef = useRef<any>(null);
+  const pollRef = useRef<any>(null);
   const ringRef = useRef<any>(null);
   const incomingRef = useRef<{ roomName: string; kind: Kind; fromSub: string; callerName: string } | null>(null);
 
@@ -146,6 +147,7 @@ export function NeuraCallLayer() {
   const resetAll = useCallback(() => {
     stopRing();
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     try { socketRef.current?.emit('leaveRoom'); } catch (_) {}
     for (const p of producersRef.current) { try { p.close(); } catch (_) {} }
     producersRef.current = [];
@@ -211,9 +213,13 @@ export function NeuraCallLayer() {
     });
 
     setPhase('connected');
+    setStatusMsg(''); // مهم: وگرنه «در حال اتصال…» روی صفحه گیر می‌کرد با اینکه تماس وصل شده بود
     if (timerRef.current) clearInterval(timerRef.current);
     setSecs(0); timerRef.current = setInterval(() => setSecs((x) => x + 1), 1000);
     await refreshConsumers();
+    // نگه‌داشتنِ زندهٔ tileها: هر ۳ ثانیه producerهای جدید/رفته را همگام کن (ورود/خروجِ نفراتِ تماسِ گروهی + بازیابی)
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => { refreshConsumers().catch(() => {}); }, 3000);
   }
 
   const refreshConsumers = useCallback(async () => {

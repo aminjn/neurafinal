@@ -43,6 +43,12 @@ router.post('/send', authRequired, async (req, res) => {
   if (!to || !text.trim()) return res.status(400).json({ error: 'to_and_text_required' });
   const u = await query('SELECT id FROM app_users WHERE id = $1', [to]);
   if (!u.rows[0]) return res.status(404).json({ error: 'user_not_found' });
+  // مسدودسازیِ واقعی: اگر گیرنده مرا بلاک کرده یا من او را بلاک کرده‌ام، پیام رد می‌شود.
+  try {
+    const [rp0, sp0] = await Promise.all([loadPrefs(to), loadPrefs(req.user.sub)]);
+    if (rp0.blocks.includes(String(req.user.sub))) return res.status(403).json({ error: 'blocked' });
+    if (sp0.blocks.includes(String(to))) return res.status(403).json({ error: 'you_blocked' });
+  } catch (_) {}
   const conv = convId(req.user.sub, to);
   const id = conv + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   const data = { id, conv, from: String(req.user.sub), to, text, ts: Date.now() };
@@ -52,7 +58,7 @@ router.post('/send', authRequired, async (req, res) => {
   );
   // نوتیفیکیشنِ push به گیرنده — مگر اینکه گیرنده این فرستنده را «بی‌صدا» کرده باشد (تنظیماتِ ۱:۱).
   (async () => {
-    try { const pr = await query("SELECT data FROM documents WHERE collection='peer_prefs' AND id=$1", ['pp_' + to]); const mutes = (pr.rows[0]?.data?.mutes || []).map(String); if (mutes.includes(String(req.user.sub))) return; } catch (_) {}
+    try { const rp = await loadPrefs(to); if (isMutedNow(rp, req.user.sub)) return; } catch (_) {}
     sendPush(to, { title: String(req.user.name || 'پیام جدید'), body: text.slice(0, 120), kind: 'message', tag: 'peer_' + req.user.sub, url: '/', data: { peer: String(req.user.sub) } }).catch(() => {});
   })();
   res.status(201).json({ ok: true, message: data });
@@ -89,20 +95,47 @@ router.post('/read', authRequired, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── تنظیماتِ گفتگوی ۱:۱ (واقعی): بی‌صداکردنِ اعلانِ یک مخاطب + پاک‌کردنِ گفتگو ──
-router.get('/prefs', authRequired, async (req, res) => {
-  try { const r = await query("SELECT data FROM documents WHERE collection='peer_prefs' AND id=$1", ['pp_' + req.user.sub]); res.json(r.rows[0]?.data || { mutes: [] }); }
-  catch (_) { res.json({ mutes: [] }); }
+// ── تنظیماتِ گفتگوی ۱:۱ (واقعی، هم‌ترازِ لیدرها): اطلاعاتِ مخاطب، بی‌صدا با مدت، مسدودسازی، گزارش، پاک‌کردن ──
+// ساختار: peer_prefs = { mutes: { [sub]: untilMs (0=همیشه) }, blocks: [sub] }
+async function loadPrefs(sub) {
+  try { const r = await query("SELECT data FROM documents WHERE collection='peer_prefs' AND id=$1", ['pp_' + sub]); const d = r.rows[0]?.data || {}; return { mutes: (d.mutes && typeof d.mutes === 'object' && !Array.isArray(d.mutes)) ? d.mutes : {}, blocks: Array.isArray(d.blocks) ? d.blocks.map(String) : [] }; }
+  catch (_) { return { mutes: {}, blocks: [] }; }
+}
+async function savePrefs(sub, d) {
+  await query("INSERT INTO documents (collection,id,company,data) VALUES ('peer_prefs',$1,$2,$3::jsonb) ON CONFLICT (collection,id) DO UPDATE SET data=$3::jsonb, updated_at=now()", ['pp_' + sub, 'user:' + sub, JSON.stringify(d)]);
+}
+function isMutedNow(prefs, other) { const u = prefs.mutes[String(other)]; return u === 0 || (typeof u === 'number' && u > Date.now()); }
+
+router.get('/prefs', authRequired, async (req, res) => { res.json(await loadPrefs(req.user.sub)); });
+router.get('/info', authRequired, async (req, res) => {
+  const other = String(req.query.sub || ''); if (!other) return res.status(400).json({ error: 'sub_required' });
+  let user = {}; try { const u = await query('SELECT name, username, meta FROM app_users WHERE id=$1', [other]); const row = u.rows[0] || {}; user = { name: row.name || row.username || 'کاربر', phone: (row.meta && row.meta.phone) || '', verified: !!(row.meta && row.meta.identityVerified) }; } catch (_) {}
+  const prefs = await loadPrefs(req.user.sub);
+  res.json({ ...user, muteUntil: prefs.mutes[other] ?? null, blocked: prefs.blocks.includes(other) });
 });
 router.post('/mute', authRequired, async (req, res) => {
-  const other = String(req.body?.sub || ''); const mute = req.body?.mute !== false;
+  const other = String(req.body?.sub || ''); if (!other) return res.status(400).json({ error: 'sub_required' });
+  const mute = req.body?.mute !== false;
+  const durMs = Number(req.body?.durationMs); // 0 یا نبود = همیشه ؛ عدد = تا untilِ محاسبه‌شده
+  const prefs = await loadPrefs(req.user.sub);
+  if (mute) prefs.mutes[other] = durMs > 0 ? (Date.now() + durMs) : 0; else delete prefs.mutes[other];
+  await savePrefs(req.user.sub, prefs);
+  res.json({ ok: true, muteUntil: prefs.mutes[other] ?? null });
+});
+router.post('/block', authRequired, async (req, res) => {
+  const other = String(req.body?.sub || ''); if (!other) return res.status(400).json({ error: 'sub_required' });
+  const block = req.body?.block !== false;
+  const prefs = await loadPrefs(req.user.sub); const set = new Set(prefs.blocks);
+  if (block) set.add(other); else set.delete(other); prefs.blocks = [...set];
+  await savePrefs(req.user.sub, prefs);
+  res.json({ ok: true, blocked: block });
+});
+router.post('/report', authRequired, async (req, res) => {
+  const other = String(req.body?.sub || ''); const reason = String(req.body?.reason || '').slice(0, 500);
   if (!other) return res.status(400).json({ error: 'sub_required' });
-  const id = 'pp_' + req.user.sub;
-  const r = await query("SELECT data FROM documents WHERE collection='peer_prefs' AND id=$1", [id]);
-  const d = r.rows[0]?.data || { mutes: [] }; const set = new Set((d.mutes || []).map(String));
-  if (mute) set.add(other); else set.delete(other); d.mutes = [...set];
-  await query("INSERT INTO documents (collection,id,company,data) VALUES ('peer_prefs',$1,$2,$3::jsonb) ON CONFLICT (collection,id) DO UPDATE SET data=$3::jsonb, updated_at=now()", [id, 'user:' + req.user.sub, JSON.stringify(d)]);
-  res.json({ ok: true, muted: mute });
+  const id = 'rep_' + Date.now() + Math.random().toString(36).slice(2, 5);
+  try { await query("INSERT INTO documents (collection, id, data) VALUES ('peer_reports', $1, $2::jsonb)", [id, JSON.stringify({ id, reporter: String(req.user.sub), reported: other, reason, date: new Date().toISOString(), status: 'open' })]); } catch (_) {}
+  res.json({ ok: true });
 });
 router.post('/clear', authRequired, async (req, res) => {
   const other = String(req.body?.sub || ''); if (!other) return res.status(400).json({ error: 'sub_required' });

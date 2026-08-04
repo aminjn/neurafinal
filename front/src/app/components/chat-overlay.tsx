@@ -887,23 +887,53 @@ export default function ChatOverlay() {
 const GROUP_COLORS = ['#7B62FC', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899', '#14B8A6', '#8B5CF6'];
 // تنظیماتِ کاملِ گروه — همتراز/کامل‌تر از تلگرام/واتساپ: عکس(رنگ+ایموجی)، توضیح، ادمین‌ها+دسترسی،
 // لینکِ دعوت، پیامِ سنجاق‌شده، سیاستِ ارسال، بی‌صداکردن، خروج، حذفِ گروه.
-// تنظیماتِ گفتگوی ۱:۱ (واقعی): بی‌صداکردنِ اعلان + پاک‌کردنِ گفتگو.
+// تنظیماتِ گفتگوی ۱:۱ (واقعی، هم‌ترازِ واتساپ/تلگرام): اطلاعاتِ مخاطب، بی‌صدا با مدت، مسدودسازی، گزارش، پاک‌کردن.
 function EuPeerSettings({ peerSub, peerName }: { peerSub: string; peerName: string }) {
   const { closeModal, showToast, closeChat } = useApp() as any;
-  const [muted, setMuted] = useState(false);
+  const [info, setInfo] = useState<any>({ name: peerName, phone: '', verified: false, muteUntil: null, blocked: false });
   const [busy, setBusy] = useState(false);
-  useEffect(() => { (api as any).peerPrefs().then((p: any) => { setMuted(((p?.mutes) || []).map(String).includes(String(peerSub))); }).catch(() => {}); }, [peerSub]);
-  const toggleMute = async () => { if (busy) return; setBusy(true); try { const nv = !muted; await (api as any).peerMute(peerSub, nv); setMuted(nv); showToast(nv ? 'اعلانِ این گفتگو بی‌صدا شد' : 'اعلان روشن شد'); } catch (_) { showToast('خطا'); } setBusy(false); };
+  const [muteOpen, setMuteOpen] = useState(false);
+  const load = () => { (api as any).peerInfo(peerSub).then((r: any) => { if (r) setInfo((p: any) => ({ ...p, ...r, name: r.name || peerName })); }).catch(() => {}); };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [peerSub]);
+  const muted = info.muteUntil === 0 || (typeof info.muteUntil === 'number' && info.muteUntil > Date.now());
+  const muteLabel = info.muteUntil === 0 ? 'همیشه بی‌صدا' : (muted ? ('تا ' + new Date(info.muteUntil).toLocaleString('fa-IR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })) : 'روشن');
+  const doMute = async (durationMs: number | null) => { setBusy(true); setMuteOpen(false); try { if (durationMs === null) { await (api as any).peerMute(peerSub, false); showToast('اعلان روشن شد'); } else { await (api as any).peerMute(peerSub, true, durationMs); showToast('بی‌صدا شد'); } load(); } catch (_) { showToast('خطا'); } setBusy(false); };
+  const toggleBlock = async () => { const nv = !info.blocked; if (nv && typeof window !== 'undefined' && !window.confirm(`«${info.name}» مسدود شود؟ دیگر نمی‌تواند به شما پیام دهد.`)) return; setBusy(true); try { await (api as any).peerBlock(peerSub, nv); setInfo((p: any) => ({ ...p, blocked: nv })); showToast(nv ? 'مسدود شد' : 'رفعِ مسدودی'); } catch (_) { showToast('خطا'); } setBusy(false); };
+  const doReport = async () => { const reason = typeof window !== 'undefined' ? window.prompt('دلیلِ گزارش (اختیاری):', '') : ''; if (reason === null) return; setBusy(true); try { await (api as any).peerReport(peerSub, reason || ''); showToast('گزارش ثبت شد؛ بررسی می‌شود'); } catch (_) { showToast('خطا'); } setBusy(false); };
   const clearChat = async () => { if (typeof window !== 'undefined' && !window.confirm('کلِ این گفتگو پاک شود؟')) return; setBusy(true); try { await (api as any).peerClear(peerSub); try { window.dispatchEvent(new CustomEvent('neura:data-changed')); } catch (_) {} showToast('گفتگو پاک شد'); closeModal(); closeChat(); } catch (_) { showToast('خطا'); } setBusy(false); };
+  const row = 'flex items-center justify-between rounded-[10px] p-3 border-none cursor-pointer text-right w-full';
+  const HOUR = 3600e3;
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col items-center gap-2 pb-1">
-        <LetterAvatar name={peerName} init={String(peerName || '?').charAt(0)} size={64} radius={22} />
-        <div className="text-[15px]" style={{ fontWeight: 700 }}>{peerName || 'کاربر'}</div>
+    <div className="flex flex-col gap-2.5">
+      {/* اطلاعاتِ مخاطب */}
+      <div className="flex flex-col items-center gap-1.5 pb-1">
+        <LetterAvatar name={info.name} init={String(info.name || '?').charAt(0)} size={72} radius={24} />
+        <div className="flex items-center gap-1.5"><span className="text-[16px]" style={{ fontWeight: 700 }}>{info.name || 'کاربر'}</span>{info.verified && <i className="fa-solid fa-circle-check text-[13px] text-[#34C759]" title="احراز شده" />}</div>
+        {info.phone && <div className="text-[12px] text-[var(--aw-text-muted)]" dir="ltr">{info.phone}</div>}
       </div>
-      <button onClick={toggleMute} disabled={busy} className="flex items-center justify-between rounded-[10px] p-3 border-none cursor-pointer text-right" style={{ background: 'var(--aw-bg-card)' }}>
+
+      {/* بی‌صدا با مدت */}
+      <button onClick={() => setMuteOpen(o => !o)} disabled={busy} className={row} style={{ background: 'var(--aw-bg-card)' }}>
         <span className="text-[13px] flex items-center gap-2"><i className={`fa-solid ${muted ? 'fa-bell-slash' : 'fa-bell'} text-[var(--aw-eu-primary,#7B62FC)]`} /> اعلانِ گفتگو</span>
-        <span className="text-[11px] px-2.5 py-1 rounded-full" style={{ background: muted ? 'rgba(239,68,68,0.14)' : 'color-mix(in srgb, var(--aw-eu-primary) 16%, transparent)', color: muted ? '#ef4444' : 'var(--aw-eu-primary,#7B62FC)', fontWeight: 700 }}>{muted ? 'بی‌صدا' : 'روشن'}</span>
+        <span className="text-[11px] px-2.5 py-1 rounded-full" style={{ background: muted ? 'rgba(239,68,68,0.14)' : 'color-mix(in srgb, var(--aw-eu-primary) 16%, transparent)', color: muted ? '#ef4444' : 'var(--aw-eu-primary,#7B62FC)', fontWeight: 700 }}>{muteLabel}</span>
+      </button>
+      {muteOpen && (
+        <div className="rounded-[10px] p-1 grid grid-cols-2 gap-1" style={{ background: 'var(--aw-bg-input)' }}>
+          {[{ l: 'یک ساعت', v: HOUR }, { l: 'هشت ساعت', v: 8 * HOUR }, { l: 'یک هفته', v: 7 * 24 * HOUR }, { l: 'همیشه', v: 0 }].map(o => (
+            <button key={o.l} onClick={() => doMute(o.v)} className="text-[12px] py-2 rounded-lg border-none cursor-pointer text-white" style={{ background: 'var(--aw-eu-primary,#7B62FC)', fontWeight: 600 }}>{o.l}</button>
+          ))}
+          {muted && <button onClick={() => doMute(null)} className="col-span-2 text-[12px] py-2 rounded-lg border cursor-pointer bg-transparent" style={{ borderColor: 'var(--aw-border)', color: 'var(--aw-text-secondary)', fontWeight: 700 }}>روشن‌کردنِ اعلان</button>}
+        </div>
+      )}
+
+      {/* مسدودسازی */}
+      <button onClick={toggleBlock} disabled={busy} className={row} style={{ background: info.blocked ? 'rgba(239,68,68,0.10)' : 'var(--aw-bg-card)' }}>
+        <span className="text-[13px] flex items-center gap-2" style={{ color: info.blocked ? '#ef4444' : undefined }}><i className={`fa-solid ${info.blocked ? 'fa-user-check' : 'fa-user-slash'} ${info.blocked ? 'text-[#ef4444]' : 'text-[var(--aw-eu-primary,#7B62FC)]'}`} /> {info.blocked ? 'رفعِ مسدودی' : 'مسدودکردنِ کاربر'}</span>
+      </button>
+
+      {/* گزارش + پاک‌کردن */}
+      <button onClick={doReport} disabled={busy} className={row} style={{ background: 'var(--aw-bg-card)' }}>
+        <span className="text-[13px] flex items-center gap-2"><i className="fa-solid fa-flag text-[#F59E0B]" /> گزارشِ تخلف</span>
       </button>
       <button onClick={clearChat} disabled={busy} className="flex items-center gap-2 rounded-[10px] p-3 border-none cursor-pointer text-right text-[#ef4444]" style={{ background: 'rgba(239,68,68,0.08)', fontWeight: 700 }}>
         <i className="fa-solid fa-trash text-[13px]" /> <span className="text-[13px]">پاک‌کردنِ گفتگو</span>

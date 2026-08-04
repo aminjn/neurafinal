@@ -72,6 +72,14 @@ echo "   قبلِ خواندن: $(curl -s "$API/peer/with?sub=2" -H "Authorizati
 curl -s -X POST "$API/peer/read" -H "Authorization: Bearer $ST" -H 'Content-Type: application/json' -d '{"sub":"1"}' >/dev/null
 echo "   بعدِ خواندن: $(curl -s "$API/peer/with?sub=2" -H "Authorization: Bearer $BT" | grep -o 'readAt":[0-9]*' | head -1 || echo 'NOT-READ ✗')"
 
+echo "-- تنظیماتِ ۱:۱ واقعی (بلاک/بی‌صدا): B کاربر A را بلاک می‌کند، پیامِ A باید رد شود"
+curl -s -X POST "$API/peer/block" -H "Authorization: Bearer $ST" -H 'Content-Type: application/json' -d '{"sub":"1","block":true}' >/dev/null
+echo "   ارسالِ A بعد از بلاک: $(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/peer/send" -H "Authorization: Bearer $BT" -H 'Content-Type: application/json' -d '{"to":"2","text":"بعد از بلاک"}') (باید 403)"
+echo "   info نزدِ B: $(curl -s "$API/peer/info?sub=1" -H "Authorization: Bearer $ST" | grep -o '"blocked":[a-z]*')"
+curl -s -X POST "$API/peer/block" -H "Authorization: Bearer $ST" -H 'Content-Type: application/json' -d '{"sub":"1","block":false}' >/dev/null
+curl -s -X POST "$API/peer/mute" -H "Authorization: Bearer $ST" -H 'Content-Type: application/json' -d '{"sub":"1","mute":true,"durationMs":3600000}' >/dev/null
+echo "   بی‌صدا: $(curl -s "$API/peer/info?sub=1" -H "Authorization: Bearer $ST" | grep -o '"muteUntil":[0-9]*' || echo 'no-mute')"
+
 echo "==> پاک‌سازی"
 [ -f "$AUD/server.pid" ] && kill "$(cat "$AUD/server.pid")" 2>/dev/null
 $RUNUSER "$PGBIN/pg_ctl" -D "$AUD/data" stop >/dev/null 2>&1
