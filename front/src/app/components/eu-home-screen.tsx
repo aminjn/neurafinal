@@ -110,8 +110,8 @@ function SimpleWalletContent() {
   const confirm = () => {
     if (amountNum <= 0) { showToast('مبلغ معتبر وارد کنید', 'error'); return; }
     if (mode === 'withdraw' && amountNum > walletBalance) { showToast('موجودی کافی نیست', 'error'); return; }
-    if (mode === 'deposit') { walletDeposit(amountNum); showToast('واریز با موفقیت انجام شد ✅', 'success'); }
-    else { walletWithdraw(amountNum); showToast('برداشت با موفقیت انجام شد ✅', 'success'); }
+    // toastِ موفقیت/خطا داخلِ خودِ walletDeposit/withdraw بعد از تأییدِ سرور زده می‌شود (نه زودهنگام).
+    if (mode === 'deposit') walletDeposit(amountNum); else walletWithdraw(amountNum);
     setAmount(''); setMode(null); setTab('history');
   };
 

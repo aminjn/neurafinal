@@ -599,13 +599,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [walletTx, setWalletTx] = useState<WalletTx[]>(() => {
     try { const s = localStorage.getItem('neura_wallet_tx'); return s ? JSON.parse(s) : INITIAL_WALLET_TX; } catch { return INITIAL_WALLET_TX; }
   });
-  const walletDeposit = useCallback((amount: number) => {
-    if (!amount || amount <= 0) return;
-    (async () => { try { const w: any = await (api as any).walletDeposit(amount); if (w) { if (typeof w.balance === 'number') setWalletBalance(w.balance); if (Array.isArray(w.tx)) setWalletTx(w.tx); } } catch (_) {} })();
+  // واریز/برداشت: toastِ موفقیت/خطا «فقط بعد از تأییدِ سرور» و «یک‌جا» (R8/R10/R12) — دیگر هیچ callerای
+  // نباید toastِ موفقیتِ زودهنگام بزند. برمی‌گرداند {ok} تا در صورتِ نیاز caller هم بداند.
+  const walletDeposit = useCallback(async (amount: number) => {
+    if (!amount || amount <= 0) { showToastFn('مبلغ معتبر وارد کنید'); return { ok: false }; }
+    try { const w: any = await (api as any).walletDeposit(amount); if (w) { if (typeof w.balance === 'number') setWalletBalance(w.balance); if (Array.isArray(w.tx)) setWalletTx(w.tx); } showToastFn('واریز انجام شد ✅'); return { ok: true }; }
+    catch (e: any) { showToastFn('خطا در واریز'); return { ok: false, status: e && e.status }; }
   }, []);
-  const walletWithdraw = useCallback((amount: number) => {
-    if (!amount || amount <= 0) return;
-    (async () => { try { const w: any = await (api as any).walletWithdraw(amount); if (w) { if (typeof w.balance === 'number') setWalletBalance(w.balance); if (Array.isArray(w.tx)) setWalletTx(w.tx); } } catch (e: any) { if (e && e.status === 402) showToast('موجودی کیف پول کافی نیست'); } })();
+  const walletWithdraw = useCallback(async (amount: number) => {
+    if (!amount || amount <= 0) { showToastFn('مبلغ معتبر وارد کنید'); return { ok: false }; }
+    try { const w: any = await (api as any).walletWithdraw(amount); if (w) { if (typeof w.balance === 'number') setWalletBalance(w.balance); if (Array.isArray(w.tx)) setWalletTx(w.tx); } showToastFn('برداشت انجام شد ✅'); return { ok: true }; }
+    catch (e: any) { showToastFn(e && e.status === 402 ? 'موجودی کیف پول کافی نیست' : 'خطا در برداشت'); return { ok: false, status: e && e.status }; }
   }, []);
 
   // ── Avatar & Theme ownership (first 3 of each are free; rest must be bought individually) ──

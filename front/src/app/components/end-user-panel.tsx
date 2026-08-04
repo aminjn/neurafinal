@@ -865,7 +865,7 @@ function WalletModal() {
 
       {/* Submit button */}
       <button
-        onClick={() => { const _a = parseInt(String(amount).replace(/[۰-۹]/g, (d: string) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[^\d]/g, ''), 10); if (!_a || _a <= 0) { showToast('مبلغ را وارد کنید'); return; } (walletTab === 'deposit' ? walletDeposit(_a) : walletWithdraw(_a)); closeModal(); showToast(walletTab === 'deposit' ? 'واریز انجام شد' : 'برداشت انجام شد'); }}
+        onClick={() => { const _a = parseInt(String(amount).replace(/[۰-۹]/g, (d: string) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[^\d]/g, ''), 10); if (!_a || _a <= 0) { showToast('مبلغ را وارد کنید'); return; } (walletTab === 'deposit' ? walletDeposit(_a) : walletWithdraw(_a)); closeModal(); /* toastِ نتیجه داخلِ walletDeposit/withdraw بعد از تأییدِ سرور */ }}
         className="w-full py-3 rounded-[10px] border-none cursor-pointer text-white text-[14px] transition-all"
         style={{
           background: walletTab === 'deposit' ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #F97316, #EA580C)',
@@ -2523,8 +2523,7 @@ function EuFinanceContent() {
     const parsed = parseInt(String(opAmount).replace(/[۰-۹]/g, (d: string) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[^\d]/g, ''), 10);
     if (!parsed || parsed <= 0) { showToast('مبلغ معتبر وارد کنید'); return; }
     if (opMode === 'withdraw' && parsed > balance) { showToast('موجودی کافی نیست'); return; }
-    (opMode === 'deposit' ? walletDeposit(parsed) : walletWithdraw(parsed));
-    showToast(opMode === 'deposit' ? 'واریز با موفقیت انجام شد' : 'برداشت با موفقیت انجام شد');
+    (opMode === 'deposit' ? walletDeposit(parsed) : walletWithdraw(parsed)); // toastِ نتیجه داخلِ تابع، بعد از تأییدِ سرور
     setOpMode(null); setOpAmount('');
   };
 
