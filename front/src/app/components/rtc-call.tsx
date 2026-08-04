@@ -5,7 +5,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Device } from 'mediasoup-client';
-import { getToken } from '../services/api';
+import { getToken, api } from '../services/api';
 
 function uidFromToken(): string {
   try {
@@ -62,6 +62,8 @@ export function NeuraCallLayer() {
   const [remotes, setRemotes] = useState<RemoteTile[]>([]);
   const [statusMsg, setStatusMsg] = useState('');
   const [secs, setSecs] = useState(0);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addList, setAddList] = useState<{ sub: string; name: string }[]>([]);
 
   const socketRef = useRef<Socket | null>(null);
   const deviceRef = useRef<Device | null>(null);
@@ -299,6 +301,24 @@ export function NeuraCallLayer() {
   }, [camOff]);
   const toggleSpeaker = useCallback(() => setSpeakerOn((v) => !v), []);
 
+  // ── افزودنِ فرد در حینِ تماس (واقعی): مخاطبینِ نورا را نشان بده و به همان اتاق دعوت کن ──
+  const loadAddList = useCallback(async () => {
+    try {
+      const r: any = await (api as any).contacts(); const list = (r?.contacts) || [];
+      const phones = list.map((c: any) => c.phone).filter(Boolean);
+      if (!phones.length) { setAddList([]); return; }
+      const rr: any = await (api as any).peerResolve(phones);
+      const nameByPhone: any = {}; list.forEach((c: any) => { if (c.phone) nameByPhone[String(c.phone).replace(/\D/g, '').slice(-10)] = c.name; });
+      const inRoom = new Set([uidFromToken(), ...toSubsRef.current.map(String), ...remotes.map((x) => x.ownerSub)]);
+      setAddList((rr?.users || []).map((u: any) => ({ sub: String(u.sub), name: nameByPhone[String(u.phone).replace(/\D/g, '').slice(-10)] || u.name || u.phone })).filter((u: any) => !inRoom.has(u.sub)));
+    } catch (_) { setAddList([]); }
+  }, [remotes]);
+  const addToCall = useCallback((sub: string, _name: string) => {
+    try { socketRef.current?.emit('callUser', { toSubs: [sub], roomName: roomRef.current, kind, callerName: '' }); } catch (_) {}
+    toSubsRef.current = [...new Set([...toSubsRef.current, sub])];
+    setAddOpen(false);
+  }, [kind]);
+
   // بلندگو + پخشِ مطمئنِ صدای دریافتی: هر بار که استریمِ جدید می‌آید یا بلندگو عوض می‌شود،
   // صدا را پخش کن (autoplay گاهی بلاک می‌شود) و بلندی/خروجی را تنظیم کن. روی موبایل، مرورگر
   // مسیرِ بلندگو/گوشی را کنترل می‌کند؛ این‌جا بلندی و در صورتِ پشتیبانی setSinkId اعمال می‌شود.
@@ -321,87 +341,115 @@ export function NeuraCallLayer() {
   const videoRemotes = remotes.filter((r) => r.kind === 'video');
   const audioRemotes = remotes.filter((r) => r.kind === 'audio');
 
+  const fullBleed = kind === 'video' && phase === 'connected' && videoRemotes.length === 1;
+  const ringing = phase === 'outgoing' || (phase === 'connected' && !!statusMsg);
+  const statusText = phase === 'outgoing' ? (statusMsg || 'در حال زنگ‌زدن') : phase === 'incoming' ? (kind === 'video' ? 'تماسِ تصویریِ ورودی' : 'تماسِ صوتیِ ورودی') : (statusMsg || fmt(secs));
+  const partCount = Math.max(toSubsRef.current.length, remotes.length);
+  const ctrlBtn = (onClick: () => void, icon: string, label: string, active?: boolean, danger?: boolean, size = 56) => (
+    <button onClick={onClick} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
+      <span className="rounded-full flex items-center justify-center transition-all" style={{ width: size, height: size, background: danger ? '#ef4444' : active ? '#fff' : 'rgba(255,255,255,0.16)', color: danger ? '#fff' : active ? '#1a1530' : '#fff', backdropFilter: 'blur(8px)' }}><i className={`fa-solid ${icon} text-[18px]`} /></span>
+      <span className="text-[11px] opacity-80">{label}</span>
+    </button>
+  );
   return (
-    <div ref={rootRef} className="fixed inset-0 z-[200] flex flex-col" style={{ background: 'linear-gradient(160deg,#1a1530,#2a1f4d 60%,#0f0b1f)', color: '#fff', fontFamily: "'Kamand', sans-serif" }} dir="rtl">
+    <div ref={rootRef} className="fixed inset-0 z-[200] flex flex-col overflow-hidden" style={{ background: 'radial-gradient(120% 90% at 50% -10%, #3a2a66 0%, #1a1530 45%, #0d0a1c 100%)', color: '#fff', fontFamily: "'Kamand', sans-serif" }} dir="rtl">
+      <style>{`@keyframes nrdot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}`}</style>
+
+      {/* بک‌گراندِ ویدیوی تمام‌صفحه وقتی فقط یک نفر تصویر دارد (مثلِ لیدرها) */}
+      {fullBleed && (
+        <video autoPlay playsInline ref={(el) => { if (el && el.srcObject !== videoRemotes[0].stream) el.srcObject = videoRemotes[0].stream; }} className="absolute inset-0 w-full h-full" style={{ objectFit: 'cover' }} />
+      )}
+      {fullBleed && <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 22%, transparent 62%, rgba(0,0,0,0.55) 100%)' }} />}
+
       {/* هدر */}
-      <div className="flex-shrink-0 pt-10 pb-4 text-center">
-        <div className="text-[20px]" style={{ fontWeight: 700 }}>{peerName}</div>
-        <div className="text-[13px] mt-1 opacity-80">
-          {phase === 'outgoing' ? (statusMsg || 'در حال تماس...') : phase === 'incoming' ? (kind === 'video' ? 'تماس تصویری ورودی' : 'تماس صوتی ورودی') : (statusMsg || fmt(secs))}
+      <div className="flex-shrink-0 pt-10 pb-3 text-center relative z-[2]">
+        <div className="text-[21px]" style={{ fontWeight: 800, textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}>{peerName}{partCount > 1 ? ' و دیگران' : ''}</div>
+        <div className="text-[13px] mt-1 opacity-90 flex items-center justify-center gap-1.5">
+          {phase === 'connected' && !statusMsg && <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />}
+          <span dir="ltr">{statusText}</span>
+          {ringing && <span className="inline-flex gap-0.5">{[0, 1, 2].map((i) => <span key={i} className="w-1 h-1 rounded-full bg-white" style={{ animation: 'nrdot 1.2s infinite', animationDelay: i * 0.18 + 's' }} />)}</span>}
         </div>
+        {partCount > 1 && <div className="text-[11px] opacity-60 mt-0.5">{String(partCount + 1).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[+d])} نفر</div>}
       </div>
 
-      {/* بدنه: تصاویر یا آواتار */}
-      <div className="flex-1 min-h-0 relative overflow-hidden px-3">
-        {kind === 'video' && phase === 'connected' ? (
-          <div className="w-full h-full grid gap-2" style={{ gridTemplateColumns: videoRemotes.length <= 1 ? '1fr' : '1fr 1fr', alignContent: 'center' }}>
-            {videoRemotes.length === 0 && <div className="flex items-center justify-center h-full opacity-70 text-[14px]">در انتظارِ تصویرِ طرفِ مقابل…</div>}
+      {/* بدنه */}
+      <div className="flex-1 min-h-0 relative overflow-hidden px-3 z-[1]">
+        {kind === 'video' && phase === 'connected' && !fullBleed ? (
+          <div className="w-full h-full grid gap-2 content-center" style={{ gridTemplateColumns: videoRemotes.length <= 1 ? '1fr' : videoRemotes.length <= 4 ? '1fr 1fr' : '1fr 1fr 1fr' }}>
+            {videoRemotes.length === 0 && <div className="flex flex-col items-center justify-center h-full gap-3 opacity-70"><i className="fa-solid fa-video text-[34px]" /><span className="text-[13px]">در انتظارِ تصویرِ طرفِ مقابل…</span></div>}
             {videoRemotes.map((r) => (
-              <div key={r.producerId} className="relative rounded-2xl overflow-hidden bg-black/40 flex items-center justify-center" style={{ minHeight: 160 }}>
+              <div key={r.producerId} className="relative rounded-2xl overflow-hidden flex items-center justify-center" style={{ minHeight: 150, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <video autoPlay playsInline ref={(el) => { if (el && el.srcObject !== r.stream) el.srcObject = r.stream; }} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <div className="absolute bottom-1 right-2 text-[11px] px-2 py-0.5 rounded-lg bg-black/40">{r.ownerName}</div>
+                <div className="absolute bottom-1.5 right-2 text-[11px] px-2 py-0.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)' }}>{r.ownerName}</div>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-4">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 120, height: 120, background: 'rgba(255,255,255,0.12)', fontSize: 46, fontWeight: 700 }}>
-              {(peerName || '?').charAt(0)}
+        ) : !fullBleed && (
+          <div className="flex flex-col items-center justify-center h-full gap-5">
+            <div className="relative flex items-center justify-center">
+              {ringing && <><span className="absolute rounded-full animate-ping" style={{ width: 150, height: 150, background: 'rgba(123,98,252,0.25)' }} /><span className="absolute rounded-full" style={{ width: 172, height: 172, border: '1px solid rgba(255,255,255,0.12)' }} /></>}
+              <div className="rounded-full flex items-center justify-center relative" style={{ width: 128, height: 128, background: 'linear-gradient(145deg,#7b62fc,#5c4abd)', fontSize: 48, fontWeight: 800, boxShadow: '0 12px 40px rgba(123,98,252,0.45)' }}>
+                {(peerName || '?').charAt(0)}
+              </div>
             </div>
-            {phase === 'connected' && <div className="flex items-center gap-2 opacity-80 text-[13px]"><i className="fa-solid fa-phone-volume" /> تماسِ صوتی برقرار است</div>}
+            {phase === 'connected' && <div className="flex items-center gap-2 opacity-90 text-[13px] px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}><i className="fa-solid fa-phone-volume" style={{ color: '#22c55e' }} /> تماسِ صوتی برقرار است</div>}
           </div>
         )}
 
-        {/* پیش‌نمایشِ محلی (تصویری) */}
+        {/* پیش‌نمایشِ محلی */}
         {kind === 'video' && (phase === 'connected' || phase === 'outgoing') && (
-          <div className="absolute bottom-3 left-3 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg" style={{ width: 96, height: 128, background: '#000' }}>
+          <div className="absolute bottom-3 left-3 rounded-2xl overflow-hidden shadow-2xl" style={{ width: 100, height: 138, background: '#000', border: '2px solid rgba(255,255,255,0.25)' }}>
             <video autoPlay muted playsInline ref={(el) => { localVideoRef.current = el; if (el && localStreamRef.current && el.srcObject !== localStreamRef.current) el.srcObject = localStreamRef.current; }} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+            {camOff && <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-[11px]"><i className="fa-solid fa-video-slash" /></div>}
           </div>
         )}
 
-        {/* صداهای دریافتی (پنهان) */}
         {audioRemotes.map((r) => (
           <audio key={r.producerId} autoPlay playsInline ref={(el) => { if (el && el.srcObject !== r.stream) { el.srcObject = r.stream; el.volume = speakerOn ? 1 : 0.32; el.play?.().catch(() => {}); } }} />
         ))}
-        {/* صدای طرفِ مقابل در تماسِ تصویری هم باید شنیده شود؛ اگر بلندگو خاموش شد فقط بلندی کم می‌شود */}
       </div>
 
-      {/* کنترل‌ها */}
-      <div className="flex-shrink-0 pb-10 pt-4">
+      {/* کنترل‌ها — نوارِ شیشه‌ای */}
+      <div className="flex-shrink-0 pb-9 pt-4 relative z-[2]">
         {phase === 'incoming' ? (
           <div className="flex items-center justify-center gap-16">
             <button onClick={rejectIncoming} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
-              <span className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: '#ef4444' }}><i className="fa-solid fa-phone-slash text-[22px]" /></span>
+              <span className="rounded-full flex items-center justify-center animate-pulse" style={{ width: 68, height: 68, background: '#ef4444' }}><i className="fa-solid fa-phone-slash text-[24px]" /></span>
               <span className="text-[12px]">رد</span>
             </button>
             <button onClick={acceptIncoming} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
-              <span className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: '#22c55e' }}><i className={`fa-solid ${kind === 'video' ? 'fa-video' : 'fa-phone'} text-[22px]`} /></span>
+              <span className="rounded-full flex items-center justify-center animate-pulse" style={{ width: 68, height: 68, background: '#22c55e' }}><i className={`fa-solid ${kind === 'video' ? 'fa-video' : 'fa-phone'} text-[24px]`} /></span>
               <span className="text-[12px]">پاسخ</span>
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-center gap-8">
-            <button onClick={toggleMute} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
-              <span className="rounded-full flex items-center justify-center" style={{ width: 56, height: 56, background: muted ? '#fff' : 'rgba(255,255,255,0.16)', color: muted ? '#1a1530' : '#fff' }}><i className={`fa-solid ${muted ? 'fa-microphone-slash' : 'fa-microphone'} text-[18px]`} /></span>
-              <span className="text-[11px] opacity-80">{muted ? 'صدا خاموش' : 'صدا'}</span>
-            </button>
-            {kind === 'video' && (
-              <button onClick={toggleCam} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
-                <span className="rounded-full flex items-center justify-center" style={{ width: 56, height: 56, background: camOff ? '#fff' : 'rgba(255,255,255,0.16)', color: camOff ? '#1a1530' : '#fff' }}><i className={`fa-solid ${camOff ? 'fa-video-slash' : 'fa-video'} text-[18px]`} /></span>
-                <span className="text-[11px] opacity-80">{camOff ? 'دوربین خاموش' : 'دوربین'}</span>
-              </button>
-            )}
-            <button onClick={toggleSpeaker} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
-              <span className="rounded-full flex items-center justify-center" style={{ width: 56, height: 56, background: speakerOn ? 'rgba(255,255,255,0.16)' : '#fff', color: speakerOn ? '#fff' : '#1a1530' }}><i className={`fa-solid ${speakerOn ? 'fa-volume-high' : 'fa-volume-low'} text-[18px]`} /></span>
-              <span className="text-[11px] opacity-80">{speakerOn ? 'بلندگو' : 'آرام'}</span>
-            </button>
-            <button onClick={hangup} className="flex flex-col items-center gap-1.5 cursor-pointer border-none bg-transparent text-white">
-              <span className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: '#ef4444' }}><i className="fa-solid fa-phone-slash text-[22px]" /></span>
-              <span className="text-[11px] opacity-80">پایان</span>
-            </button>
+          <div className="mx-auto flex items-center justify-center gap-5 px-5 py-3 rounded-[28px] w-fit" style={{ background: 'rgba(255,255,255,0.10)', backdropFilter: 'blur(18px) saturate(1.4)', border: '1px solid rgba(255,255,255,0.14)' }}>
+            {ctrlBtn(toggleMute, muted ? 'fa-microphone-slash' : 'fa-microphone', muted ? 'بی‌صدا' : 'صدا', muted)}
+            {kind === 'video' && ctrlBtn(toggleCam, camOff ? 'fa-video-slash' : 'fa-video', camOff ? 'خاموش' : 'دوربین', camOff)}
+            {ctrlBtn(toggleSpeaker, speakerOn ? 'fa-volume-high' : 'fa-volume-low', speakerOn ? 'بلندگو' : 'آرام', !speakerOn)}
+            {phase === 'connected' && ctrlBtn(() => { setAddOpen(true); loadAddList(); }, 'fa-user-plus', 'افزودن')}
+            {ctrlBtn(hangup, 'fa-phone-slash', 'پایان', false, true, 62)}
           </div>
         )}
       </div>
+
+      {/* افزودنِ فرد در حینِ تماس */}
+      {addOpen && (
+        <div className="absolute inset-0 z-[210] flex items-end" style={{ background: 'rgba(0,0,0,0.55)' }} onClick={() => setAddOpen(false)}>
+          <div className="w-full rounded-t-[22px] p-4 max-h-[62%] overflow-y-auto" style={{ background: '#1a1530', border: '1px solid rgba(255,255,255,0.1)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="w-10 h-1 rounded-full mx-auto mb-3" style={{ background: 'rgba(255,255,255,0.2)' }} />
+            <div className="text-[14px] mb-2" style={{ fontWeight: 700 }}>افزودن به تماس</div>
+            {addList.length === 0 ? <div className="text-[12px] opacity-70 py-6 text-center">مخاطبِ نورایی برای افزودن نیست</div> :
+              addList.map((u) => (
+                <div key={u.sub} onClick={() => addToCall(u.sub, u.name)} className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer hover:bg-white/5">
+                  <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(145deg,#7b62fc,#5c4abd)', fontWeight: 700 }}>{(u.name || '?').charAt(0)}</span>
+                  <span className="flex-1 text-[13px]">{u.name}</span>
+                  <i className="fa-solid fa-phone-flip text-[#22c55e]" />
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
